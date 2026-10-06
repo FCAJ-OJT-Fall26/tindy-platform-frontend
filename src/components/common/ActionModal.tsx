@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { X, Check } from 'lucide-react';
 
 interface ActionModalProps {
@@ -16,12 +16,23 @@ export default function ActionModal({
   onDeclineInvitation,
   onSubmitForm,
 }: ActionModalProps) {
+  const [closing, setClosing] = useState(false);
+
   if (!modal) return null;
 
+  const handleClose = () => {
+    if (closing) return;
+    setClosing(true);
+    window.setTimeout(() => {
+      setClosing(false);
+      onClose();
+    }, 200);
+  };
+
   return (
-    <div className="modal-backdrop" onClick={onClose}>
-      <section className="modal" onClick={event => event.stopPropagation()}>
-        <button className="close icon-button text-slate-500 hover:text-black" onClick={onClose} aria-label="Close modal">
+    <div className={`modal-backdrop modal-overlay-animate ${closing ? 'closing' : ''}`} onClick={handleClose}>
+      <section className={`modal modal-content-animate ${closing ? 'closing' : ''}`} onClick={event => event.stopPropagation()}>
+        <button className="close icon-button text-slate-500 hover:text-black cursor-pointer" onClick={handleClose} aria-label="Close modal">
           <X size={17} />
         </button>
         <h2>
@@ -89,7 +100,7 @@ export default function ActionModal({
               </label>
             ))}
             <div className="modal-actions">
-              <button type="button" className="button outline text-xs" onClick={onClose}>
+              <button type="button" className="button outline text-xs cursor-pointer" onClick={handleClose}>
                 Cancel
               </button>
               <button type="submit" className="button primary text-xs">

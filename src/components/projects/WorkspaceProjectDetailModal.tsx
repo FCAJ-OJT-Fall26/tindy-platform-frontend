@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   X,
   Star,
@@ -39,7 +39,18 @@ export default function WorkspaceProjectDetailModal({
   onToggleSave,
   onMarkInterested,
 }: WorkspaceProjectDetailModalProps) {
+  const [closing, setClosing] = useState(false);
+
   if (!detail) return null;
+
+  const handleClose = () => {
+    if (closing) return;
+    setClosing(true);
+    window.setTimeout(() => {
+      setClosing(false);
+      onClose();
+    }, 200);
+  };
 
   const isSaved = saved.includes(detail.id);
   const isInterested = interested.includes(detail.id);
@@ -47,9 +58,9 @@ export default function WorkspaceProjectDetailModal({
   // If this is one of "My Projects", render the active workspace sprint details
   if (isMyProject) {
     return (
-      <div className="modal-backdrop" onClick={onClose}>
+      <div className={`modal-backdrop modal-overlay-animate ${closing ? 'closing' : ''}`} onClick={handleClose}>
         <section
-          className="modal detail-modal max-w-xl w-full"
+          className={`modal detail-modal max-w-xl w-full modal-content-animate ${closing ? 'closing' : ''}`}
           onClick={(event) => event.stopPropagation()}
         >
           {/* Header */}
@@ -198,7 +209,7 @@ export default function WorkspaceProjectDetailModal({
           <div className="pt-4 border-t border-slate-200 flex flex-wrap items-center justify-between gap-3">
             <button
               type="button"
-              onClick={onClose}
+              onClick={handleClose}
               className="py-2 px-3.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 font-medium text-xs transition-colors cursor-pointer"
             >
               Close
@@ -209,7 +220,7 @@ export default function WorkspaceProjectDetailModal({
                 <button
                   type="button"
                   onClick={() => {
-                    onClose();
+                    handleClose();
                     onNavigateTeam();
                   }}
                   className="py-2 px-3.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-800 font-semibold text-xs flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs"
@@ -222,7 +233,7 @@ export default function WorkspaceProjectDetailModal({
               <button
                 type="button"
                 onClick={() => {
-                  onClose();
+                  handleClose();
                   onOpenMessages?.(detail.name);
                 }}
                 className="py-2 px-4 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs"
@@ -239,11 +250,11 @@ export default function WorkspaceProjectDetailModal({
 
   // Otherwise (e.g. from Saved Projects), render the review / bookmark view
   return (
-    <div className="modal-backdrop" onClick={onClose}>
-      <section className="modal detail-modal" onClick={(event) => event.stopPropagation()}>
+    <div className={`modal-backdrop modal-overlay-animate ${closing ? 'closing' : ''}`} onClick={handleClose}>
+      <section className={`modal detail-modal modal-content-animate ${closing ? 'closing' : ''}`} onClick={(event) => event.stopPropagation()}>
         <button
           className="close icon-button text-slate-500 hover:text-black cursor-pointer"
-          onClick={onClose}
+          onClick={handleClose}
           aria-label="Close modal"
         >
           <X size={17} />
@@ -333,7 +344,7 @@ export default function WorkspaceProjectDetailModal({
               <button
                 type="button"
                 onClick={() => {
-                  onClose();
+                  handleClose();
                   onOpenMessages(detail.name);
                 }}
                 className="py-1.5 px-3.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs flex items-center gap-1.5 transition-colors cursor-pointer"

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { X, Clock, Bookmark, ArrowLeft, Star } from 'lucide-react';
 import { DiscoveryCandidate } from '../../types/discovery';
 import AiMatchBadge from '../common/AiMatchBadge';
@@ -25,20 +25,34 @@ export default function CandidateDetailModal({
   onShortlistCandidate,
   onOpenAiBreakdown,
 }: CandidateDetailModalProps) {
+  const [closing, setClosing] = useState(false);
+
   if (!isOpen || !candidate) return null;
+
+  const handleClose = () => {
+    if (closing) return;
+    setClosing(true);
+    window.setTimeout(() => {
+      setClosing(false);
+      onClose();
+    }, 200);
+  };
 
   const match = candidate.match;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs">
+    <div
+      className={`fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs modal-overlay-animate ${closing ? 'closing' : ''}`}
+      onClick={handleClose}
+    >
       <div
-        className="bg-white rounded-xl w-full max-w-2xl shadow-xl border border-slate-200 overflow-hidden max-h-[92vh] flex flex-col"
+        className={`bg-white rounded-xl w-full max-w-2xl shadow-xl border border-slate-200 overflow-hidden max-h-[92vh] flex flex-col modal-content-animate ${closing ? 'closing' : ''}`}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header bar */}
         <div className="p-5 border-b border-slate-200 flex items-center justify-between bg-slate-50">
           <button
-            onClick={onClose}
+            onClick={handleClose}
             className="flex items-center gap-1.5 text-xs font-semibold text-slate-700 hover:text-black transition-colors"
           >
             <ArrowLeft size={15} />
@@ -57,7 +71,7 @@ export default function CandidateDetailModal({
               <span>{isSaved ? 'Saved' : 'Save'}</span>
             </button>
             <button
-              onClick={onClose}
+              onClick={handleClose}
               className="p-1.5 rounded-lg text-slate-400 hover:text-slate-800 hover:bg-slate-200 transition-colors"
               aria-label="Close modal"
             >
@@ -198,7 +212,7 @@ export default function CandidateDetailModal({
         {/* Footer actions */}
         <div className="p-4 border-t border-slate-200 bg-slate-50 flex items-center justify-between gap-3">
           <button
-            onClick={onClose}
+            onClick={handleClose}
             className="button outline text-xs py-2 px-3.5"
           >
             Back to Stack
@@ -218,7 +232,7 @@ export default function CandidateDetailModal({
             <button
               onClick={() => {
                 onShortlistCandidate(candidate);
-                onClose();
+                handleClose();
               }}
               className="button primary text-xs py-2 px-4"
             >

@@ -562,33 +562,35 @@ export default function ProfileScreen({
         /* ========================================================================= */
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
           {/* Left Column (Main Profile) */}
-          <div className="lg:col-span-2 space-y-6">
+          <div className="lg:col-span-2 space-y-7">
             {/* Card 1: About */}
-            <div className="bg-white rounded-2xl border border-slate-200/90 p-6 sm:p-7 shadow-xs space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="font-bold text-base text-slate-900">
+            <div className="bg-white rounded-2xl border border-slate-200/80 p-6 sm:p-7 shadow-xs">
+              {/* Header with Title and AI Assisted Badge */}
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-xl font-bold text-slate-900 tracking-tight">
                   About
                 </h3>
-                <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200">
-                  <Sparkles size={11} />
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-[#eef2ff] text-[#4f46e5] border border-[#e0e7ff] text-xs font-semibold tracking-wide shadow-2xs">
+                  <Sparkles size={13} className="text-[#4f46e5]" />
                   <span>AI ASSISTED</span>
                 </span>
               </div>
 
-              <p className="text-xs text-slate-600 leading-relaxed">
+              {/* Bio summary paragraph */}
+              <p className="text-sm text-slate-600 leading-relaxed font-normal">
                 {profile.summary}
               </p>
 
               {/* Technical skills */}
-              <div className="space-y-2 pt-2">
-                <span className="text-[10px] font-bold text-slate-900 uppercase tracking-wider block">
+              <div className="mt-5">
+                <h4 className="text-sm font-semibold text-slate-900 mb-2.5">
                   Technical skills
-                </span>
+                </h4>
                 <div className="flex flex-wrap gap-2">
                   {profile.technicalSkills.map((sk) => (
                     <span
                       key={sk}
-                      className="px-3 py-1 rounded-md bg-white text-slate-800 border border-slate-200 text-xs font-medium shadow-2xs"
+                      className="px-2.5 py-1 rounded-md bg-[#f1f5f9]/80 text-slate-700 border border-slate-200/80 text-xs font-medium shadow-2xs transition-colors hover:bg-slate-100"
                     >
                       {sk}
                     </span>
@@ -597,15 +599,15 @@ export default function ProfileScreen({
               </div>
 
               {/* Professional interests */}
-              <div className="space-y-2 pt-2">
-                <span className="text-[10px] font-bold text-slate-900 uppercase tracking-wider block">
+              <div className="mt-5">
+                <h4 className="text-sm font-semibold text-slate-900 mb-2.5">
                   Professional interests
-                </span>
+                </h4>
                 <div className="flex flex-wrap gap-2">
                   {profile.professionalInterests.map((interest) => (
                     <span
                       key={interest}
-                      className="px-3 py-1 rounded-md bg-white text-slate-700 border border-slate-200 text-xs font-normal shadow-2xs"
+                      className="px-2.5 py-1 rounded-md bg-[#f1f5f9]/80 text-slate-700 border border-slate-200/80 text-xs font-medium shadow-2xs transition-colors hover:bg-slate-100"
                     >
                       {interest}
                     </span>
@@ -614,50 +616,61 @@ export default function ProfileScreen({
               </div>
             </div>
 
-            {/* Card 2: Previous projects */}
-            <div className="bg-white rounded-2xl border border-slate-200/90 p-6 sm:p-7 shadow-xs space-y-5">
-              <div className="flex items-center justify-between">
-                <h3 className="font-bold text-base text-slate-900">
+            {/* Card 2: Previous projects - with generous spacing & clean separation */}
+            <div className="bg-white rounded-2xl border border-slate-200/80 p-6 sm:p-7 shadow-xs">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-xl font-bold text-slate-900 tracking-tight">
                   Previous projects
                 </h3>
                 <button
                   type="button"
                   onClick={() => setIsAddExpOpen(true)}
-                  className="text-xs font-semibold text-blue-600 hover:text-blue-800 flex items-center gap-1 transition-colors cursor-pointer"
+                  className="text-xs sm:text-sm font-semibold text-[#4f46e5] hover:text-[#4338ca] flex items-center gap-1.5 transition-colors cursor-pointer"
                 >
-                  <Plus size={14} />
+                  <Plus size={15} />
                   <span>Add experience</span>
                 </button>
               </div>
 
-              <div className="space-y-4 divide-y divide-slate-100">
-                {profile.projects.map((proj) => (
-                  <div key={proj.id} className="pt-4 first:pt-0 flex items-start gap-3.5">
-                    <div
-                      className={`w-9 h-9 rounded-lg flex items-center justify-center font-bold text-xs shrink-0 mt-0.5 border ${
-                        proj.initials === 'TM'
-                          ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                          : 'bg-blue-50 text-blue-700 border-blue-200'
-                      }`}
-                    >
-                      {proj.initials}
-                    </div>
-                    <div className="space-y-1.5 flex-1 min-w-0">
-                      <h4 className="font-bold text-xs sm:text-sm text-slate-900">
-                        {proj.title}
-                      </h4>
-                      <p className="text-xs text-slate-500 leading-relaxed">
-                        {proj.desc}
-                      </p>
-                      <div className="flex flex-wrap gap-1.5 pt-1">
-                        {proj.tags.map((tag) => (
-                          <span
-                            key={tag}
-                            className="px-2 py-0.5 rounded text-[11px] font-medium bg-slate-50 text-slate-600 border border-slate-200"
-                          >
-                            {tag}
-                          </span>
-                        ))}
+              {/* Separated project items with clear dividers and breathing room */}
+              <div className="space-y-6">
+                {profile.projects.map((proj, idx) => (
+                  <div key={proj.id}>
+                    {idx > 0 && (
+                      <div className="border-t border-slate-100 my-6" />
+                    )}
+                    <div className="flex items-start gap-4">
+                      {/* Initials badge */}
+                      <div
+                        className={`w-11 h-11 rounded-xl flex items-center justify-center font-bold text-xs shrink-0 mt-0.5 ${
+                          proj.initials === 'TM'
+                            ? 'bg-[#ecfdf5] text-[#059669]'
+                            : proj.initials === 'RC'
+                            ? 'bg-[#eef2ff] text-[#4f46e5]'
+                            : 'bg-[#f0f9ff] text-[#0284c7]'
+                        }`}
+                      >
+                        {proj.initials}
+                      </div>
+
+                      {/* Content */}
+                      <div className="flex-1 min-w-0">
+                        <h4 className="text-base font-semibold text-slate-900 leading-snug">
+                          {proj.title}
+                        </h4>
+                        <p className="text-sm text-slate-600 leading-relaxed mt-1 mb-3">
+                          {proj.desc}
+                        </p>
+                        <div className="flex flex-wrap gap-2">
+                          {proj.tags.map((tag) => (
+                            <span
+                              key={tag}
+                              className="px-2.5 py-1 rounded-md text-xs font-medium bg-[#f1f5f9]/80 text-slate-700 border border-slate-200/80 shadow-2xs"
+                            >
+                              {tag}
+                            </span>
+                          ))}
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -666,23 +679,23 @@ export default function ProfileScreen({
             </div>
 
             {/* Card 3: Learning goals */}
-            <div className="bg-white rounded-2xl border border-slate-200/90 p-6 sm:p-7 shadow-xs space-y-4">
-              <h3 className="font-bold text-base text-slate-900">
+            <div className="bg-white rounded-2xl border border-slate-200/80 p-6 sm:p-7 shadow-xs">
+              <h3 className="text-xl font-bold text-slate-900 tracking-tight mb-3">
                 Learning goals
               </h3>
-              <p className="text-xs text-slate-600 leading-relaxed">
+              <p className="text-sm text-slate-600 leading-relaxed font-normal">
                 {profile.learningGoals}
               </p>
 
-              <div className="space-y-2 pt-2">
-                <span className="text-[10px] font-bold text-slate-900 uppercase tracking-wider block">
+              <div className="mt-5">
+                <h4 className="text-sm font-semibold text-slate-900 mb-2.5">
                   Technologies I want to learn
-                </span>
+                </h4>
                 <div className="flex flex-wrap gap-2">
                   {profile.technologiesToLearn.map((tech) => (
                     <span
                       key={tech}
-                      className="px-3 py-1 rounded-md bg-white text-slate-700 border border-slate-200 text-xs font-normal shadow-2xs"
+                      className="px-2.5 py-1 rounded-md bg-[#f1f5f9]/80 text-slate-700 border border-slate-200/80 text-xs font-medium shadow-2xs"
                     >
                       {tech}
                     </span>

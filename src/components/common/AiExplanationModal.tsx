@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { X, Check } from 'lucide-react';
 import { MatchBreakdown } from '../../types/discovery';
 import AiMatchBadge from './AiMatchBadge';
@@ -21,12 +21,26 @@ export default function AiExplanationModal({
   match,
   role,
 }: AiExplanationModalProps) {
+  const [closing, setClosing] = useState(false);
+
   if (!isOpen) return null;
 
+  const handleClose = () => {
+    if (closing) return;
+    setClosing(true);
+    window.setTimeout(() => {
+      setClosing(false);
+      onClose();
+    }, 200);
+  };
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs">
+    <div
+      className={`fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs modal-overlay-animate ${closing ? 'closing' : ''}`}
+      onClick={handleClose}
+    >
       <div
-        className="bg-white rounded-xl w-full max-w-lg shadow-xl border border-slate-200 overflow-hidden max-h-[90vh] flex flex-col"
+        className={`bg-white rounded-xl w-full max-w-lg shadow-xl border border-slate-200 overflow-hidden max-h-[90vh] flex flex-col modal-content-animate ${closing ? 'closing' : ''}`}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -41,7 +55,7 @@ export default function AiExplanationModal({
             <p className="text-xs text-slate-500 line-clamp-1">{title} · {role}</p>
           </div>
           <button
-            onClick={onClose}
+            onClick={handleClose}
             className="p-1.5 rounded-lg text-slate-400 hover:text-slate-800 hover:bg-slate-200 transition-colors"
             aria-label="Close modal"
           >
@@ -136,7 +150,7 @@ export default function AiExplanationModal({
         {/* Footer */}
         <div className="p-4 border-t border-slate-200 bg-slate-50 flex items-center justify-end">
           <button
-            onClick={onClose}
+            onClick={handleClose}
             className="button primary text-xs py-2 px-4"
           >
             Close Breakdown

@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { useNavigate } from 'react-router';
 import { DiscoveryProject, DiscoveryCandidate, DiscoveryMode, SwipeDirection, SwipeHistoryEntry } from '../../types/discovery';
 import { INITIAL_PROJECTS, INITIAL_CANDIDATES } from '../../data/mockData';
 import SwipeCardStack from '../../components/discovery/SwipeCardStack';
@@ -8,6 +9,8 @@ import ProjectDetailModal from '../../components/projects/ProjectDetailModal';
 import CandidateDetailModal from '../../components/candidates/CandidateDetailModal';
 import CandidateShortlistModal from '../../components/candidates/CandidateShortlistModal';
 import AiExplanationModal from '../../components/common/AiExplanationModal';
+import { SlidersHorizontal, ChevronDown } from 'lucide-react';
+import { useTindy } from '../../store';
 
 interface SwipeDiscoveryViewProps {
   initialMode?: DiscoveryMode;
@@ -20,6 +23,12 @@ export default function SwipeDiscoveryView({
   onNavigateToMessages,
   onNotify,
 }: SwipeDiscoveryViewProps) {
+  const navigate = useNavigate();
+  let tindyNotify: ((msg: string) => void) | undefined;
+  try {
+    const tindy = useTindy();
+    tindyNotify = tindy.notify;
+  } catch {}
   // Discovery Perspective Mode
   const [mode, setMode] = useState<DiscoveryMode>(initialMode);
 
@@ -42,6 +51,7 @@ export default function SwipeDiscoveryView({
   const [selectedRole, setSelectedRole] = useState<string>('All');
   const [selectedSkill, setSelectedSkill] = useState<string>('All');
   const [minScore, setMinScore] = useState<number>(0);
+  const [mobileFilterOpen, setMobileFilterOpen] = useState<boolean>(false);
 
   // Currently active card in stack for Live AI Inspector
   const [activeItem, setActiveItem] = useState<DiscoveryProject | DiscoveryCandidate | null>(null);
@@ -53,7 +63,11 @@ export default function SwipeDiscoveryView({
   const [aiModalItem, setAiModalItem] = useState<DiscoveryProject | DiscoveryCandidate | null>(null);
 
   const showToast = (msg: string) => {
-    onNotify?.(msg);
+    if (onNotify) {
+      onNotify(msg);
+    } else if (tindyNotify) {
+      tindyNotify(msg);
+    }
   };
 
   // Filter lists based on mode and filters
@@ -247,6 +261,50 @@ export default function SwipeDiscoveryView({
         </div>
       </div>
 
+      {/* Mobile Filters Accordion Button */}
+      <div className="lg:hidden w-full">
+        <button
+          type="button"
+          onClick={() => setMobileFilterOpen(!mobileFilterOpen)}
+          className="w-full flex items-center justify-between px-4 py-3 bg-white border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 shadow-2xs cursor-pointer transition-colors hover:bg-slate-50"
+        >
+          <span className="flex items-center gap-2">
+            <SlidersHorizontal size={14} className="text-slate-500" />
+            <span>Filters & Score Threshold</span>
+            {minScore > 0 && (
+              <span className="px-2 py-0.5 rounded-full text-[10px] bg-indigo-50 text-indigo-700 font-mono font-bold">
+                ≥{minScore}%
+              </span>
+            )}
+          </span>
+          <ChevronDown
+            size={14}
+            className={`text-slate-400 transition-transform ${
+              mobileFilterOpen ? 'rotate-180' : ''
+            }`}
+          />
+        </button>
+
+        {mobileFilterOpen && (
+          <div className="mt-3 p-4 bg-white border border-slate-200 rounded-2xl shadow-xs">
+            <DiscoveryFilters
+              mode={mode}
+              onModeChange={setMode}
+              selectedRole={selectedRole}
+              onRoleChange={setSelectedRole}
+              selectedSkill={selectedSkill}
+              onSkillChange={setSelectedSkill}
+              minScore={minScore}
+              onMinScoreChange={setMinScore}
+              sessionStats={sessionStats}
+              onResetFilters={handleResetFilters}
+              availableRoles={availableRoles}
+              availableSkills={availableSkills}
+            />
+          </div>
+        )}
+      </div>
+
       {/* Main 3-Column Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         {/* Left Column: Filters */}
@@ -354,7 +412,11 @@ export default function SwipeDiscoveryView({
           if (shortlistModalCandidate) {
             setShortlistedCandidateIds((prev) => [...new Set([...prev, shortlistModalCandidate.id])]);
             showToast(`Direct invite dispatched to ${shortlistModalCandidate.name}!`);
-            onNavigateToMessages?.(shortlistModalCandidate.name);
+            if (onNavigateToMessages) {
+              onNavigateToMessages(shortlistModalCandidate.name);
+            } else {
+              navigate('/messages');
+            }
           }
         }}
       />

@@ -21,8 +21,18 @@ export default function CandidateShortlistModal({
 }: CandidateShortlistModalProps) {
   const [step, setStep] = useState<'confirm' | 'chat'>('confirm');
   const [invitationNote, setInvitationNote] = useState('');
+  const [closing, setClosing] = useState(false);
 
   if (!isOpen || !candidate) return null;
+
+  const handleClose = () => {
+    if (closing) return;
+    setClosing(true);
+    window.setTimeout(() => {
+      setClosing(false);
+      onClose();
+    }, 200);
+  };
 
   const handleConfirm = () => {
     onConfirmShortlist();
@@ -35,13 +45,16 @@ export default function CandidateShortlistModal({
         `Hi ${candidate.name}, I reviewed your verified profile and would like to invite you to discuss our ${candidate.preferredRole} role for ${projectName}.`
     );
     setStep('confirm');
-    onClose();
+    handleClose();
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs">
+    <div
+      className={`fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs modal-overlay-animate ${closing ? 'closing' : ''}`}
+      onClick={handleClose}
+    >
       <div
-        className="bg-white rounded-xl w-full max-w-md shadow-xl border border-slate-200 overflow-hidden"
+        className={`bg-white rounded-xl w-full max-w-md shadow-xl border border-slate-200 overflow-hidden modal-content-animate ${closing ? 'closing' : ''}`}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -55,7 +68,7 @@ export default function CandidateShortlistModal({
             </h3>
           </div>
           <button
-            onClick={onClose}
+            onClick={handleClose}
             className="p-1.5 rounded-lg text-slate-400 hover:text-slate-800 hover:bg-slate-200 transition-colors"
             aria-label="Close modal"
           >
@@ -119,7 +132,7 @@ export default function CandidateShortlistModal({
         <div className="p-4 border-t border-slate-200 bg-slate-50 flex items-center justify-end gap-2">
           <button
             type="button"
-            onClick={onClose}
+            onClick={handleClose}
             className="button outline text-xs py-2 px-3.5"
           >
             Cancel
