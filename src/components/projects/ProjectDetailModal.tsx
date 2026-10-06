@@ -224,7 +224,7 @@ export default function ProjectDetailModal({
           <div className="flex items-center gap-2">
             <button
               onClick={() => onToggleSave(project.id)}
-              className={`text-xs py-2 px-3.5 rounded-lg border font-semibold flex items-center gap-1.5 transition-colors ${
+              className={`text-xs py-2 px-3.5 rounded-lg border font-semibold flex items-center gap-1.5 transition-colors cursor-pointer ${
                 isSaved
                   ? 'border-sky-300 bg-sky-50 text-sky-700 shadow-2xs'
                   : 'border-slate-300 bg-white text-slate-800 hover:bg-slate-50'
@@ -236,11 +236,14 @@ export default function ProjectDetailModal({
             <button
               onClick={() => {
                 onMarkInterested(project.id);
-                handleClose();
               }}
-              className="py-2 px-4 rounded-lg font-bold text-xs flex items-center gap-1.5 transition-colors border border-emerald-400 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 shadow-2xs"
+              className={`py-2 px-4 rounded-lg font-bold text-xs flex items-center gap-1.5 transition-colors border shadow-2xs cursor-pointer ${
+                isInterested
+                  ? 'border-emerald-500 bg-emerald-600 text-white'
+                  : 'border-emerald-400 bg-emerald-50 hover:bg-emerald-100 text-emerald-800'
+              }`}
             >
-              <Heart size={14} className="text-emerald-600 fill-emerald-600" />
+              <Heart size={14} className={isInterested ? 'text-white fill-white' : 'text-emerald-600 fill-emerald-600'} />
               <span>{isInterested ? 'Interest Confirmed' : 'Confirm Interest'}</span>
             </button>
           </div>

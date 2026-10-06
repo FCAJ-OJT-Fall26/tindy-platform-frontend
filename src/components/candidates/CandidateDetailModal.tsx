@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Clock, Bookmark, ArrowLeft, Star } from 'lucide-react';
+import { X, Clock, Bookmark, ArrowLeft, Star, Check } from 'lucide-react';
 import { DiscoveryCandidate } from '../../types/discovery';
 import AiMatchBadge from '../common/AiMatchBadge';
 import FunnelStatusTracker from '../common/FunnelStatusTracker';
@@ -220,7 +220,7 @@ export default function CandidateDetailModal({
           <div className="flex items-center gap-2">
             <button
               onClick={() => onToggleSave(candidate.id)}
-              className={`text-xs py-2 px-3.5 rounded-lg border font-semibold flex items-center gap-1.5 transition-colors ${
+              className={`text-xs py-2 px-3.5 rounded-lg border font-semibold flex items-center gap-1.5 transition-colors cursor-pointer ${
                 isSaved
                   ? 'border-sky-300 bg-sky-50 text-sky-700 shadow-2xs'
                   : 'border-slate-300 bg-white text-slate-800 hover:bg-slate-50'
@@ -232,10 +232,14 @@ export default function CandidateDetailModal({
             <button
               onClick={() => {
                 onShortlistCandidate(candidate);
-                handleClose();
               }}
-              className="button primary text-xs py-2 px-4"
+              className={`text-xs py-2 px-4 rounded-lg font-bold flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs ${
+                isShortlisted
+                  ? 'bg-emerald-600 hover:bg-emerald-700 text-white border border-emerald-700'
+                  : 'bg-slate-900 hover:bg-black text-white'
+              }`}
             >
+              {isShortlisted && <Check size={14} strokeWidth={2.5} />}
               <span>{isShortlisted ? 'Candidate Shortlisted' : 'Shortlist Candidate'}</span>
             </button>
           </div>
