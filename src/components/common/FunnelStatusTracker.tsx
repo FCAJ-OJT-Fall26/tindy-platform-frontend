@@ -32,7 +32,7 @@ export default function FunnelStatusTracker({ currentStatus }: FunnelStatusTrack
       {/* Pipeline Stepper */}
       <div className="relative pt-1 pb-1">
         {/* Horizontal background track line connecting through all steps */}
-        <div className="absolute top-[14px] left-5 right-5 h-[2px] bg-[#e2e8f0] -translate-y-1/2 z-0">
+        <div className="absolute top-[17px] left-15 right-15 h-[2px] bg-[#e2e8f0] -translate-y-1/2 z-0">
           <div
             className="h-full bg-[#0f172a] transition-all duration-300"
             style={{
@@ -50,22 +50,20 @@ export default function FunnelStatusTracker({ currentStatus }: FunnelStatusTrack
             return (
               <div key={step} className="flex flex-col items-center text-center flex-1 min-w-0">
                 <div
-                  className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold transition-all ${
-                    isCurrent || isDone
-                      ? 'bg-[#0f172a] border border-[#0f172a] text-white shadow-2xs'
-                      : 'bg-white border border-[#cbd5e1] text-[#64748b] shadow-2xs'
-                  }`}
+                  className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold transition-all ${isCurrent || isDone
+                    ? 'bg-[#0f172a] border border-[#0f172a] text-white shadow-2xs'
+                    : 'bg-white border border-[#cbd5e1] text-[#64748b] shadow-2xs'
+                    }`}
                 >
                   {isDone ? <Check size={13} strokeWidth={2.8} /> : idx + 1}
                 </div>
                 <span
-                  className={`text-[11px] sm:text-xs mt-2.5 tracking-tight whitespace-nowrap ${
-                    isCurrent
-                      ? 'text-[#0f172a] font-bold'
-                      : isDone
+                  className={`text-[11px] sm:text-xs mt-2.5 tracking-tight whitespace-nowrap ${isCurrent
+                    ? 'text-[#0f172a] font-bold'
+                    : isDone
                       ? 'text-[#334155] font-semibold'
                       : 'text-[#8292a4] font-medium'
-                  }`}
+                    }`}
                 >
                   {step}
                 </span>
