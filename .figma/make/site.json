@@ -1,0 +1,10 @@
+{
+  "description": "This web application streamlines UI/UX design by providing customizable templates and tools for creating engaging screen designs, ideal for designers and developers.",
+  "robots": {
+    "index": false
+  },
+  "accessibility": {
+    "addBypassLinks": false,
+    "ignoreReducedMotion": false
+  }
+}
