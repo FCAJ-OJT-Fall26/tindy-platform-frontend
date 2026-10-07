@@ -510,6 +510,7 @@ main {
 
 .sidebar-active-indicator {
   position: absolute;
+  top: 0;
   left: 0;
   right: 0;
   border-radius: 5px;
@@ -567,10 +568,43 @@ main {
   }
 }
 
+/* Sidebar Bottom Settings active & hover effects */
+.sidebar-bottom .nav-item {
+  border-radius: 5px;
+  transition: background 180ms ease, color 180ms ease, transform 120ms ease;
+}
+
+.sidebar-bottom .nav-item:hover {
+  background: rgba(244, 247, 251, 0.7) !important;
+  color: #3553b5 !important;
+  transform: translateX(3px) !important;
+}
+
+.sidebar-bottom .nav-item:active {
+  transform: scale(0.98) !important;
+}
+
+.sidebar-bottom .nav-item.active {
+  background: #edf2fd !important;
+  border-left: 2px solid #395aca !important;
+  color: #3553b5 !important;
+  font-weight: 600 !important;
+  transform: none !important;
+}
+
+.sidebar-bottom .nav-item.active svg {
+  color: #4564c3 !important;
+}
+
+.sidebar-bottom .nav-item:hover svg {
+  color: #4564c3 !important;
+}
+
 /* Mobile Bottom Horizontal Active Indicator */
 .mobile-bottom-indicator {
   position: absolute;
   top: 7px;
+  left: 0;
   bottom: calc(7px + env(safe-area-inset-bottom, 0px));
   border-radius: 8px;
   background: #edf2fd;

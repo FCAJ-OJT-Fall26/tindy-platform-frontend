@@ -109,7 +109,7 @@ function Layout() {
     }
   }, [])
 
-  // Recalculate indicators when route changes
+  // Recalculate indicators when route or drawer state changes
   useEffect(() => {
     const id = requestAnimationFrame(() => {
       updateIndicators()
@@ -117,8 +117,13 @@ function Layout() {
         requestAnimationFrame(() => setIsReady(true))
       }
     })
-    return () => cancelAnimationFrame(id)
-  }, [location.pathname, updateIndicators, isReady])
+    // If mobile drawer was opened, ensure accurate measurement after drawer slide animation (220ms)
+    const timer = mobile ? setTimeout(updateIndicators, 220) : undefined
+    return () => {
+      cancelAnimationFrame(id)
+      if (timer) clearTimeout(timer)
+    }
+  }, [location.pathname, mobile, updateIndicators, isReady])
 
   // Recalculate on window resize / orientation change
   useEffect(() => {
@@ -162,11 +167,6 @@ function Layout() {
       path === "/" ? location.pathname === "/" : location.pathname.startsWith(path)
     )
     document.title = matched ? matched[1] : "Tindy — Project & Teammate Matching"
-  }, [location.pathname])
-
-  // Close mobile drawer when route changes
-  useEffect(() => {
-    setMobile(false)
   }, [location.pathname])
 
   const current =
@@ -228,7 +228,6 @@ function Layout() {
                   `nav-item ${isActive ? "active" : ""}`
                 }
                 key={item.to}
-                onClick={() => setMobile(false)}
               >
                 <item.icon size={18} />
                 <span>{item.label}</span>
@@ -245,7 +244,6 @@ function Layout() {
           <NavLink
             to="/leader"
             className={({ isActive }) => `nav-item ${isActive ? "active" : ""}`}
-            onClick={() => setMobile(false)}
           >
             <Users size={18} />
             Leader Workspace
@@ -254,7 +252,6 @@ function Layout() {
           <NavLink
             to="/ai"
             className={({ isActive }) => `nav-item ${isActive ? "active" : ""}`}
-            onClick={() => setMobile(false)}
           >
             <Sparkles size={18} />
             AI Studio<span className="beta">BETA</span>
@@ -271,16 +268,19 @@ function Layout() {
             Real projects. Shared ambition.
             <br />A community to build with.
           </p>
-          <Link to="/discover" onClick={() => setMobile(false)}>
+          <Link to="/discover">
             Explore opportunities <ArrowUpRight size={13} />
           </Link>
         </div>
         <div className="sidebar-bottom">
-          <Link to="/settings" className="nav-item" onClick={() => setMobile(false)}>
+          <NavLink
+            to="/settings"
+            className={({ isActive }) => `nav-item ${isActive ? "active" : ""}`}
+          >
             <Settings size={17} />
-            Settings
-          </Link>
-          <Link to="/profile" className="sidebar-user" onClick={() => setMobile(false)}>
+            <span>Settings</span>
+          </NavLink>
+          <Link to="/profile" className="sidebar-user">
             <Avatar name={profile.name} color="neutral" />
             <div>
               <strong>{profile.name}</strong>
@@ -396,7 +396,12 @@ function Layout() {
             ].includes(item.label),
           )
           .map((item) => (
-            <NavLink end to={item.to} key={item.to}>
+            <NavLink
+              end
+              to={item.to}
+              key={item.to}
+              onClick={() => requestAnimationFrame(updateIndicators)}
+            >
               <item.icon size={19} />
               <span>
                 {item.label === "Discover Projects"
