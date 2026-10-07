@@ -670,36 +670,46 @@ export function ProjectDetail() {
           </div>
         </div>
         <div className="detail-header-actions">
-          <Button disabled={sent} onClick={() => setInterestModal(true)}>
-            {sent ? (
-              <>
-                <Check size={16} />
-                Interest sent
-              </>
-            ) : (
-              <>
-                Interested <ArrowRight size={16} />
-              </>
+          <div className="detail-primary-actions">
+            <Button disabled={sent} onClick={() => setInterestModal(true)}>
+              {sent ? (
+                <>
+                  <Check size={16} />
+                  Interest sent
+                </>
+              ) : (
+                <>
+                  Interested <ArrowRight size={16} />
+                </>
+              )}
+            </Button>
+            <Button variant="secondary" onClick={() => toggleSave(project.id)}>
+              <Bookmark
+                size={16}
+                fill={saved.includes(project.id) ? "currentColor" : "none"}
+              />
+              {saved.includes(project.id) ? "Saved" : "Save"}
+            </Button>
+          </div>
+          <div className="detail-sub-actions">
+            {sent && (
+              <span className="detail-status-pill">
+                <Clock size={11} />
+                Waiting for project leader
+              </span>
             )}
-          </Button>
-          <Button variant="secondary" onClick={() => toggleSave(project.id)}>
-            <Bookmark
-              size={16}
-              fill={saved.includes(project.id) ? "currentColor" : "none"}
-            />
-            {saved.includes(project.id) ? "Saved" : "Save"}
-          </Button>
-          <button
-            className="text-link neutral"
-            onClick={() => {
-              setSkipped((old) => [...old, project.id])
-              notify("Project skipped — removed from recommendations")
-              window.history.back()
-            }}
-          >
-            Skip for now
-          </button>
-          {sent && <small>Waiting for project leader</small>}
+            <button
+              type="button"
+              className="detail-skip-btn"
+              onClick={() => {
+                setSkipped((old) => [...old, project.id])
+                notify("Project skipped — removed from recommendations")
+                window.history.back()
+              }}
+            >
+              Skip for now
+            </button>
+          </div>
         </div>
       </div>
       <div className="detail-layout">

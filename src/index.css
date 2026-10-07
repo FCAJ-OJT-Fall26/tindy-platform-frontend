@@ -1600,6 +1600,106 @@ main {
   }
 }
 
+/* ==========================================================================
+   13. PROJECT DETAIL ACTIONS & SKIP BUTTON FIX
+   ========================================================================== */
+
+/* Universal text-link button reset */
+button.text-link {
+  background: transparent !important;
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  font: inherit;
+  cursor: pointer;
+}
+
+.detail-header-actions {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: flex-end !important;
+  gap: 8px !important;
+  width: auto !important;
+  padding-top: 0 !important;
+}
+
+.detail-primary-actions {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  flex-wrap: wrap;
+}
+
+.detail-sub-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+  width: 100%;
+}
+
+.detail-status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10.5px;
+  color: #64748b;
+  background-color: #f8fafc;
+  border: 1px solid #e2e8f0;
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.detail-skip-btn,
+.detail-header-actions button.text-link,
+.detail-header-actions .text-link {
+  background: transparent !important;
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+  padding: 4px 8px !important;
+  border-radius: 6px !important;
+  color: #64748b !important;
+  font-size: 11px !important;
+  font-weight: 500 !important;
+  cursor: pointer !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: flex-end !important;
+  gap: 4px !important;
+  width: auto !important;
+  text-decoration: none !important;
+  transition: color 150ms ease, background-color 150ms ease, transform 100ms ease !important;
+  white-space: nowrap;
+}
+
+.detail-skip-btn:hover,
+.detail-header-actions button.text-link:hover,
+.detail-header-actions .text-link:hover {
+  color: #1e293b !important;
+  background-color: #f1f5f9 !important;
+}
+
+.detail-skip-btn:active,
+.detail-header-actions button.text-link:active {
+  transform: scale(0.97) !important;
+}
+
+@media (max-width: 768px) {
+  .detail-header-actions {
+    align-items: flex-start !important;
+    width: 100% !important;
+  }
+  .detail-sub-actions {
+    justify-content: flex-start;
+  }
+}
+
+
 
 
 
