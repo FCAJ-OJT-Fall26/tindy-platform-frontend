@@ -15,6 +15,9 @@ function LogoImg() {
 export default function AuthScreen() {
   const navigate = useNavigate();
   const [register, setRegister] = useState(false);
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [error, setError] = useState('');
 
   return (
     <div className="auth-page">
@@ -40,9 +43,18 @@ export default function AuthScreen() {
             ? 'Join the verified student and researcher project directory.'
             : 'Access your active project workspaces and candidate applications.'}
         </p>
+        {error && (
+          <div className="mb-3 p-2 bg-rose-50 text-rose-600 border border-rose-200 rounded text-xs">
+            {error}
+          </div>
+        )}
         <form
           onSubmit={event => {
             event.preventDefault();
+            if (register && password !== confirmPassword) {
+              setError('Passwords do not match. Please ensure both passwords match.');
+              return;
+            }
             navigate('/');
           }}
           className="space-y-3"
@@ -59,15 +71,54 @@ export default function AuthScreen() {
           </label>
           <label>
             Password
-            <input required type="password" minLength={8} placeholder="Minimum 8 characters" />
+            <input
+              required
+              type="password"
+              minLength={8}
+              placeholder="Minimum 8 characters"
+              value={password}
+              onChange={e => {
+                setPassword(e.target.value);
+                if (error) setError('');
+              }}
+            />
           </label>
+          {register && (
+            <label>
+              Confirm Password
+              <input
+                required
+                type="password"
+                minLength={8}
+                placeholder="Re-enter your password"
+                value={confirmPassword}
+                onChange={e => {
+                  setConfirmPassword(e.target.value);
+                  if (error) setError('');
+                }}
+              />
+              {confirmPassword && password !== confirmPassword && (
+                <span className="text-[10px] text-rose-600 font-medium mt-0.5 block">
+                  Passwords do not match
+                </span>
+              )}
+            </label>
+          )}
           <button className="button primary full mt-2">
             <span>{register ? 'Create Account' : 'Sign In'}</span>
             <ArrowRight size={14} />
           </button>
         </form>
 
-        <button className="text-link mt-4" onClick={() => setRegister(!register)}>
+        <button
+          className="text-link mt-4"
+          onClick={() => {
+            setRegister(!register);
+            setPassword('');
+            setConfirmPassword('');
+            setError('');
+          }}
+        >
           {register
             ? 'Already have an academic account? Sign In'
             : 'New student or researcher? Create an Account'}

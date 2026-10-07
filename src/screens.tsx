@@ -1710,6 +1710,8 @@ export function Auth() {
 
   const [forgot, setForgot] = useState(false)
   const [notice, setNotice] = useState("")
+  const [password, setPassword] = useState("")
+  const [confirmPassword, setConfirmPassword] = useState("")
 
   // Keep state synchronized with URL (e.g. browser back/forward)
   useEffect(() => {
@@ -1722,6 +1724,9 @@ export function Auth() {
   // Signature "Project Journey" transition when clicking "Create an account" or "Sign in"
   const handleSwitchMode = (targetRegister: boolean) => {
     if (transitioning) return
+    setPassword("")
+    setConfirmPassword("")
+    setNotice("")
     setTransitioning(true)
     setFormPhase("leaving")
     setHeadlinePhase("leaving")
@@ -1875,6 +1880,10 @@ export function Auth() {
                 )
                 return
               }
+              if (displayRegister && password !== confirmPassword) {
+                setNotice("Passwords do not match. Please ensure both passwords match.")
+                return
+              }
               const data = new FormData(event.currentTarget)
               setMode(String(data.get("mode") || "User"))
               if (displayRegister) {
@@ -1922,12 +1931,41 @@ export function Auth() {
                     minLength={8}
                     name="password"
                     type="password"
+                    value={password}
+                    onChange={(e) => {
+                      setPassword(e.target.value)
+                      if (notice) setNotice("")
+                    }}
                     placeholder="At least 8 characters"
                     autoComplete={
                       displayRegister ? "new-password" : "current-password"
                     }
                   />
                 </label>
+
+                {displayRegister && (
+                  <label className="field auth-field stagger-5">
+                    <span className="field-label">Confirm password</span>
+                    <input
+                      required
+                      minLength={8}
+                      name="confirmPassword"
+                      type="password"
+                      value={confirmPassword}
+                      onChange={(e) => {
+                        setConfirmPassword(e.target.value)
+                        if (notice) setNotice("")
+                      }}
+                      placeholder="Re-enter your password"
+                      autoComplete="new-password"
+                    />
+                    {confirmPassword && password !== confirmPassword && (
+                      <span style={{ fontSize: "10px", color: "#e11d48", fontWeight: 500, marginTop: "2px" }}>
+                        Passwords do not match
+                      </span>
+                    )}
+                  </label>
+                )}
 
                 {!displayRegister && (
                   <div className="stagger-6">
