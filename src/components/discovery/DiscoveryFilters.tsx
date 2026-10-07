@@ -1,6 +1,7 @@
 import React from 'react';
 import { SlidersHorizontal, RotateCcw } from 'lucide-react';
 import { DiscoveryMode } from '../../types/discovery';
+import DiscoverySegmentedControl from './DiscoverySegmentedControl';
 
 interface DiscoveryFiltersProps {
   mode: DiscoveryMode;
@@ -43,46 +44,28 @@ export default function DiscoveryFilters({
         <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block">
           Matching Perspective
         </span>
-        <div className="grid grid-cols-2 gap-1 p-1 bg-slate-100 rounded-lg border border-slate-200">
-          <button
-            type="button"
-            onClick={() => onModeChange('student')}
-            className={`py-2 px-2.5 rounded-md text-xs font-bold flex flex-col items-center gap-0.5 transition-colors ${mode === 'student'
-              ? 'bg-slate-900 text-white shadow-xs'
-              : 'text-slate-700 hover:text-black'
-              }`}
-          >
-            <span>Projects</span>
-            <span className={`text-[9px] font-medium ${mode === 'student' ? 'text-slate-300' : 'text-slate-500'}`}>
-              Find Projects
-            </span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => onModeChange('leader')}
-            className={`py-2 px-2.5 rounded-md text-xs font-bold flex flex-col items-center gap-0.5 transition-colors ${mode === 'leader'
-              ? 'bg-slate-900 text-white shadow-xs'
-              : 'text-slate-700 hover:text-black'
-              }`}
-          >
-            <span>Teammates</span>
-            <span className={`text-[9px] font-medium ${mode === 'leader' ? 'text-slate-300' : 'text-slate-500'}`}>
-              Find Candidates
-            </span>
-          </button>
-        </div>
+        <DiscoverySegmentedControl
+          value={mode}
+          onChange={onModeChange}
+          size="compact"
+          options={[
+            { value: 'student', label: 'Projects', sublabel: 'Find Projects' },
+            { value: 'leader', label: 'Teammates', sublabel: 'Find Candidates' },
+          ]}
+          ariaLabel="Matching Perspective"
+          className="w-full grid grid-cols-2 gap-1 p-1 bg-slate-100 rounded-lg border border-slate-200"
+        />
       </div>
 
       {/* Target Role Selector */}
-      <div className="space-y-1.5">
-        <label className="text-[11px] font-bold uppercase tracking-wider text-slate-600 block">
+      <div className="space-y-1.5 discovery-filter-mode-transition">
+        <label className="text-[11px] font-bold uppercase tracking-wider text-slate-600 block transition-colors">
           {mode === 'student' ? 'Required Role' : 'Preferred Role'}
         </label>
         <select
           value={selectedRole}
           onChange={(e) => onRoleChange(e.target.value)}
-          className="w-full text-xs font-medium bg-slate-50 border border-slate-200 rounded-lg p-2 text-slate-800 focus:outline-none focus:ring-1 focus:ring-slate-900"
+          className="w-full text-xs font-medium bg-slate-50 border border-slate-200 rounded-lg p-2 text-slate-800 focus:outline-none focus:ring-1 focus:ring-slate-900 transition-colors"
         >
           <option value="All">All Roles</option>
           {availableRoles.map((role) => (
@@ -228,8 +211,8 @@ export default function DiscoveryFilters({
               {sessionStats.reviewed}
             </span>
           </div>
-          <div className="bg-slate-50 p-2 rounded border border-slate-200">
-            <span className="text-[10px] text-slate-500 block">
+          <div className="bg-slate-50 p-2 rounded border border-slate-200 discovery-filter-mode-transition">
+            <span className="text-[10px] text-slate-500 block transition-colors">
               {mode === 'student' ? 'Interested' : 'Shortlisted'}
             </span>
             <span className="font-mono font-bold text-slate-900 text-sm">

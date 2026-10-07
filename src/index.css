@@ -1424,5 +1424,182 @@ main {
   }
 }
 
+/* ==========================================================================
+   12. TINDY DISCOVER PAGE COORDINATED TRANSITION
+   ========================================================================== */
+
+:root {
+  --discovery-shift: 20px;
+  --discovery-scale-out: 0.99;
+  --discovery-scale-in: 0.985;
+}
+
+@media (max-width: 768px) {
+  :root {
+    --discovery-shift: 12px;
+  }
+}
+
+/* --- Segmented Control Toggle --- */
+.discovery-segmented-control {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  background-color: #f1f5f9; /* slate-100 */
+  border: 1px solid #e2e8f0; /* slate-200 */
+  border-radius: 10px;
+  padding: 4px;
+  box-sizing: border-box;
+}
+
+.discovery-segmented-indicator {
+  position: absolute;
+  top: 0;
+  left: 0;
+  background-color: #0f172a; /* dark navy / slate-900 */
+  border-radius: 7px;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.16), 0 1px 2px rgba(15, 23, 42, 0.08);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.discovery-segmented-indicator.ready {
+  transition: transform 300ms cubic-bezier(0.22, 1, 0.36, 1),
+              width 300ms cubic-bezier(0.22, 1, 0.36, 1),
+              height 300ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.discovery-segmented-btn {
+  position: relative;
+  z-index: 2;
+  cursor: pointer;
+  background: transparent;
+  border: none;
+  outline: none;
+  border-radius: 7px;
+  transition: color 240ms cubic-bezier(0.22, 1, 0.36, 1),
+              transform 120ms ease;
+  user-select: none;
+}
+
+.discovery-segmented-btn:active {
+  transform: scale(0.97);
+}
+
+.discovery-segmented-btn:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 2px;
+}
+
+/* --- Coordinated Area Animations --- */
+@keyframes discoveryExitToLeft {
+  0% {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(calc(-1 * var(--discovery-shift))) scale(var(--discovery-scale-out));
+  }
+}
+
+@keyframes discoveryExitToRight {
+  0% {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(var(--discovery-shift)) scale(var(--discovery-scale-out));
+  }
+}
+
+@keyframes discoveryEnterFromRight {
+  0% {
+    opacity: 0;
+    transform: translateX(var(--discovery-shift)) scale(var(--discovery-scale-in));
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+}
+
+@keyframes discoveryEnterFromLeft {
+  0% {
+    opacity: 0;
+    transform: translateX(calc(-1 * var(--discovery-shift))) scale(var(--discovery-scale-in));
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+}
+
+/* Outgoing animation classes (170ms) */
+.discovery-sync-exit-left {
+  animation: discoveryExitToLeft 170ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  pointer-events: none;
+  will-change: transform, opacity;
+}
+
+.discovery-sync-exit-right {
+  animation: discoveryExitToRight 170ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  pointer-events: none;
+  will-change: transform, opacity;
+}
+
+/* Incoming animation classes (250ms) */
+.discovery-sync-enter-right {
+  animation: discoveryEnterFromRight 250ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  will-change: transform, opacity;
+}
+
+.discovery-sync-enter-left {
+  animation: discoveryEnterFromLeft 250ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  will-change: transform, opacity;
+}
+
+.discovery-sync-idle {
+  opacity: 1;
+  transform: translateX(0) scale(1);
+}
+
+/* Subtle header crossfade */
+.discovery-header-fade {
+  transition: opacity 200ms ease, transform 200ms ease;
+}
+
+/* Mode-dependent filter label transition */
+.discovery-filter-mode-transition {
+  transition: opacity 180ms ease, transform 180ms ease;
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .discovery-segmented-indicator.ready {
+    transition: opacity 150ms ease !important;
+  }
+  .discovery-segmented-btn {
+    transition: color 150ms ease !important;
+  }
+  .discovery-segmented-btn:active {
+    transform: none !important;
+  }
+  .discovery-sync-exit-left,
+  .discovery-sync-exit-right,
+  .discovery-sync-enter-right,
+  .discovery-sync-enter-left {
+    animation: none !important;
+    transform: none !important;
+    opacity: 1 !important;
+  }
+  .discovery-header-fade,
+  .discovery-filter-mode-transition {
+    transition: none !important;
+  }
+}
+
+
 
 
