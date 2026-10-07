@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef, useCallback } from "react"
 import {
   createBrowserRouter,
   RouterProvider,
@@ -67,6 +67,72 @@ function Layout() {
   const { profile, mode, setMode, read, toast } = useTindy()
   const location = useLocation()
   const [mobile, setMobile] = useState(false)
+
+  // Directional navigation indicator refs & dynamic measurements
+  const sidebarNavRef = useRef<HTMLDivElement>(null)
+  const mobileBottomRef = useRef<HTMLElement>(null)
+  const [sidebarIndicator, setSidebarIndicator] = useState({ top: 0, height: 0, visible: false })
+  const [mobileIndicator, setMobileIndicator] = useState({ left: 0, width: 0, visible: false })
+  const [isReady, setIsReady] = useState(false)
+
+  const updateIndicators = useCallback(() => {
+    // 1. Sidebar indicator (Desktop & Mobile Drawer)
+    if (sidebarNavRef.current) {
+      const activeLink = sidebarNavRef.current.querySelector(".nav-item.active") as HTMLElement | null
+      if (activeLink) {
+        const containerRect = sidebarNavRef.current.getBoundingClientRect()
+        const linkRect = activeLink.getBoundingClientRect()
+        setSidebarIndicator({
+          top: linkRect.top - containerRect.top,
+          height: linkRect.height,
+          visible: true,
+        })
+      } else {
+        setSidebarIndicator((prev) => ({ ...prev, visible: false }))
+      }
+    }
+
+    // 2. Mobile bottom bar horizontal indicator
+    if (mobileBottomRef.current) {
+      const activeLink = mobileBottomRef.current.querySelector("a.active") as HTMLElement | null
+      if (activeLink) {
+        const containerRect = mobileBottomRef.current.getBoundingClientRect()
+        const linkRect = activeLink.getBoundingClientRect()
+        setMobileIndicator({
+          left: linkRect.left - containerRect.left,
+          width: linkRect.width,
+          visible: true,
+        })
+      } else {
+        setMobileIndicator((prev) => ({ ...prev, visible: false }))
+      }
+    }
+  }, [])
+
+  // Recalculate indicators when route changes
+  useEffect(() => {
+    const id = requestAnimationFrame(() => {
+      updateIndicators()
+      if (!isReady) {
+        requestAnimationFrame(() => setIsReady(true))
+      }
+    })
+    return () => cancelAnimationFrame(id)
+  }, [location.pathname, updateIndicators, isReady])
+
+  // Recalculate on window resize / orientation change
+  useEffect(() => {
+    let resizeTimer: number
+    const handleResize = () => {
+      cancelAnimationFrame(resizeTimer)
+      resizeTimer = requestAnimationFrame(updateIndicators)
+    }
+    window.addEventListener("resize", handleResize, { passive: true })
+    return () => {
+      window.removeEventListener("resize", handleResize)
+      cancelAnimationFrame(resizeTimer)
+    }
+  }, [updateIndicators])
 
   // Dynamic document title updater
   useEffect(() => {
@@ -142,47 +208,58 @@ function Layout() {
           </div>
           <ChevronDown size={14} />
         </div>
-        <div className="sidebar-label">WORKSPACE</div>
-        <nav>
-          {items.map((item) => (
-            <NavLink
-              end
-              to={item.to}
-              className={({ isActive }) =>
-                `nav-item ${isActive ? "active" : ""}`
-              }
-              key={item.to}
-              onClick={() => setMobile(false)}
-            >
-              <item.icon size={18} />
-              <span>{item.label}</span>
-              {item.label === "Messages" && (
-                <span className="nav-count">2</span>
-              )}
-              {item.label === "Notifications" && read.length < 4 && (
-                <span className="nav-dot" />
-              )}
-            </NavLink>
-          ))}
-        </nav>
-        <div className="sidebar-label">BUILD TOGETHER</div>
-        <NavLink
-          to="/leader"
-          className={({ isActive }) => `nav-item ${isActive ? "active" : ""}`}
-          onClick={() => setMobile(false)}
-        >
-          <Users size={18} />
-          Leader Workspace
-          <ArrowUpRight className="nav-trailing" size={13} />
-        </NavLink>
-        <NavLink
-          to="/ai"
-          className={({ isActive }) => `nav-item ${isActive ? "active" : ""}`}
-          onClick={() => setMobile(false)}
-        >
-          <Sparkles size={18} />
-          AI Studio<span className="beta">BETA</span>
-        </NavLink>
+        <div className="sidebar-nav-container" ref={sidebarNavRef}>
+          <div
+            className={`sidebar-active-indicator ${isReady ? "ready" : ""}`}
+            style={{
+              transform: `translateY(${sidebarIndicator.top}px)`,
+              height: `${sidebarIndicator.height}px`,
+              opacity: sidebarIndicator.visible ? 1 : 0,
+            }}
+            aria-hidden="true"
+          />
+          <div className="sidebar-label">WORKSPACE</div>
+          <nav>
+            {items.map((item) => (
+              <NavLink
+                end
+                to={item.to}
+                className={({ isActive }) =>
+                  `nav-item ${isActive ? "active" : ""}`
+                }
+                key={item.to}
+                onClick={() => setMobile(false)}
+              >
+                <item.icon size={18} />
+                <span>{item.label}</span>
+                {item.label === "Messages" && (
+                  <span className="nav-count">2</span>
+                )}
+                {item.label === "Notifications" && read.length < 4 && (
+                  <span className="nav-dot" />
+                )}
+              </NavLink>
+            ))}
+          </nav>
+          <div className="sidebar-label">BUILD TOGETHER</div>
+          <NavLink
+            to="/leader"
+            className={({ isActive }) => `nav-item ${isActive ? "active" : ""}`}
+            onClick={() => setMobile(false)}
+          >
+            <Users size={18} />
+            Leader Workspace
+            <ArrowUpRight className="nav-trailing" size={13} />
+          </NavLink>
+          <NavLink
+            to="/ai"
+            className={({ isActive }) => `nav-item ${isActive ? "active" : ""}`}
+            onClick={() => setMobile(false)}
+          >
+            <Sparkles size={18} />
+            AI Studio<span className="beta">BETA</span>
+          </NavLink>
+        </div>
         <div className="sidebar-note">
           <span className="tiny-squares">
             <i />
@@ -291,7 +368,16 @@ function Layout() {
           </div>
         </footer>
       </div>
-      <nav className="mobile-bottom">
+      <nav className="mobile-bottom" ref={mobileBottomRef}>
+        <div
+          className={`mobile-bottom-indicator ${isReady ? "ready" : ""}`}
+          style={{
+            transform: `translateX(${mobileIndicator.left}px)`,
+            width: `${mobileIndicator.width}px`,
+            opacity: mobileIndicator.visible ? 1 : 0,
+          }}
+          aria-hidden="true"
+        />
         {items
           .filter((item) =>
             [

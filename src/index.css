@@ -502,18 +502,130 @@ main {
   100% { transform: scale(1); }
 }
 
-/* 10. Nav Items Smooth Hover & Active Transitions */
-.nav-item {
-  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease !important;
+/* 10. Responsive Directional Navigation Active Indicators (Desktop & Mobile) */
+.sidebar-nav-container {
+  position: relative;
+  width: 100%;
 }
 
-.nav-item:hover {
-  background: #f4f7fb !important;
-  transform: translateX(3px);
+.sidebar-active-indicator {
+  position: absolute;
+  left: 0;
+  right: 0;
+  border-radius: 5px;
+  background: #edf2fd;
+  border-left: 2px solid #395aca;
+  pointer-events: none;
+  z-index: 1;
+  will-change: transform;
+  transition: none;
+}
+
+.sidebar-active-indicator.ready {
+  transition: transform 420ms cubic-bezier(0.22, 1, 0.36, 1),
+              height 420ms cubic-bezier(0.22, 1, 0.36, 1),
+              opacity 200ms ease;
+}
+
+.nav-item {
+  position: relative;
+  z-index: 2;
+  background: transparent !important;
+  border-left: 2px solid transparent !important;
+  min-height: 44px;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  transition: color 180ms ease, transform 120ms ease;
 }
 
 .nav-item.active {
-  transform: translateX(0) !important;
+  color: #3553b5 !important;
+  font-weight: 600 !important;
+}
+
+.nav-item svg {
+  color: #8895a9;
+  transition: color 180ms ease;
+}
+
+.nav-item.active svg {
+  color: #4564c3 !important;
+}
+
+.nav-item:active {
+  transform: scale(0.98) !important;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .nav-item:hover {
+    background: rgba(244, 247, 251, 0.6) !important;
+    transform: translateX(3px);
+  }
+  .nav-item.active:hover {
+    background: transparent !important;
+    transform: translateX(0);
+  }
+}
+
+/* Mobile Bottom Horizontal Active Indicator */
+.mobile-bottom-indicator {
+  position: absolute;
+  top: 7px;
+  bottom: calc(7px + env(safe-area-inset-bottom, 0px));
+  border-radius: 8px;
+  background: #edf2fd;
+  pointer-events: none;
+  z-index: 1;
+  will-change: transform;
+  transition: none;
+}
+
+.mobile-bottom-indicator.ready {
+  transition: transform 420ms cubic-bezier(0.22, 1, 0.36, 1),
+              width 420ms cubic-bezier(0.22, 1, 0.36, 1),
+              opacity 200ms ease;
+}
+
+.mobile-bottom-indicator::after {
+  content: '';
+  position: absolute;
+  bottom: 2px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 20px;
+  height: 2.5px;
+  border-radius: 9999px;
+  background: #3553b5;
+}
+
+.mobile-bottom > a {
+  position: relative;
+  z-index: 2;
+  min-height: 48px;
+  min-width: 44px;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  transition: color 180ms ease, transform 120ms ease;
+}
+
+.mobile-bottom > a.active {
+  color: #3553b5 !important;
+  font-weight: 600;
+}
+
+.mobile-bottom > a:active {
+  transform: scale(0.98);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sidebar-active-indicator,
+  .sidebar-active-indicator.ready,
+  .mobile-bottom-indicator,
+  .mobile-bottom-indicator.ready {
+    transition: opacity 150ms ease !important;
+    transform: none !important;
+  }
 }
 
 /* 11. Empty State & Info Banner Transitions */
