@@ -331,40 +331,47 @@ function Layout() {
         <main key={location.pathname} className="page-transition">
           <Outlet />
         </main>
-        <footer className="app-footer" style={{ display: "flex", flexDirection: "column", gap: "14px", padding: "26px 0 12px" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "18px", width: "100%" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: "16 px", flexWrap: "wrap" }}>
+        <footer className="app-footer">
+          <div className="footer-top-row">
+            <div className="footer-brand-group">
               <Brand />
-              <span style={{ color: "var(--muted)", fontSize: "11px", padding: "10px 15px 0 15px" }}>Find the right project. Build the right team.</span>
-              <span style={{ color: "var(--muted)", fontSize: "11px", padding: "10px 0 0 0" }}>
-                © {new Date().getFullYear()} FCAJ Community. All rights reserved.
+              <span className="footer-tagline">
+                Find the right project. Build the right team.
               </span>
             </div>
-            <div style={{ display: "flex", alignItems: "center", gap: "14px", flexWrap: "wrap", fontSize: "11px", padding: "10px 0 0 0" }}>
-              <Link to="/" className="text-link neutral">Dashboard</Link>
-              <Link to="/discover" className="text-link neutral">Discover</Link>
-              <Link to="/projects" className="text-link neutral">Projects</Link>
-              <Link to="/team" className="text-link neutral">Team</Link>
-              <Link to="/components" className="text-link neutral">Design System</Link>
-              <Link to="/settings" className="text-link neutral">Settings</Link>
-            </div>
+            <nav className="footer-nav" aria-label="Footer navigation">
+              <Link to="/" className="footer-nav-link">Dashboard</Link>
+              <span className="footer-sep">·</span>
+              <Link to="/discover" className="footer-nav-link">Discover</Link>
+              <span className="footer-sep">·</span>
+              <Link to="/projects" className="footer-nav-link">Projects</Link>
+              <span className="footer-sep">·</span>
+              <Link to="/team" className="footer-nav-link">Team</Link>
+              <span className="footer-sep">·</span>
+              <Link to="/components" className="footer-nav-link">Design System</Link>
+              <span className="footer-sep">·</span>
+              <Link to="/settings" className="footer-nav-link">Settings</Link>
+            </nav>
           </div>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "10px", width: "100%", fontSize: "11px", color: "var(--muted)", borderTop: "1px solid var(--border)", paddingTop: "12px" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
-              <span>Need help? Contact community team:</span>
-              <a href="mailto:support@fcaj.community" className="text-link" style={{ gap: "4px" }}>
+
+          <div className="footer-bottom-row">
+            <div className="footer-meta-info">
+              <span>© {new Date().getFullYear()} FCAJ Community</span>
+              <span className="footer-sep">·</span>
+              <span className="footer-help-text">Need help?</span>
+              <a href="mailto:support@fcaj.community" className="footer-contact-link">
                 <Mail size={12} />
                 <span>support@fcaj.community</span>
               </a>
-              <span>·</span>
-              <a href="tel:+8418006868" className="text-link" style={{ gap: "4px" }}>
+              <span className="footer-sep">·</span>
+              <a href="tel:+8418006868" className="footer-contact-link">
                 <Phone size={12} />
                 <span>+84 (0) 1800 6868</span>
               </a>
             </div>
-            <div>
-              <span>Interactive academic & project matching prototype</span>
-            </div>
+            <span className="footer-disclaimer">
+              Interactive academic & project matching prototype
+            </span>
           </div>
         </footer>
       </div>
