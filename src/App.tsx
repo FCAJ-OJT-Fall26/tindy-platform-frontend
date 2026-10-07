@@ -7,6 +7,8 @@ import {
   Link,
   useLocation,
 } from "react-router"
+import PrivacyPolicy from "./pages/legal/PrivacyPolicy"
+import TermsOfService from "./pages/legal/TermsOfService"
 import {
   Bell,
   Bookmark,
@@ -346,11 +348,9 @@ function Layout() {
               <span className="footer-sep">·</span>
               <Link to="/projects" className="footer-nav-link">Projects</Link>
               <span className="footer-sep">·</span>
-              <Link to="/team" className="footer-nav-link">Team</Link>
+              <Link to="/privacypolicy" className="footer-nav-link">Privacy & Policy</Link>
               <span className="footer-sep">·</span>
-              <Link to="/components" className="footer-nav-link">Design System</Link>
-              <span className="footer-sep">·</span>
-              <Link to="/settings" className="footer-nav-link">Settings</Link>
+              <Link to="/termsofservice" className="footer-nav-link">Terms of Service</Link>
             </nav>
           </div>
 
@@ -447,6 +447,8 @@ const router = createBrowserRouter([
       { path: "settings", Component: SettingsScreen },
       { path: "team", Component: TeamScreen },
       { path: "components", Component: ComponentLibrary },
+      { path: "privacypolicy", Component: PrivacyPolicy },
+      { path: "termsofservice", Component: TermsOfService },
       { path: "*", Component: NotFound },
     ],
   },
