@@ -1972,8 +1972,9 @@ export function Auth() {
               if (displayRegister) {
                 setProfile({
                   ...profile,
-                  name: String(data.get("name")),
-                  email: String(data.get("email")),
+                  name: String(data.get("name") || profile.name),
+                  email: String(data.get("email") || profile.email),
+                  university: String(data.get("university") || "FPT University"),
                 })
                 navigate("/onboarding")
               } else {
@@ -1993,9 +1994,34 @@ export function Auth() {
               </label>
             )}
 
+            {displayRegister && (
+              <label className="field auth-field stagger-4">
+                <span className="field-label">University / Community</span>
+                <input
+                  required
+                  name="university"
+                  list="university-list"
+                  placeholder="e.g. FPT University, RMIT, VNU"
+                  defaultValue="FPT University"
+                  autoComplete="organization"
+                />
+                <datalist id="university-list">
+                  <option value="FPT University" />
+                  <option value="Vietnam National University (VNU)" />
+                  <option value="RMIT University Vietnam" />
+                  <option value="Hanoi University of Science & Technology" />
+                  <option value="Foreign Trade University" />
+                  <option value="Ton Duc Thang University" />
+                  <option value="FCAJ Community" />
+                </datalist>
+              </label>
+            )}
+
             {/* Email input with subtle focus glow & micro-interaction */}
             <label className="field auth-field stagger-4">
-              <span className="field-label">Email address</span>
+              <span className="field-label">
+                {displayRegister ? "Institutional email address" : "Email address"}
+              </span>
               <input
                 required
                 name="email"

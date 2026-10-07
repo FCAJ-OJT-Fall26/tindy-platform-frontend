@@ -65,6 +65,12 @@ export default function AuthScreen() {
               <input required placeholder="Your full name" />
             </label>
           )}
+          {register && (
+            <label>
+              University / Community
+              <input required placeholder="e.g. FPT University, RMIT, VNU" defaultValue="FPT University" />
+            </label>
+          )}
           <label>
             Institutional Email Address
             <input required type="email" placeholder="student@university.edu" />
