@@ -1807,9 +1807,35 @@ export function Auth() {
           : "auth-form-enter-from-left"
         : ""
 
+  // Mascot curved movement during Login <-> Register transition
+  const mascotClass =
+    formPhase !== "idle"
+      ? transitionDirection === "to-register"
+        ? "mascot-journey-to-register"
+        : transitionDirection === "to-login"
+          ? "mascot-journey-to-login"
+          : ""
+      : ""
+
+  // Left slogan horizontal slide transition (synchronized with authentication state)
+  const sloganTransitionClass =
+    formPhase === "leaving"
+      ? transitionDirection === "to-register"
+        ? "auth-slogan-leave-to-left"
+        : transitionDirection === "to-login"
+          ? "auth-slogan-leave-to-right"
+          : ""
+      : formPhase === "entering"
+        ? transitionDirection === "to-register"
+          ? "auth-slogan-enter-from-right"
+          : transitionDirection === "to-login"
+            ? "auth-slogan-enter-from-left"
+            : ""
+        : ""
+
   return (
     <div className="auth-page">
-      {/* Left Branding Panel: Stable & Stationary */}
+      {/* Left Branding Panel: Stable Background with Dynamic Slogan & Mascot Motion */}
       <aside className="auth-story">
         <div className="auth-brand-wrapper">
           <Link className="brand" to="/" aria-label="Tindy home">
@@ -1817,7 +1843,7 @@ export function Auth() {
               <img
                 src="/logo.png"
                 alt="Tindy logo"
-                className="brand-logo auth-mascot-img"
+                className={`brand-logo auth-mascot-img ${mascotClass}`}
               />
             </div>
             <span>
@@ -1827,15 +1853,25 @@ export function Auth() {
         </div>
 
         <div className="auth-story-copy">
-          <div className="auth-story-copy-inner">
-            <div className="eyebrow">FIRST CLOUD AI JOURNEY</div>
+          <div className={`auth-story-copy-inner ${sloganTransitionClass}`}>
+            <div className="eyebrow">
+              {displayRegister ? "YOUR NEXT CHAPTER" : "FIRST CLOUD AI JOURNEY"}
+            </div>
             <h1 className="auth-story-headline">
-              Find the right project.
-              <br />
-              Build the right team.
+              {displayRegister ? (
+                <>Let’s build something together.</>
+              ) : (
+                <>
+                  Find the right project.
+                  <br />
+                  Build the right team.
+                </>
+              )}
             </h1>
             <p className="auth-story-desc">
-              Your skills have a place. Discover meaningful projects and the people to build them with.
+              {displayRegister
+                ? "Join your community. Find your next project."
+                : "Your skills have a place. Discover meaningful projects and the people to build them with."}
             </p>
           </div>
 
