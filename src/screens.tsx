@@ -1699,14 +1699,13 @@ export function Auth() {
   const navigate = useNavigate()
   const { setMode, setProfile, profile } = useTindy()
 
-  // Track active mode: login vs register with animation states
+  // Track active mode: login vs register with opposite-direction slide transition
   const [displayRegister, setDisplayRegister] = useState(
     location.pathname === "/register",
   )
   const [transitioning, setTransitioning] = useState(false)
+  const [transitionDirection, setTransitionDirection] = useState<"to-register" | "to-login">("to-register")
   const [formPhase, setFormPhase] = useState<"idle" | "leaving" | "entering">("idle")
-  const [headlinePhase, setHeadlinePhase] = useState<"idle" | "leaving" | "entering">("idle")
-  const [mascotAnimating, setMascotAnimating] = useState(false)
 
   const [forgot, setForgot] = useState(false)
   const [notice, setNotice] = useState("")
@@ -1721,39 +1720,53 @@ export function Auth() {
     }
   }, [location.pathname])
 
-  // Signature "Project Journey" transition when clicking "Create an account" or "Sign in"
+  // Core transition:
+  // LOGIN → REGISTER:
+  // - Outgoing Login form slides slightly LEFT (0 -> -40px) and fades out (1 -> 0)
+  // - Incoming Register form enters from RIGHT (40px -> 0) and settles smoothly (0 -> 1)
+  // REGISTER → LOGIN:
+  // - Outgoing Register form slides slightly RIGHT (0 -> 40px) and fades out (1 -> 0)
+  // - Incoming Login form enters from LEFT (-40px -> 0) and settles smoothly (0 -> 1)
   const handleSwitchMode = (targetRegister: boolean) => {
     if (transitioning) return
+    const direction = targetRegister ? "to-register" : "to-login"
+    setTransitionDirection(direction)
     setPassword("")
     setConfirmPassword("")
     setNotice("")
     setTransitioning(true)
     setFormPhase("leaving")
-    setHeadlinePhase("leaving")
-    setMascotAnimating(true)
 
-    // Form slides/fades out (200-220ms)
+    // Outgoing form slides out slightly faster (200ms)
     setTimeout(() => {
       setDisplayRegister(targetRegister)
       setFormPhase("entering")
-      setHeadlinePhase("entering")
       window.history.replaceState(null, "", targetRegister ? "/register" : "/login")
 
-      // Complete full cubic-bezier journey animation (total ~700ms)
+      // Incoming form enters slightly slower & settles smoothly (380ms) -> total ~580ms
       setTimeout(() => {
         setFormPhase("idle")
-        setHeadlinePhase("idle")
-        setMascotAnimating(false)
         setTransitioning(false)
-      }, 480)
-    }, 220)
+      }, 380)
+    }, 200)
   }
 
+  const transitionClass =
+    formPhase === "leaving"
+      ? transitionDirection === "to-register"
+        ? "auth-form-leave-to-left"
+        : "auth-form-leave-to-right"
+      : formPhase === "entering"
+        ? transitionDirection === "to-register"
+          ? "auth-form-enter-from-right"
+          : "auth-form-enter-from-left"
+        : ""
+
   return (
-    <div className={`auth-page ${displayRegister ? "is-register" : ""}`}>
-      {/* Left Branding Panel */}
+    <div className="auth-page">
+      {/* Left Branding Panel: Stable & Stationary */}
       <aside className="auth-story">
-        <div className={`auth-brand-wrapper ${mascotAnimating ? "mascot-active" : ""}`}>
+        <div className="auth-brand-wrapper">
           <Link className="brand" to="/" aria-label="Tindy home">
             <div className="auth-mascot-box">
               <img
@@ -1761,8 +1774,6 @@ export function Auth() {
                 alt="Tindy logo"
                 className="brand-logo auth-mascot-img"
               />
-              <span className="auth-mascot-particle particle-blue" />
-              <span className="auth-mascot-particle particle-cyan" />
             </div>
             <span>
               tindy<span className="brand-period">.</span>
@@ -1771,31 +1782,15 @@ export function Auth() {
         </div>
 
         <div className="auth-story-copy">
-          <div
-            className={`auth-story-copy-inner ${
-              headlinePhase === "entering"
-                ? "copy-enter"
-                : headlinePhase === "leaving"
-                  ? "copy-leave"
-                  : ""
-            }`}
-          >
+          <div className="auth-story-copy-inner">
             <div className="eyebrow">FIRST CLOUD AI JOURNEY</div>
             <h1 className="auth-story-headline">
-              {displayRegister ? (
-                <>Let’s build something together.</>
-              ) : (
-                <>
-                  Find the right project.
-                  <br />
-                  Build the right team.
-                </>
-              )}
+              Find the right project.
+              <br />
+              Build the right team.
             </h1>
             <p className="auth-story-desc">
-              {displayRegister
-                ? "Start your project journey today. Connect with peers, launch ideas, and build production-ready projects."
-                : "Your skills have a place. Discover meaningful projects and the people to build them with."}
+              Your skills have a place. Discover meaningful projects and the people to build them with.
             </p>
           </div>
 
@@ -1845,13 +1840,7 @@ export function Auth() {
         </Link>
 
         <section
-          className={`auth-form auth-form-card ${
-            formPhase === "leaving"
-              ? "auth-form-leaving"
-              : formPhase === "entering"
-                ? "auth-form-entering"
-                : ""
-          }`}
+          className={`auth-form auth-form-card ${transitionClass}`}
         >
           <div className="stagger-1">
             <Badge tone="blue">YOUR NEXT CHAPTER</Badge>

@@ -773,31 +773,25 @@ main {
 }
 
 /* ==========================================================================
-   TINDY AUTHENTICATION: SIGNATURE "PROJECT JOURNEY" & MICRO-INTERACTIONS
+   TINDY AUTHENTICATION: SUBTLE OPPOSITE-DIRECTION SLIDE-THROUGH TRANSITION
    ========================================================================== */
 
-/* 1. Page & Layout Transition (Panel subtly expands) */
+/* 1. Page & Layout (Visually stable grid: no layout shifts or page-wide animations) */
 .auth-page {
   display: grid;
   grid-template-columns: 1fr 1fr;
   min-height: 100vh;
   background: #ffffff;
-  transition: grid-template-columns 750ms cubic-bezier(0.16, 1, 0.3, 1);
   overflow-x: hidden;
 }
 
-.auth-page.is-register {
-  grid-template-columns: 1.05fr 0.95fr;
-}
-
 @media (max-width: 900px) {
-  .auth-page,
-  .auth-page.is-register {
+  .auth-page {
     grid-template-columns: 1fr !important;
   }
 }
 
-/* 2. Mascot & Brand Micro-Interactions */
+/* 2. Left Branding Panel (Completely stable, stationary mascot & logo) */
 .auth-brand-wrapper {
   position: relative;
   display: inline-flex;
@@ -813,144 +807,95 @@ main {
 
 .auth-mascot-img {
   will-change: transform;
-  transform-origin: center center;
-  transition: transform 0.2s ease;
 }
 
-.auth-brand-wrapper.mascot-active .auth-mascot-img {
-  animation: tindyMascotJourney 750ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
-}
-
-@keyframes tindyMascotJourney {
-  0% {
-    transform: translate(0, 0) scale(1) rotate(0deg);
-  }
-  30% {
-    transform: translate(8px, -5px) scale(1.08) rotate(3.5deg);
-  }
-  65% {
-    transform: translate(11px, -1px) scale(1.03) rotate(-2deg);
-  }
-  100% {
-    transform: translate(0, 0) scale(1) rotate(0deg);
-  }
-}
-
-/* Minimalist Particle Trails */
-.auth-mascot-particle {
-  position: absolute;
-  width: 4px;
-  height: 4px;
-  border-radius: 50%;
-  pointer-events: none;
-  opacity: 0;
-}
-
-.particle-blue {
-  background: #3b82f6;
-  top: 6px;
-  left: 28px;
-}
-
-.particle-cyan {
-  background: #60a5fa;
-  top: 18px;
-  left: 32px;
-}
-
-.auth-brand-wrapper.mascot-active .particle-blue {
-  animation: particleDrift1 700ms ease-out forwards;
-}
-
-.auth-brand-wrapper.mascot-active .particle-cyan {
-  animation: particleDrift2 700ms ease-out 70ms forwards;
-}
-
-@keyframes particleDrift1 {
-  0% { opacity: 0; transform: scale(0.2) translate(0, 0); }
-  35% { opacity: 0.75; transform: scale(1) translate(6px, -4px); }
-  100% { opacity: 0; transform: scale(0.2) translate(13px, -7px); }
-}
-
-@keyframes particleDrift2 {
-  0% { opacity: 0; transform: scale(0.2) translate(0, 0); }
-  40% { opacity: 0.65; transform: scale(0.9) translate(6px, 2px); }
-  100% { opacity: 0; transform: scale(0.2) translate(14px, 4px); }
-}
-
-/* 3. Left Story Typography Crossfade */
 .auth-story-copy-inner {
-  transition: opacity 260ms cubic-bezier(0.16, 1, 0.3, 1),
-              transform 320ms cubic-bezier(0.16, 1, 0.3, 1);
+  /* Rock solid and visually stable */
 }
 
-.auth-story-copy-inner.copy-leave {
-  opacity: 0;
-  transform: translateY(-8px);
-}
+/* 3. Opposite Direction Slide-Through Form Transitions
+   LOGIN → REGISTER:
+     - Login moves LEFT: translateX(0) → translateX(-40px), opacity: 1 → 0
+     - Register enters from RIGHT: translateX(40px) → translateX(0), opacity: 0 → 1
+   REGISTER → LOGIN:
+     - Register moves RIGHT: translateX(0) → translateX(40px), opacity: 1 → 0
+     - Login enters from LEFT: translateX(-40px) → translateX(0), opacity: 0 → 1
 
-.auth-story-copy-inner.copy-enter {
-  animation: copyEnter 450ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
-}
-
-@keyframes copyEnter {
-  from {
-    opacity: 0;
-    transform: translateY(8px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-/* 4. Form Entrance & Exit Transition (Staggered) */
+   Physics & Easing:
+     - Outgoing form: slightly faster (200ms) with cubic-bezier(0.35, 0, 0.7, 0.2)
+     - Incoming form: slightly slower & smoother (380ms) with cubic-bezier(0.16, 1, 0.3, 1)
+     - Coherent group: heading, subtitle, inputs, button, links transition together
+*/
 .auth-form-card {
   width: 380px;
   max-width: 100%;
-  transition: opacity 220ms ease, transform 240ms cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: transform, opacity;
 }
 
-.auth-form-leaving {
-  opacity: 0;
-  transform: translateX(-12px);
+/* LOGIN → REGISTER: Outgoing Login form slides LEFT */
+.auth-form-leave-to-left {
+  animation: authSlideLeaveLeft 200ms cubic-bezier(0.35, 0, 0.7, 0.2) forwards;
   pointer-events: none;
 }
 
-@keyframes formItemStaggerEnter {
-  from {
-    opacity: 0;
-    transform: translateX(14px);
-  }
-  to {
+@keyframes authSlideLeaveLeft {
+  0% {
+    transform: translateX(0) scale(1);
     opacity: 1;
-    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-40px) scale(0.985);
+    opacity: 0;
   }
 }
 
-.auth-form-entering .stagger-1 {
-  animation: formItemStaggerEnter 450ms cubic-bezier(0.16, 1, 0.3, 1) 30ms both;
+/* LOGIN → REGISTER: Incoming Register form enters from RIGHT */
+.auth-form-enter-from-right {
+  animation: authSlideEnterFromRight 380ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
-.auth-form-entering .stagger-2 {
-  animation: formItemStaggerEnter 450ms cubic-bezier(0.16, 1, 0.3, 1) 65ms both;
+
+@keyframes authSlideEnterFromRight {
+  0% {
+    transform: translateX(40px) scale(0.985);
+    opacity: 0;
+  }
+  100% {
+    transform: translateX(0) scale(1);
+    opacity: 1;
+  }
 }
-.auth-form-entering .stagger-3 {
-  animation: formItemStaggerEnter 450ms cubic-bezier(0.16, 1, 0.3, 1) 100ms both;
+
+/* REGISTER → LOGIN: Outgoing Register form slides RIGHT */
+.auth-form-leave-to-right {
+  animation: authSlideLeaveRight 200ms cubic-bezier(0.35, 0, 0.7, 0.2) forwards;
+  pointer-events: none;
 }
-.auth-form-entering .stagger-4 {
-  animation: formItemStaggerEnter 450ms cubic-bezier(0.16, 1, 0.3, 1) 135ms both;
+
+@keyframes authSlideLeaveRight {
+  0% {
+    transform: translateX(0) scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(40px) scale(0.985);
+    opacity: 0;
+  }
 }
-.auth-form-entering .stagger-5 {
-  animation: formItemStaggerEnter 450ms cubic-bezier(0.16, 1, 0.3, 1) 170ms both;
+
+/* REGISTER → LOGIN: Incoming Login form enters from LEFT */
+.auth-form-enter-from-left {
+  animation: authSlideEnterFromLeft 380ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
-.auth-form-entering .stagger-6 {
-  animation: formItemStaggerEnter 450ms cubic-bezier(0.16, 1, 0.3, 1) 205ms both;
-}
-.auth-form-entering .stagger-7 {
-  animation: formItemStaggerEnter 450ms cubic-bezier(0.16, 1, 0.3, 1) 240ms both;
-}
-.auth-form-entering .stagger-8 {
-  animation: formItemStaggerEnter 450ms cubic-bezier(0.16, 1, 0.3, 1) 275ms both;
+
+@keyframes authSlideEnterFromLeft {
+  0% {
+    transform: translateX(-40px) scale(0.985);
+    opacity: 0;
+  }
+  100% {
+    transform: translateX(0) scale(1);
+    opacity: 1;
+  }
 }
 
 /* 5. Input Micro-Interactions (Focus Glow & Label Lift) */
