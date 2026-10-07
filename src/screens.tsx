@@ -1708,11 +1708,6 @@ export function Auth() {
   const [headlinePhase, setHeadlinePhase] = useState<"idle" | "leaving" | "entering">("idle")
   const [mascotAnimating, setMascotAnimating] = useState(false)
 
-  // Track role switch: Student vs Recruiter
-  const [joinRole, setJoinRole] = useState<"Student" | "Recruiter">("Student")
-  const [rolePhase, setRolePhase] = useState<"idle" | "leaving" | "entering">("idle")
-  const [displayedRole, setDisplayedRole] = useState<"Student" | "Recruiter">("Student")
-
   const [forgot, setForgot] = useState(false)
   const [notice, setNotice] = useState("")
 
@@ -1747,22 +1742,6 @@ export function Auth() {
         setTransitioning(false)
       }, 480)
     }, 220)
-  }
-
-  // Smooth role switch transition (300-450ms)
-  const handleRoleChange = (newRole: "Student" | "Recruiter") => {
-    if (newRole === displayedRole || rolePhase !== "idle") return
-    setJoinRole(newRole)
-    setRolePhase("leaving")
-
-    setTimeout(() => {
-      setDisplayedRole(newRole)
-      setRolePhase("entering")
-
-      setTimeout(() => {
-        setRolePhase("idle")
-      }, 300)
-    }, 130)
   }
 
   return (
@@ -1924,20 +1903,12 @@ export function Auth() {
 
             {/* Email input with subtle focus glow & micro-interaction */}
             <label className="field auth-field stagger-4">
-              <span className="field-label">
-                {displayedRole === "Recruiter"
-                  ? "Institutional / Work Email"
-                  : "Email address"}
-              </span>
+              <span className="field-label">Email address</span>
               <input
                 required
                 name="email"
                 type="email"
-                placeholder={
-                  displayedRole === "Recruiter"
-                    ? "lead@university.edu or partner@lab.org"
-                    : "you@university.edu"
-                }
+                placeholder="you@university.edu"
                 autoComplete="email"
               />
             </label>
@@ -1957,69 +1928,6 @@ export function Auth() {
                     }
                   />
                 </label>
-
-                {/* Role Switcher with smooth field animation */}
-                <div className="field auth-field role-switch-field stagger-5">
-                  <span className="field-label">I’m joining as</span>
-                  <select
-                    name="mode"
-                    value={joinRole}
-                    onChange={(e) =>
-                      handleRoleChange(e.target.value as "Student" | "Recruiter")
-                    }
-                  >
-                    <option value="Student">Student</option>
-                    <option value="Recruiter">Recruiter</option>
-                  </select>
-
-                  {/* Contextual role description pill */}
-                  <div
-                    className={`role-dynamic-area ${
-                      rolePhase === "leaving"
-                        ? "role-leaving"
-                        : rolePhase === "entering"
-                          ? "role-entering"
-                          : ""
-                    }`}
-                  >
-                    <span className="role-pill-badge">
-                      {displayedRole === "Student" ? (
-                        <>🎯 Looking for projects & teammate matching</>
-                      ) : (
-                        <>💼 Recruiting talent & managing project workspaces</>
-                      )}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Dynamic extra field for Registration */}
-                {displayRegister && (
-                  <div
-                    className={`role-dynamic-area stagger-6 ${
-                      rolePhase === "leaving"
-                        ? "role-leaving"
-                        : rolePhase === "entering"
-                          ? "role-entering"
-                          : ""
-                    }`}
-                  >
-                    <label className="field auth-field">
-                      <span className="field-label">
-                        {displayedRole === "Student"
-                          ? "Field of Study / Major"
-                          : "Organization / Project Lab"}
-                      </span>
-                      <input
-                        name="affiliation"
-                        placeholder={
-                          displayedRole === "Student"
-                            ? "e.g. Computer Science · Software Engineering"
-                            : "e.g. FCAJ Lab, AI Research Group"
-                        }
-                      />
-                    </label>
-                  </div>
-                )}
 
                 {!displayRegister && (
                   <div className="stagger-6">
@@ -4105,15 +4013,6 @@ export function SettingsScreen() {
                 value={email}
                 onChange={(event) => setEmail(event.target.value)}
               />
-            </label>
-            <label className="field">
-              Workspace role
-              <select
-                value={mode}
-                onChange={(event) => setMode(event.target.value)}
-              >
-                <option value="User">User</option>
-              </select>
             </label>
             <Button>
               Save changes <Check size={15} />

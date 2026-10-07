@@ -7,7 +7,6 @@ interface SettingsScreenProps {
 
 export default function SettingsScreen({ onNotify }: SettingsScreenProps) {
   const navigate = useNavigate();
-  const [role, setRole] = useState('User');
 
   return (
     <>
@@ -26,12 +25,6 @@ export default function SettingsScreen({ onNotify }: SettingsScreenProps) {
           <label>
             Institutional Email Address
             <input defaultValue="alex.le@fpt.edu.vn" type="email" />
-          </label>
-          <label>
-            Primary Platform Role
-            <select value={role} onChange={event => setRole(event.target.value)}>
-              <option value="User">User</option>
-            </select>
           </label>
 
           <h3 className="spaced">Notification Preferences</h3>

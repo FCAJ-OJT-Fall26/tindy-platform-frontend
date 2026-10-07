@@ -1011,12 +1011,11 @@
   ```
 
 ### `PUT /api/v1/settings/account`
-- **Mô tả:** Cập nhật thông tin định danh tài khoản (Email, Platform Role).
+- **Mô tả:** Cập nhật thông tin định danh tài khoản (Email).
 - **Request Body:**
   ```json
   {
-    "email": "alex.le@fpt.edu.vn",
-    "role": "User"
+    "email": "alex.le@fpt.edu.vn"
   }
   ```
 - **Response `200 OK`:** Cập nhật thành công.

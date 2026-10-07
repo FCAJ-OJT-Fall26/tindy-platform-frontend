@@ -61,15 +61,6 @@ export default function AuthScreen() {
             Password
             <input required type="password" minLength={8} placeholder="Minimum 8 characters" />
           </label>
-          {register && (
-            <label>
-              Primary Platform Role
-              <select defaultValue="Student">
-                <option value="Student">Student</option>
-                <option value="Recruiter">Recruiter</option>
-              </select>
-            </label>
-          )}
           <button className="button primary full mt-2">
             <span>{register ? 'Create Account' : 'Sign In'}</span>
             <ArrowRight size={14} />
