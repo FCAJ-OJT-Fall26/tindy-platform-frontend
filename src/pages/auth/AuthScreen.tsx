@@ -64,8 +64,9 @@ export default function AuthScreen() {
           {register && (
             <label>
               Primary Platform Role
-              <select>
-                <option value="User">User</option>
+              <select defaultValue="Student">
+                <option value="Student">Student</option>
+                <option value="Recruiter">Recruiter</option>
               </select>
             </label>
           )}

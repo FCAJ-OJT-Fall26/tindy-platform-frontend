@@ -1698,24 +1698,123 @@ export function Auth() {
   const location = useLocation()
   const navigate = useNavigate()
   const { setMode, setProfile, profile } = useTindy()
-  const register = location.pathname === "/register"
+
+  // Track active mode: login vs register with animation states
+  const [displayRegister, setDisplayRegister] = useState(
+    location.pathname === "/register",
+  )
+  const [transitioning, setTransitioning] = useState(false)
+  const [formPhase, setFormPhase] = useState<"idle" | "leaving" | "entering">("idle")
+  const [headlinePhase, setHeadlinePhase] = useState<"idle" | "leaving" | "entering">("idle")
+  const [mascotAnimating, setMascotAnimating] = useState(false)
+
+  // Track role switch: Student vs Recruiter
+  const [joinRole, setJoinRole] = useState<"Student" | "Recruiter">("Student")
+  const [rolePhase, setRolePhase] = useState<"idle" | "leaving" | "entering">("idle")
+  const [displayedRole, setDisplayedRole] = useState<"Student" | "Recruiter">("Student")
+
   const [forgot, setForgot] = useState(false)
   const [notice, setNotice] = useState("")
+
+  // Keep state synchronized with URL (e.g. browser back/forward)
+  useEffect(() => {
+    const isReg = location.pathname === "/register"
+    if (isReg !== displayRegister && !transitioning) {
+      setDisplayRegister(isReg)
+    }
+  }, [location.pathname])
+
+  // Signature "Project Journey" transition when clicking "Create an account" or "Sign in"
+  const handleSwitchMode = (targetRegister: boolean) => {
+    if (transitioning) return
+    setTransitioning(true)
+    setFormPhase("leaving")
+    setHeadlinePhase("leaving")
+    setMascotAnimating(true)
+
+    // Form slides/fades out (200-220ms)
+    setTimeout(() => {
+      setDisplayRegister(targetRegister)
+      setFormPhase("entering")
+      setHeadlinePhase("entering")
+      window.history.replaceState(null, "", targetRegister ? "/register" : "/login")
+
+      // Complete full cubic-bezier journey animation (total ~700ms)
+      setTimeout(() => {
+        setFormPhase("idle")
+        setHeadlinePhase("idle")
+        setMascotAnimating(false)
+        setTransitioning(false)
+      }, 480)
+    }, 220)
+  }
+
+  // Smooth role switch transition (300-450ms)
+  const handleRoleChange = (newRole: "Student" | "Recruiter") => {
+    if (newRole === displayedRole || rolePhase !== "idle") return
+    setJoinRole(newRole)
+    setRolePhase("leaving")
+
+    setTimeout(() => {
+      setDisplayedRole(newRole)
+      setRolePhase("entering")
+
+      setTimeout(() => {
+        setRolePhase("idle")
+      }, 300)
+    }, 130)
+  }
+
   return (
-    <div className="auth-page">
+    <div className={`auth-page ${displayRegister ? "is-register" : ""}`}>
+      {/* Left Branding Panel */}
       <aside className="auth-story">
-        <Brand />
+        <div className={`auth-brand-wrapper ${mascotAnimating ? "mascot-active" : ""}`}>
+          <Link className="brand" to="/" aria-label="Tindy home">
+            <div className="auth-mascot-box">
+              <img
+                src="/logo.png"
+                alt="Tindy logo"
+                className="brand-logo auth-mascot-img"
+              />
+              <span className="auth-mascot-particle particle-blue" />
+              <span className="auth-mascot-particle particle-cyan" />
+            </div>
+            <span>
+              tindy<span className="brand-period">.</span>
+            </span>
+          </Link>
+        </div>
+
         <div className="auth-story-copy">
-          <div className="eyebrow">FIRST CLOUD AI JOURNEY</div>
-          <h1>
-            Find the right project.
-            <br />
-            Build the right team.
-          </h1>
-          <p>
-            Your skills have a place. Discover meaningful projects and the
-            people to build them with.
-          </p>
+          <div
+            className={`auth-story-copy-inner ${
+              headlinePhase === "entering"
+                ? "copy-enter"
+                : headlinePhase === "leaving"
+                  ? "copy-leave"
+                  : ""
+            }`}
+          >
+            <div className="eyebrow">FIRST CLOUD AI JOURNEY</div>
+            <h1 className="auth-story-headline">
+              {displayRegister ? (
+                <>Let’s build something together.</>
+              ) : (
+                <>
+                  Find the right project.
+                  <br />
+                  Build the right team.
+                </>
+              )}
+            </h1>
+            <p className="auth-story-desc">
+              {displayRegister
+                ? "Start your project journey today. Connect with peers, launch ideas, and build production-ready projects."
+                : "Your skills have a place. Discover meaningful projects and the people to build them with."}
+            </p>
+          </div>
+
           <div className="auth-feature">
             <span>
               <Target size={20} />
@@ -1740,10 +1839,11 @@ export function Auth() {
             </span>
             <div>
               <strong>A community built to build</strong>
-              <p>Connect with students on the same journey.</p>
+              <p>Connect with peers on the same journey.</p>
             </div>
           </div>
         </div>
+
         <div className="auth-community">
           <div className="avatar-stack">
             <Avatar name="Minh Nguyen" color="teal" />
@@ -1753,26 +1853,40 @@ export function Auth() {
           <span>Made for the FCAJ student community</span>
         </div>
       </aside>
+
+      {/* Right Form Area */}
       <div className="auth-form-area">
-        <Link className="auth-back" to="/">
+        <Link className="auth-back auth-back-link" to="/">
           Explore the demo <ArrowUpRight size={14} />
         </Link>
-        <section className="auth-form">
-          <Badge tone="blue">YOUR NEXT CHAPTER</Badge>
-          <h1>
+
+        <section
+          className={`auth-form auth-form-card ${
+            formPhase === "leaving"
+              ? "auth-form-leaving"
+              : formPhase === "entering"
+                ? "auth-form-entering"
+                : ""
+          }`}
+        >
+          <div className="stagger-1">
+            <Badge tone="blue">YOUR NEXT CHAPTER</Badge>
+          </div>
+          <h1 className="stagger-2">
             {forgot
               ? "Reset your password"
-              : register
+              : displayRegister
                 ? "Let’s build something great."
                 : "Welcome back."}
           </h1>
-          <p>
+          <p className="stagger-3">
             {forgot
               ? "Enter your email to request a reset link."
-              : register
+              : displayRegister
                 ? "Join your community. Find your next project."
                 : "Your next great project is waiting."}
           </p>
+
           <form
             onSubmit={(event) => {
               event.preventDefault()
@@ -1784,20 +1898,21 @@ export function Auth() {
               }
               const data = new FormData(event.currentTarget)
               setMode(String(data.get("mode") || "User"))
-              if (register) {
+              if (displayRegister) {
                 setProfile({
                   ...profile,
                   name: String(data.get("name")),
                   email: String(data.get("email")),
                 })
                 navigate("/onboarding")
-              } else
+              } else {
                 navigate("/")
+              }
             }}
           >
-            {register && (
-              <label className="field">
-                Full name
+            {displayRegister && (
+              <label className="field auth-field stagger-4">
+                <span className="field-label">Full name</span>
                 <input
                   required
                   name="name"
@@ -1806,20 +1921,31 @@ export function Auth() {
                 />
               </label>
             )}
-            <label className="field">
-              Email address
+
+            {/* Email input with subtle focus glow & micro-interaction */}
+            <label className="field auth-field stagger-4">
+              <span className="field-label">
+                {displayedRole === "Recruiter"
+                  ? "Institutional / Work Email"
+                  : "Email address"}
+              </span>
               <input
                 required
                 name="email"
                 type="email"
-                placeholder="you@university.edu"
+                placeholder={
+                  displayedRole === "Recruiter"
+                    ? "lead@university.edu or partner@lab.org"
+                    : "you@university.edu"
+                }
                 autoComplete="email"
               />
             </label>
+
             {!forgot && (
               <>
-                <label className="field">
-                  Password
+                <label className="field auth-field stagger-5">
+                  <span className="field-label">Password</span>
                   <input
                     required
                     minLength={8}
@@ -1827,67 +1953,145 @@ export function Auth() {
                     type="password"
                     placeholder="At least 8 characters"
                     autoComplete={
-                      register ? "new-password" : "current-password"
+                      displayRegister ? "new-password" : "current-password"
                     }
                   />
                 </label>
-                <label className="field">
-                  I’m joining as
-                  <select name="mode">
-                    <option value="User">User</option>
-                  </select>
-                </label>
-                {!register && (
-                  <button
-                    type="button"
-                    className="text-link forgot-link"
-                    onClick={() => setForgot(true)}
+
+                {/* Role Switcher with smooth field animation */}
+                <div className="field auth-field role-switch-field stagger-5">
+                  <span className="field-label">I’m joining as</span>
+                  <select
+                    name="mode"
+                    value={joinRole}
+                    onChange={(e) =>
+                      handleRoleChange(e.target.value as "Student" | "Recruiter")
+                    }
                   >
-                    Forgot password?
-                  </button>
+                    <option value="Student">Student</option>
+                    <option value="Recruiter">Recruiter</option>
+                  </select>
+
+                  {/* Contextual role description pill */}
+                  <div
+                    className={`role-dynamic-area ${
+                      rolePhase === "leaving"
+                        ? "role-leaving"
+                        : rolePhase === "entering"
+                          ? "role-entering"
+                          : ""
+                    }`}
+                  >
+                    <span className="role-pill-badge">
+                      {displayedRole === "Student" ? (
+                        <>🎯 Looking for projects & teammate matching</>
+                      ) : (
+                        <>💼 Recruiting talent & managing project workspaces</>
+                      )}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Dynamic extra field for Registration */}
+                {displayRegister && (
+                  <div
+                    className={`role-dynamic-area stagger-6 ${
+                      rolePhase === "leaving"
+                        ? "role-leaving"
+                        : rolePhase === "entering"
+                          ? "role-entering"
+                          : ""
+                    }`}
+                  >
+                    <label className="field auth-field">
+                      <span className="field-label">
+                        {displayedRole === "Student"
+                          ? "Field of Study / Major"
+                          : "Organization / Project Lab"}
+                      </span>
+                      <input
+                        name="affiliation"
+                        placeholder={
+                          displayedRole === "Student"
+                            ? "e.g. Computer Science · Software Engineering"
+                            : "e.g. FCAJ Lab, AI Research Group"
+                        }
+                      />
+                    </label>
+                  </div>
                 )}
-                {register && (
-                  <label className="terms">
+
+                {!displayRegister && (
+                  <div className="stagger-6">
+                    <button
+                      type="button"
+                      className="text-link forgot-link"
+                      onClick={() => setForgot(true)}
+                    >
+                      Forgot password?
+                    </button>
+                  </div>
+                )}
+
+                {displayRegister && (
+                  <label className="terms stagger-6">
                     <input required type="checkbox" />I agree to the community
                     guidelines and respectful collaboration.
                   </label>
                 )}
               </>
             )}
-            <Button className="full">
-              {forgot
-                ? "Request reset link"
-                : register
-                  ? "Create account"
-                  : "Sign in"}
-              <ArrowRight size={16} />
-            </Button>
+
+            {/* Submit button with hover lift, shadow increase, and arrow nudge */}
+            <div className="stagger-7">
+              <button type="submit" className="auth-btn-primary">
+                <span>
+                  {forgot
+                    ? "Request reset link"
+                    : displayRegister
+                      ? "Create account"
+                      : "Sign in"}
+                </span>
+                <ArrowRight size={16} className="btn-arrow-icon" />
+              </button>
+            </div>
           </form>
+
           {notice && <div className="info-banner">{notice}</div>}
-          {forgot ? (
-            <button
-              className="text-link auth-switch"
-              onClick={() => {
-                setForgot(false)
-                setNotice("")
-              }}
-            >
-              Back to sign in
-            </button>
-          ) : (
-            <p className="auth-switch">
-              {register ? "Already have an account?" : "New to Tindy?"}{" "}
-              <Link to={register ? "/login" : "/register"}>
-                {register ? "Sign in" : "Create an account"}
-              </Link>
-            </p>
-          )}
-          <div className="trust-note">
-            <Info size={14} />
-            <span>
-              Interactive prototype. Sign-in is simulated; no passwords are
-              stored. Amazon Cognito is not connected.
-            </span>
+
+          <div className="stagger-8">
+            {forgot ? (
+              <button
+                className="text-link auth-switch"
+                onClick={() => {
+                  setForgot(false)
+                  setNotice("")
+                }}
+              >
+                Back to sign in
+              </button>
+            ) : (
+              <p className="auth-switch">
+                {displayRegister
+                  ? "Already have an account?"
+                  : "New to Tindy?"}{" "}
+                <button
+                  type="button"
+                  className="text-link font-semibold ml-1 cursor-pointer"
+                  onClick={() => handleSwitchMode(!displayRegister)}
+                >
+                  {displayRegister ? "Sign in" : "Create an account"}
+                </button>
+              </p>
+            )}
+
+            <div className="trust-note">
+              <Info size={14} />
+              <span>
+                Interactive prototype. Sign-in is simulated; no passwords are
+                stored. Amazon Cognito is not connected.
+              </span>
+            </div>
           </div>
         </section>
       </div>
