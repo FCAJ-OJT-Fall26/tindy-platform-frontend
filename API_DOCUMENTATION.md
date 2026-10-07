@@ -1,15 +1,112 @@
 # TINDY PLATFORM — COMPREHENSIVE REST & WEBSOCKET API SPECIFICATION
-**Version:** 2.1.0  
-**Base URL:** `https://api.tindy.fcaj.community/api/v1`  
-**WebSocket URL:** `wss://api.tindy.fcaj.community/ws`  
-**Architecture:** RESTful JSON + Realtime WebSockets (RFC 6455)  
-**Security:** OAuth2 / JWT Bearer Tokens (`Authorization: Bearer <token>`) + RBAC (Role-Based Access Control: `USER`, `ADMIN`)  
+**Version:** 2.2.0 (AWS Cloud Enterprise Architecture Aligned)  
+**Base REST URL:** `https://api.tindy.fcaj.community/api/v1` (Amazon API Gateway / ECS Fargate ASP.NET)  
+**Base WebSocket URL:** `wss://chat.tindy.fcaj.community` (`wss://{api-id}.execute-api.{region}.amazonaws.com/prod`)  
+**Cloud Infrastructure:** AWS Cloud (VPC, ECS Fargate, RDS PostgreSQL, DynamoDB, Bedrock, Qdrant, EventBridge, Lambda, SES, S3, CloudFront, Cognito)  
+**Security:** AWS Cognito User Pools + JWT Bearer Tokens (`Authorization: Bearer <token>`) + RBAC (Role-Based Access Control: `USER`, `ADMIN`)  
 
 ---
 
-## 1. HỆ THỐNG KIẾN TRÚC & QUY ƯỚC CHUNG (GENERAL ARCHITECTURE)
+## 1. HỆ THỐNG KIẾN TRÚC AWS CLOUD & QUY ƯỚC CHUNG (AWS CLOUD ARCHITECTURE)
 
-### 1.1. HTTP Status Codes
+### 1.1. Sơ đồ Kiến trúc Tổng thể (Architecture Diagram Mapping)
+Hệ thống Tindy được thiết kế trên nền tảng **AWS Cloud (VPC Multi-AZ)**, phân tách các tầng rõ ràng theo mô hình microservices & event-driven:
+
+```mermaid
+flowchart TD
+    subgraph ClientLayer["Frontend & Client Layer"]
+        UA["User / Admin"]
+        CF["Amazon CloudFront CDN"]
+        S3Web["Amazon S3 Static Web App (React)"]
+        Cognito["Amazon Cognito Authentication"]
+    end
+
+    subgraph IngressLayer["Ingress & Gateway"]
+        APIGW["Amazon API Gateway (REST HTTPS)"]
+        WSSGW["Amazon API Gateway (Real-time WebSocket)"]
+    end
+
+    subgraph CoreVPC["Core Application (VPC)"]
+        ECS["ECS / Fargate (ASP .NET Core Web API)"]
+        RDS[("Amazon RDS (PostgreSQL Database)")]
+    end
+
+    subgraph AIServices["AI Matching & Recommendation Engine"]
+        Qdrant[("Qdrant Vector Database")]
+        LambdaAI["AWS Lambda (AI Processing)"]
+        Bedrock["Amazon Bedrock (Titan / Claude LLM & Embeddings)"]
+    end
+
+    subgraph CommServices["Communication & Notification Subsystem"]
+        S3Files[("Amazon S3 (Avatars, Certificates, Resumes)")]
+        DynamoChat[("Amazon DynamoDB (Chat Messages)")]
+        EventBridge["Amazon EventBridge (Event Bus)"]
+        LambdaJobs["AWS Lambda (Background Jobs)"]
+        SES["Amazon SES (Email Service)"]
+    end
+
+    subgraph SecOps["Monitoring & Security"]
+        Secrets["AWS Secrets Manager"]
+        CloudWatch["Amazon CloudWatch (Logs, Metrics, Alarms)"]
+    end
+
+    %% Flow Steps 1 to 15
+    UA -->|"1. Access web"| CF
+    CF --> S3Web
+    UA -->|"2. Authenticate (sign in / sign up)"| Cognito
+    CF -->|"3. Deliver static assets"| S3Web
+    UA -->|"4. API request (HTTPS)"| APIGW
+    APIGW -->|"Forward authorized request"| ECS
+    ECS <-->|"5. Read / write relational data"| RDS
+    ECS -->|"6. Send profile & project reqs"| LambdaAI
+    LambdaAI <--> Bedrock
+    LambdaAI <--> Qdrant
+    LambdaAI -->|"7. Match results & insights"| ECS
+    ECS <-->|"8. Store / retrieve user files"| S3Files
+    ECS <-->|"9. Read / write messages"| DynamoChat
+    ECS -->|"10. Publish events (new match, invitation)"| EventBridge
+    UA <-->|"11. Real-time messages (WSS)"| WSSGW
+    WSSGW <--> DynamoChat
+    EventBridge -->|"12. Process events"| LambdaJobs
+    LambdaJobs -->|"13. Send emails"| SES
+    ECS -.->|"14. Retrieve secrets"| Secrets
+    ECS -.->|"15. App logs, metrics, alarms"| CloudWatch
+```
+
+---
+
+### 1.2. Bảng Ánh xạ 15 Luồng Tương tác trên Mô hình AWS (15-Step Interaction Matrix)
+
+| Bước (#) | Tên luồng (Flow Name) | Nguồn (Source) | Đích (Destination) | Giao thức / Cơ chế | Vai trò nghiệp vụ trong Tindy |
+| :---: | :--- | :--- | :--- | :--- | :--- |
+| **1** | **Access web** | User / Admin | CloudFront CDN | HTTPS / HTTP/3 | Phân phối ứng dụng React SPA toàn cầu với độ trễ cực thấp và caching tối ưu. |
+| **2** | **Authenticate** | User / Admin | AWS Cognito | HTTPS / OIDC | Xác thực đăng ký (`SignUp`), đăng nhập (`InitiateAuth`), MFA, cấp phát JWT Tokens. |
+| **3** | **Deliver Assets** | CloudFront | S3 Static Web | HTTPS / OAC | Kéo mã nguồn đóng gói (Vite React bundle, assets, icons) từ S3 Bucket bảo mật. |
+| **4** | **API request** | React Frontend | API Gateway -> ECS | HTTPS (REST) | Cổng API tập trung, kiểm tra Cognito Authorizer, rate-limiting và chuyển tiếp vào ASP .NET. |
+| **5** | **Read / write data** | ECS Fargate | Amazon RDS | TCP (Port 5432) | Đọc ghi dữ liệu có cấu trúc: Users, Projects, Positions, Applications, Audit Logs. |
+| **6** | **AI Processing Req** | ECS Fargate | Lambda / Qdrant | gRPC / HTTPS | Gửi Profile dữ liệu và yêu cầu tuyển dụng để tính toán vector và phân tích AI. |
+| **7** | **Match & Insights** | Lambda / Bedrock | ECS Fargate | HTTPS JSON | Trả về điểm phù hợp (Match Score), giải thích độ tương thích (Why Matches) và Skill Gap. |
+| **8** | **Store user files** | Client / ECS | Amazon S3 | HTTPS (Presigned) | Lưu trữ Avatar, chứng chỉ (Certificates), CV/Resume, tài liệu đính kèm dự án. |
+| **9** | **Chat Storage** | ECS / Lambda | Amazon DynamoDB | HTTPS AWS SDK | Đọc ghi lịch sử tin nhắn thời gian thực với độ trễ mili-giây và khả năng mở rộng vô hạn. |
+| **10** | **Publish events** | ECS Fargate | EventBridge | EventBus PutEvents | Bắn sự kiện bất đồng bộ: `NewMatchEvent`, `ProjectInvitationEvent`, `ApplicationStatusEvent`. |
+| **11** | **Real-time chat** | React Frontend | API Gateway WSS | WSS (WebSocket) | Kênh kết nối 2 chiều duy trì trạng thái online, gửi/nhận tin nhắn tức thì và typing indicators. |
+| **12** | **Process events** | EventBridge | Lambda Jobs | Event Trigger | Định tuyến sự kiện theo Rules đến các hàm Lambda xử lý ngầm trong nền. |
+| **13** | **Send emails** | Lambda Jobs | Amazon SES | HTTPS AWS SDK | Gửi email thông báo kích hoạt tài khoản, lời mời tham gia dự án, cảnh báo vi phạm. |
+| **14** | **Retrieve secrets** | ECS Fargate | Secrets Manager | IAM Role / HTTPS | Lấy an toàn chuỗi kết nối RDS, Qdrant API Key, Cognito App Client Secret khi khởi động container. |
+| **15** | **Logs & Alarms** | ECS / Gateway | CloudWatch | AWS SDK / Agent | Tập trung log ứng dụng ASP .NET, đo lường latency, CPU/RAM, và kích hoạt báo động. |
+
+---
+
+### 1.3. Bốn Đầu Ra Cốt Lõi của Hệ thống AI (AI Service 4 Core Outputs)
+Theo đúng kiến trúc **AI Matching & Recommendation** trên sơ đồ:
+1. **`AI Profile Summary`**: Phân tích toàn diện hồ sơ ứng viên (Bio, Kinh nghiệm, Dự án đã làm, Chứng chỉ) thành bản tóm tắt chuyên môn sắc bén thông qua Bedrock LLM.
+2. **`Skill Extraction`**: Bóc tách tự động các kỹ năng cốt lõi (Hard skills, Soft skills, Tech stack, Tools) từ văn bản tự do và CV ứng viên.
+3. **`Project Matching`**: Tính toán khoảng cách cosine giữa vector ứng viên và vector yêu cầu dự án trong **Qdrant Vector Database**, kết hợp trọng số heuristic thành điểm Match Score (0 - 100%).
+4. **`Explain Match`**: Mô hình Bedrock LLM sinh lời giải thích minh bạch chi tiết vì sao ứng viên phù hợp với dự án (Strengths, Gap Analysis, Technical Overlap).
+
+---
+
+### 1.4. HTTP Status Codes
 - `200 OK`: Thành công (GET, PUT, PATCH).
 - `201 Created`: Tạo tài nguyên mới thành công (POST).
 - `204 No Content`: Xóa hoặc thực thi hành động không cần payload trả về (DELETE).
@@ -21,7 +118,7 @@
 - `422 Unprocessable Entity`: Dữ liệu vi phạm logic nghiệp vụ (Matching rule validation, v.v.).
 - `500 Internal Server Error`: Lỗi máy chủ nội bộ.
 
-### 1.2. Định dạng Response chuẩn (Standard Response Envelope)
+### 1.5. Định dạng Response chuẩn (Standard Response Envelope)
 #### Phản hồi thành công (Success Response):
 ```json
 {
@@ -57,7 +154,7 @@
 }
 ```
 
-### 1.3. Hệ thống phân quyền người dùng (Role-Based Access Control — RBAC)
+### 1.6. Hệ thống phân quyền người dùng (Role-Based Access Control — RBAC)
 Nền tảng Tindy thiết kế tinh giản và phân định quyền hạn rõ ràng thành **2 Roles chính thống**:
 
 1. **`USER` (Người dùng nền tảng hợp nhất)**:
@@ -74,10 +171,28 @@ Nền tảng Tindy thiết kế tinh giản và phân định quyền hạn rõ 
 
 ---
 
-## 2. NHÓM 1: AUTHENTICATION & ACCESS CONTROL (XÁC THỰC & BẢO MẬT)
+## 2. NHÓM 1: AUTHENTICATION & ACCESS CONTROL (XÁC THỰC & BẢO MẬT — AWS COGNITO)
+
+Hệ thống xác thực Tindy sử dụng **Amazon Cognito User Pools** (Bước ② trên sơ đồ kiến trúc), kết hợp 2 phương thức truy cập linh hoạt:
+- **Phương thức A (Direct Client SDK via AWS Amplify / Cognito Identity Provider):** Client giao tiếp trực tiếp với Cognito Endpoint để lấy Tokens, giảm tải hoàn toàn cho backend.
+- **Phương thức B (BFF Proxy REST Endpoints via ASP .NET Core):** Cung cấp các API REST chuẩn hóa bên dưới dành cho các tác vụ cần xác thực thêm quy tắc học thuật (FCAJ Community Whitelist) trước khi đăng ký người dùng vào Cognito.
+
+### 2.1. Cấu hình Cognito User Pool & Claims
+- **User Pool ID:** `ap-southeast-1_TindyPool99`
+- **App Client ID:** `4k8j2a901h1q88bcdef`
+- **JWKS Endpoint:** `https://cognito-idp.ap-southeast-1.amazonaws.com/ap-southeast-1_TindyPool99/.well-known/jwks.json`
+- **Custom Attributes:**
+  - `custom:university` (String): Tên trường đại học đã liên kết (vd: `FPT University`).
+  - `custom:student_id` (String): Mã số sinh viên.
+  - `custom:is_verified` (Boolean): Trạng thái xác thực học thuật.
+- **Cognito Groups (RBAC):**
+  - Group `USER`: Mặc định cho toàn bộ thành viên đăng ký mới.
+  - Group `ADMIN`: Quản trị viên hệ thống có quyền truy cập cụm API Admin.
+
+---
 
 ### `POST /api/v1/auth/register`
-- **Mô tả:** Đăng ký tài khoản người dùng mới trên nền tảng.
+- **Mô tả:** Đăng ký tài khoản người dùng mới (Ủy quyền tạo tài khoản trong Amazon Cognito User Pool và gán vào nhóm `USER`).
 - **Quyền:** Public.
 - **Request Body:**
   ```json
@@ -96,12 +211,14 @@ Nền tảng Tindy thiết kế tinh giản và phân định quyền hạn rõ 
   {
     "user": {
       "id": "usr_9981",
+      "cognitoSub": "c56a4180-65aa-42ec-a945-5fd21dec0538",
       "email": "alex.le@fpt.edu.vn",
       "fullName": "Alex Le",
       "role": "USER",
       "isEmailVerified": false
     },
     "tokens": {
+      "idToken": "eyJraWQiOi...",
       "accessToken": "eyJhbGciOi...",
       "refreshToken": "d8a1c90..."
     }
@@ -848,10 +965,26 @@ Nền tảng Tindy thiết kế tinh giản và phân định quyền hạn rõ 
 
 ---
 
-## 10. NHÓM 9: MESSAGING & REALTIME CHAT (TIN NHẮN & GIAO TIẾP)
+## 10. NHÓM 9: MESSAGING & REALTIME CHAT (AMAZON API GATEWAY WEBSOCKET & DYNAMODB)
+
+Phân hệ giao tiếp thời gian thực được vận hành theo kiến trúc kết hợp **Amazon API Gateway WebSocket API** (Bước ⑪ trên sơ đồ) và **Amazon DynamoDB** (Bước ⑨ trên sơ đồ) cho độ trễ mili-giây và khả năng chịu tải cao:
+
+### 10.1. Thiết kế Bảng Amazon DynamoDB (Chat Storage Engine)
+- **Table Name:** `TindyChatMessages` (Pay-per-request / On-Demand billing, Point-in-Time Recovery enabled)
+  - `PK` (Partition Key): `CONV#{conversationId}` (vd: `CONV#conv_minh_nguyen` hoặc `CONV#conv_team_ecotrack`)
+  - `SK` (Sort Key): `MSG#{timestampMs}#{messageId}` (vd: `MSG#1791338000000#msg_8812`)
+  - Attributes: `senderId` (String), `senderName` (String), `body` (String), `attachments` (List<Map>), `isRead` (Boolean), `createdAt` (String ISO8601).
+- **GSI1 (User Conversations View):**
+  - `GSI1PK`: `USER#{userId}`
+  - `GSI1SK`: `CONV#{updatedAtMs}` (Cho phép truy vấn danh sách các cuộc hội thoại được cập nhật mới nhất với O(1)).
+- **Table Name:** `TindyWebSocketConnections` (Session Connection Pool)
+  - `PK`: `CONN#{connectionId}`
+  - Attributes: `userId`, `userEmail`, `connectedAt`, `ttl` (Time-To-Live tự động dọn dẹp kết nối mồ côi sau 24h).
+
+---
 
 ### `GET /api/v1/messages/conversations`
-- **Mô tả:** Lấy danh sách các cuộc hội thoại (Direct Chat & Team Workspace Chat).
+- **Mô tả:** Lấy danh sách các cuộc hội thoại của User (Truy vấn GSI1 từ DynamoDB kết hợp thông tin dự án từ RDS).
 - **Quyền:** Bearer Token (`USER`, `ADMIN`).
 - **Response `200 OK`:**
   ```json
@@ -880,12 +1013,12 @@ Nền tảng Tindy thiết kế tinh giản và phân định quyền hạn rõ 
   ```
 
 ### `GET /api/v1/messages/conversations/:id/messages`
-- **Mô tả:** Lấy lịch sử tin nhắn trong cuộc trò chuyện (Có phân trang cursor).
-- **Query Params:** `limit=50`, `beforeMessageId=msg_1092`.
-- **Response `200 OK`:** Mảng các tin nhắn.
+- **Mô tả:** Lấy lịch sử tin nhắn trong cuộc trò chuyện từ DynamoDB (Query `PK = CONV#{id}`, `ScanIndexForward = false`).
+- **Query Params:** `limit=50`, `exclusiveStartKey=<DynamoDBCursor>`.
+- **Response `200 OK`:** Mảng các tin nhắn kèm pagination token.
 
 ### `POST /api/v1/messages/conversations/:id/messages`
-- **Mô tả:** Gửi tin nhắn mới (REST fallback nếu không dùng WebSocket).
+- **Mô tả:** Gửi tin nhắn mới qua REST API (Dành cho REST client hoặc Fallback khi mất kết nối WebSocket).
 - **Quyền:** Bearer Token (`USER`, `ADMIN`).
 - **Request Body:**
   ```json
@@ -900,35 +1033,95 @@ Nền tảng Tindy thiết kế tinh giản và phân định quyền hạn rõ 
     ]
   }
   ```
-- **Response `201 Created`:** Message object mới.
+- **Response `201 Created`:** Message object mới đã được lưu vào DynamoDB.
 
 ### `PATCH /api/v1/messages/conversations/:id/read`
 - **Mô tả:** Đánh dấu toàn bộ tin nhắn trong cuộc hội thoại là đã đọc.
 - **Response `200 OK`:** `{ "unreadCount": 0 }`.
 
 ### `POST /api/v1/messages/upload`
-- **Mô tả:** Tải lên tệp đính kèm trong tin nhắn (Tài liệu PDF, ảnh, code snippets).
-- **Payload:** `multipart/form-data` with `file`.
-- **Response `200 OK`:** File URL & metadata.
-
-### 10.1. WebSocket Protocol Specifications
-- **Kênh kết nối:** `wss://api.tindy.fcaj.community/ws?token=<ACCESS_TOKEN>`
-- **Client emit:**
-  - `chat:join_room`: `{ "conversationId": "conv_minh_nguyen" }`
-  - `chat:send_message`: `{ "conversationId": "...", "body": "Hello!" }`
-  - `chat:typing`: `{ "conversationId": "...", "isTyping": true }`
-- **Server broadcast:**
-  - `chat:message_received`: `{ "id": "msg_99", "senderId": "...", "body": "...", "timestamp": "..." }`
-  - `chat:user_typing`: `{ "userId": "usr_minh", "isTyping": true }`
-  - `chat:user_status`: `{ "userId": "usr_minh", "status": "ONLINE" | "OFFLINE" }`
-  - `notification:new`: `{ "title": "New Team Invite", "time": "Just now" }`
+- **Mô tả:** Tải lên tệp đính kèm trong tin nhắn (Lưu trữ trực tiếp lên Amazon S3 qua presigned upload).
+- **Response `200 OK`:** `{ "fileUrl": "https://cdn.fcaj.community/chat/arch.png", "fileSize": 1048576 }`.
 
 ---
 
-## 11. NHÓM 10: NOTIFICATIONS SYSTEM (HỆ THỐNG THÔNG BÁO)
+### 10.2. Amazon API Gateway WebSocket Protocol Specifications
+- **WebSocket URL:** `wss://chat.tindy.fcaj.community?token=<COGNITO_ACCESS_TOKEN>`
+- **Route `$connect`:**
+  - Xác thực Token Cognito.
+  - Lưu `connectionId` và `userId` vào bảng `TindyWebSocketConnections`.
+- **Route `$disconnect`:**
+  - Xóa `connectionId` khỏi DynamoDB.
+- **Action Route `sendMessage`:**
+  - **Client gửi (Payload):**
+    ```json
+    {
+      "action": "sendMessage",
+      "data": {
+        "conversationId": "conv_minh_nguyen",
+        "body": "Let's review the ECS Fargate deployment.",
+        "attachments": []
+      }
+    }
+    ```
+  - **Backend xử lý:** Ghi vào DynamoDB `TindyChatMessages`, truy vấn connectionId của người nhận, gọi `@connections.PostToConnection` để push tin nhắn.
+- **Action Route `typing`:**
+  - **Client gửi:**
+    ```json
+    {
+      "action": "typing",
+      "data": {
+        "conversationId": "conv_minh_nguyen",
+        "isTyping": true
+      }
+    }
+    ```
+- **Action Route `heartbeat` (Keep-Alive Ping):**
+  - **Client gửi:** `{"action": "ping"}` -> Server phản hồi: `{"action": "pong", "timestamp": "..."}`.
+- **Server Push Broadcasts:**
+  - `messageReceived`: Push tin nhắn mới tới thiết bị người nhận tức thì.
+  - `userTyping`: Báo hiệu trạng thái đang soạn thảo.
+  - `userPresence`: Báo hiệu online/offline.
+
+---
+
+## 11. NHÓM 10: NOTIFICATIONS & ASYNC EVENT PIPELINE (EVENTBRIDGE, LAMBDA & SES)
+
+Hệ thống thông báo vận hành theo mô hình kiến trúc hướng sự kiện (Event-Driven Architecture) gồm 3 bước phối hợp nhịp nhàng:
+- **Bước ⑩ (Publish Events):** Ứng dụng lõi ECS/Fargate ASP .NET phát sự kiện nghiệp vụ lên **Amazon EventBridge Event Bus (`fcaj.tindy.events`)**.
+- **Bước ⑫ (Process Events):** EventBridge kích hoạt các hàm **AWS Lambda Background Jobs** (`tindy-notification-processor`, `tindy-email-dispatcher`) để xử lý bất đồng bộ.
+- **Bước ⑬ (Send Emails):** Lambda kết nối **Amazon SES (Simple Email Service)** gửi email định dạng HTML chuẩn FCAJ tới hòm thư người dùng.
+
+### 11.1. Cấu trúc Sự kiện chuẩn trên Amazon EventBridge
+```json
+{
+  "version": "0",
+  "id": "e9b2c3a1-4567-89ab-cdef-0123456789ab",
+  "detail-type": "Tindy.Invitation.Sent",
+  "source": "fcaj.tindy.core.app",
+  "account": "123456789012",
+  "time": "2026-10-07T08:28:00Z",
+  "region": "ap-southeast-1",
+  "resources": ["arn:aws:ecs:ap-southeast-1:123456789012:task/tindy-api"],
+  "detail": {
+    "invitationId": "inv_8812",
+    "projectId": "proj_ecotrack",
+    "projectName": "AI Customer Support System",
+    "senderId": "usr_minh",
+    "senderName": "Minh Nguyen",
+    "recipientId": "usr_9981",
+    "recipientEmail": "alex.le@fpt.edu.vn",
+    "positionTitle": "Backend Developer (.NET / RAG)",
+    "matchScore": 92,
+    "actionUrl": "https://tindy.fcaj.community/projects?tab=Invited"
+  }
+}
+```
+
+---
 
 ### `GET /api/v1/notifications`
-- **Mô tả:** Lấy danh sách thông báo của người dùng theo danh mục.
+- **Mô tả:** Lấy danh sách thông báo in-app của người dùng theo danh mục (Lưu trữ trong Amazon RDS).
 - **Quyền:** Bearer Token (`USER`, `ADMIN`).
 - **Query Params:** `filter=ALL|INVITATIONS|RECOMMENDATIONS|ANNOUNCEMENTS`, `page=1`, `limit=20`.
 - **Response `200 OK`:**
@@ -965,10 +1158,22 @@ Nền tảng Tindy thiết kế tinh giản và phân định quyền hạn rõ 
 
 ---
 
-## 12. NHÓM 11: AI STUDIO & GENERATIVE COPILOT (CÔNG CỤ THÔNG MINH)
+## 12. NHÓM 11: AI MATCHING & RECOMMENDATION ENGINE (BEDROCK, QDRANT & LAMBDA)
 
+Phân hệ AI hoạt động độc lập dưới sự điều phối của **AWS Lambda AI Processing** (Bước ⑥ & ⑦ trên sơ đồ) cùng 2 trụ cột công nghệ:
+- **Amazon Bedrock (LLM & Embeddings):** 
+  - Mô hình Embedding: `amazon.titan-embed-text-v2:0` (Vector dimension: 1024, Normalized L2).
+  - Mô hình Generative LLM: `anthropic.claude-3-5-sonnet-20241022-v2:0` (Hỗ trợ tiếng Việt và tiếng Anh, nhiệt độ suy luận: 0.2 cho phân tích kỹ năng, 0.7 cho tóm tắt sáng tạo).
+- **Qdrant Vector Database:**
+  - Cluster triển khai Private Subnet kết nối ECS & Lambda.
+  - Collection `projects_collection`: Chứa vector nhúng của mô tả dự án và yêu cầu công nghệ (HNSW indexing, distance metric: `Cosine`).
+  - Collection `candidates_collection`: Chứa vector nhúng của CV, kinh nghiệm và nguyện vọng ứng viên.
+
+### 12.1. Bốn Đầu Ra AI Cốt Lõi (4 Core AI Outputs Specification)
+
+#### Đầu ra 1: `AI Profile Summary` (Tóm tắt hồ sơ thông minh)
 ### `POST /api/v1/ai/generate-summary`
-- **Mô tả:** Tạo tóm tắt hồ sơ chuyên nghiệp dựa trên kỹ năng, kinh nghiệm và mục tiêu (AI Profile Builder).
+- **Mô tả:** Gửi dữ liệu ứng viên tới Lambda AI Processing -> Amazon Bedrock LLM để tổng hợp bản tóm tắt hồ sơ chuyên nghiệp sắc nét.
 - **Quyền:** Bearer Token (`USER`, `ADMIN`).
 - **Request Body:**
   ```json
@@ -983,12 +1188,16 @@ Nền tảng Tindy thiết kế tinh giản và phân định quyền hạn rõ 
   ```json
   {
     "generatedSummary": "Backend-focused developer with hands-on experience in .NET, AWS, and PostgreSQL. Passionate about building thoughtful AI applications and contributing to collaborative, cloud-first projects.",
+    "model": "anthropic.claude-3-5-sonnet-20241022-v2:0",
     "tokenUsage": { "promptTokens": 142, "completionTokens": 48 }
   }
   ```
 
+---
+
+#### Đầu ra 2: `Skill Extraction` (Bóc tách kỹ năng tự động)
 ### `POST /api/v1/ai/extract-skills`
-- **Mô tả:** Tự động phát hiện và trích xuất kỹ năng kỹ thuật từ mô tả văn bản hoặc đề cương dự án (Skill Detector).
+- **Mô tả:** Sử dụng Bedrock LLM để bóc tách, chuẩn hóa danh mục kỹ năng từ văn bản tự do, đề cương hoặc syllabus môn học.
 - **Quyền:** Bearer Token (`USER`, `ADMIN`).
 - **Request Body:**
   ```json
@@ -1003,9 +1212,18 @@ Nền tảng Tindy thiết kế tinh giản và phân định quyền hạn rõ 
       { "category": "Backend", "items": ["ASP.NET Core", "REST API", "JWT"] },
       { "category": "Database", "items": ["PostgreSQL", "Redis"] },
       { "category": "Cloud", "items": ["AWS EC2"] }
-    ]
+    ],
+    "embeddingVectorGenerated": true
   }
   ```
+
+---
+
+#### Đầu ra 3: `Project Matching` & Đầu ra 4: `Explain Match`
+- Được cung cấp thông qua cụm API Discovery:
+  - `GET /api/v1/discovery/projects`: Qdrant Cosine Similarity kết hợp RDS Metadata filter.
+  - `GET /api/v1/discovery/candidates`: Tìm kiếm ứng viên tương thích cho dự án.
+  - `GET /api/v1/discovery/why-matches/:id`: Bedrock LLM tạo giải trình đối chiếu thế mạnh và thiếu sót (Strengths & Gaps Analysis).
 
 ### `POST /api/v1/ai/draft-project`
 - **Mô tả:** AI Copilot hỗ trợ người dùng sinh mục tiêu sprint, yêu cầu kỹ thuật và phân bổ vai trò từ ý tưởng ban đầu.
@@ -1119,58 +1337,108 @@ Nền tảng Tindy thiết kế tinh giản và phân định quyền hạn rõ 
 
 ---
 
-## 14. NHÓM 13: FILE STORAGE & CDN UPLOADS (LƯU TRỮ TỆP)
+## 14. NHÓM 13: FILE STORAGE & S3 PRESIGNED UPLOADS (AMAZON S3 & CLOUDFRONT)
 
-### `POST /api/v1/upload/file`
-- **Mô tả:** Tải lên tệp chung (Tài liệu đồ án, tài liệu kiến trúc, ảnh đính kèm).
+Phân hệ lưu trữ tệp người dùng (Bước ⑧ trên sơ đồ) sử dụng **Amazon S3** kết hợp **CloudFront CDN** phân phối toàn cầu, áp dụng cơ chế **Presigned URL** giúp client tải tệp trực tiếp lên S3 mà không chiếm dụng băng thông của cụm ECS Fargate:
+
+### 14.1. Quy ước Phân vùng Bucket Amazon S3
+- **S3 Bucket Name:** `s3://tindy-user-assets-prod-apse1` (Kích hoạt SSE-S3 AES-256 encryption, Bucket Versioning, Lifecycle Rule lưu trữ Standard-IA sau 90 ngày)
+- **Path Schemes:**
+  - `avatars/{userId}/{timestamp}.png` (Ảnh đại diện người dùng, max 5MB)
+  - `certificates/{userId}/{certId}.pdf` (Bằng cấp, chứng chỉ học thuật, max 10MB)
+  - `resumes/{userId}/resume.pdf` (CV/Hồ sơ năng lực, max 15MB)
+  - `chat/{conversationId}/{fileId}.{ext}` (Tệp đính kèm tin nhắn, max 25MB)
+
+---
+
+### `POST /api/v1/storage/presigned-url`
+- **Mô tả:** Yêu cầu cấp S3 Presigned URL để upload tệp an toàn trực tiếp lên Amazon S3.
 - **Quyền:** Bearer Token (`USER`, `ADMIN`).
-- **Payload:** `multipart/form-data` with `file` (Max 25MB).
-- **Response `201 Created`:**
+- **Request Body:**
   ```json
   {
-    "fileId": "file_89211",
-    "fileName": "system-architecture.pdf",
-    "fileUrl": "https://cdn.fcaj.community/uploads/2026/system-architecture.pdf",
-    "mimeType": "application/pdf",
-    "fileSizeBytes": 2097152
+    "fileName": "aws-solutions-architect.pdf",
+    "fileCategory": "CERTIFICATE",
+    "contentType": "application/pdf",
+    "fileSizeBytes": 2048576
+  }
+  ```
+- **Response `200 OK`:**
+  ```json
+  {
+    "uploadUrl": "https://tindy-user-assets-prod-apse1.s3.ap-southeast-1.amazonaws.com/certificates/usr_9981/aws-solutions-architect.pdf?X-Amz-Security-Token=...",
+    "fileUrl": "https://cdn.fcaj.community/certificates/usr_9981/aws-solutions-architect.pdf",
+    "s3Key": "certificates/usr_9981/aws-solutions-architect.pdf",
+    "httpMethod": "PUT",
+    "headers": {
+      "Content-Type": "application/pdf"
+    },
+    "expiresInSeconds": 900
   }
   ```
 
+### `POST /api/v1/upload/file`
+- **Mô tả:** Tải lên tệp chung thông qua Backend (Fallback dành cho hệ thống legacy hoặc batch upload).
+- **Quyền:** Bearer Token (`USER`, `ADMIN`).
+- **Payload:** `multipart/form-data` with `file` (Max 25MB).
+- **Response `201 Created`:** File metadata và CloudFront CDN URL.
+
 ### `DELETE /api/v1/upload/:fileId`
-- **Mô tả:** Xóa tệp đã tải lên khỏi S3/CDN storage.
+- **Mô tả:** Xóa tệp đã lưu khỏi S3 và hủy cache trên CloudFront.
 - **Quyền:** Bearer Token (`USER` — File Uploader, hoặc `ADMIN`).
 - **Response `204 No Content`**.
 
 ---
 
-## 15. NHÓM 14: SYSTEM HEALTH & METADATA (HỆ THỐNG)
+## 15. NHÓM 14: SYSTEM HEALTH, MONITORING & SECURITY (CLOUDWATCH & SECRETS MANAGER)
+
+### 15.1. AWS Secrets Manager (Bước ⑭)
+Ứng dụng ASP .NET Core trên ECS Fargate tự động đồng bộ cấu hình bảo mật từ **AWS Secrets Manager** (`arn:aws:secretsmanager:ap-southeast-1:...:secret:tindy/prod/app-config`) khi khởi động task thông qua IAM Task Execution Role:
+- Chuỗi kết nối Amazon RDS PostgreSQL (Master + Read Replica).
+- Qdrant Cluster API Key & Endpoint.
+- Cognito App Client Secret.
+- Amazon SES SMTP Credentials.
+
+### 15.2. Amazon CloudWatch Logs & Metrics (Bước ⑮)
+- **Log Group:** `/ecs/tindy-core-app-prod` (Log driver `awslogs`, retention 30 days).
+- **CloudWatch Alarms:**
+  - `Tindy-High-5xx-Errors`: Kích hoạt cảnh báo khi tỷ lệ lỗi 5xx vượt quá 1% trong 5 phút.
+  - `Tindy-RDS-High-CPU`: Báo động khi RDS CPU Utilization > 80%.
+  - `Tindy-Bedrock-Throttling`: Phát hiện lỗi giới hạn tốc độ mô hình ngôn ngữ lớn.
+- **Tracing Header:** Toàn bộ API requests qua Amazon API Gateway đều được đính kèm header chuẩn AWS X-Ray: `X-Amzn-Trace-Id` để theo dõi phân tán từ Gateway -> ECS -> RDS / Lambda.
+
+---
 
 ### `GET /api/v1/system/health`
-- **Mô tả:** Kiểm tra trạng thái hoạt động của Backend, Database, Redis Cache và AI Model endpoint.
+- **Mô tả:** Kiểm tra trạng thái hoạt động sâu của Backend ASP .NET, Amazon RDS, Qdrant, Amazon Bedrock và EventBridge.
 - **Quyền:** Public.
 - **Response `200 OK`:**
   ```json
   {
     "status": "UP",
     "timestamp": "2026-10-07T08:30:00.000Z",
-    "version": "2.1.0",
+    "version": "2.2.0",
+    "region": "ap-southeast-1",
     "services": {
-      "database": { "status": "UP", "latencyMs": 4 },
-      "redisCache": { "status": "UP", "latencyMs": 1 },
-      "aiInference": { "status": "UP", "latencyMs": 120 }
+      "rdsPostgres": { "status": "UP", "latencyMs": 4 },
+      "qdrantVectorDb": { "status": "UP", "latencyMs": 12 },
+      "bedrockInference": { "status": "UP", "latencyMs": 115 },
+      "dynamoDbChat": { "status": "UP", "latencyMs": 3 },
+      "eventBridge": { "status": "UP", "latencyMs": 2 }
     }
   }
   ```
 
 ### `GET /api/v1/system/version`
-- **Mô tả:** Lấy phiên bản build hiện tại của API server.
+- **Mô tả:** Lấy thông tin phiên bản phát hành, commit SHA và môi trường AWS.
 - **Quyền:** Public.
 - **Response `200 OK`:**
   ```json
   {
-    "apiVersion": "2.1.0",
-    "environment": "production",
-    "gitCommit": "f4afc6a"
+    "apiVersion": "2.2.0",
+    "environment": "production-aws-fargate",
+    "gitCommit": "cc83f7d",
+    "region": "ap-southeast-1"
   }
   ```
 
@@ -1444,7 +1712,7 @@ Nền tảng Tindy thiết kế tinh giản và phân định quyền hạn rõ 
 | **10** | Notifications System | **5** | `GET, PATCH, DELETE` | `USER` / `ADMIN` |
 | **11** | AI Studio & Generative Copilot | **4** | `GET, POST` | `USER` / `ADMIN` |
 | **12** | Settings & Account Preferences | **5** | `GET, PUT` | `USER` / `ADMIN` |
-| **13** | File Storage & CDN Uploads | **2** | `POST, DELETE` | `USER` / `ADMIN` |
+| **13** | File Storage & S3 Presigned Uploads | **3** | `POST, DELETE` | `USER` / `ADMIN` |
 | **14** | System Health & Metadata | **2** | `GET` | Public |
 | **15** | Admin Management & Platform Governance | **14** | `GET, POST, PUT, PATCH, DELETE` | **Chỉ riêng `ADMIN`** |
-| **TỔNG** | **Toàn bộ nền tảng Tindy Platform API** | **91 Endpoints + 1 WebSocket Server** | `REST + WS` | **`USER` & `ADMIN`** |
+| **TỔNG** | **Toàn bộ nền tảng Tindy Platform API** | **92 Endpoints + 1 WebSocket Engine** | `REST + WS` | **`USER` & `ADMIN`** |
