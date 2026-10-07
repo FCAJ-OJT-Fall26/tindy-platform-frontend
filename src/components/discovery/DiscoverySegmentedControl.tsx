@@ -101,9 +101,7 @@ export default function DiscoverySegmentedControl<T extends string>({
             role="tab"
             aria-selected={isActive}
             type="button"
-            onClick={() => {
-              if (!isActive) onChange(opt.value);
-            }}
+            onClick={() => onChange(opt.value)}
             className={`discovery-segmented-btn ${
               size === 'compact'
                 ? 'py-2 px-2.5 rounded-md text-xs font-bold flex flex-col items-center gap-0.5 flex-1'

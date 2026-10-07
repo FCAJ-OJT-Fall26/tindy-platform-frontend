@@ -54,6 +54,14 @@ export default function SwipeDiscoveryView({
   const [transitionState, setTransitionState] = useState<'idle' | 'exiting' | 'entering'>('idle');
   const [transitionDirection, setTransitionDirection] = useState<'to-leader' | 'to-student'>('to-leader');
 
+  const modeRef = useRef<DiscoveryMode>(mode);
+  modeRef.current = mode;
+
+  const transitionStateRef = useRef<'idle' | 'exiting' | 'entering'>(transitionState);
+  transitionStateRef.current = transitionState;
+
+  const lastUrlModeRef = useRef<string | null>(searchParams.get('mode'));
+
   const exitTimerRef = useRef<number | null>(null);
   const enterTimerRef = useRef<number | null>(null);
 
@@ -118,8 +126,9 @@ export default function SwipeDiscoveryView({
   };
 
   // Coordinated mode transition handler
-  const handleModeSwitch = useCallback((targetMode: DiscoveryMode) => {
-    if (targetMode === mode && transitionState === 'idle') return;
+  const handleModeSwitch = useCallback((targetMode: DiscoveryMode, updateUrl = true) => {
+    // Prevent switching to the exact same mode if already idle or transitioning to it
+    if (targetMode === modeRef.current && transitionStateRef.current === 'idle') return;
 
     // Clear active timers to avoid overlapping animations on rapid clicks
     if (exitTimerRef.current) clearTimeout(exitTimerRef.current);
@@ -129,42 +138,58 @@ export default function SwipeDiscoveryView({
 
     // 1. Segmented control slider starts moving immediately
     setMode(targetMode);
+    modeRef.current = targetMode;
     setTransitionDirection(dir);
     setTransitionState('exiting');
+    transitionStateRef.current = 'exiting';
 
-    // 2. Synchronize URL search params
-    setSearchParams((prev) => {
-      const updated = new URLSearchParams(prev);
-      updated.set('mode', targetMode === 'student' ? 'projects' : 'teammates');
-      return updated;
-    }, { replace: true });
+    // 2. Synchronize URL search params safely
+    if (updateUrl) {
+      const urlValue = targetMode === 'student' ? 'projects' : 'teammates';
+      lastUrlModeRef.current = urlValue;
+      setSearchParams((prev) => {
+        const updated = new URLSearchParams(prev);
+        updated.set('mode', urlValue);
+        return updated;
+      }, { replace: true });
+    }
 
     // 3. Outgoing content fades and shifts out (170ms)
     exitTimerRef.current = window.setTimeout(() => {
       setDisplayMode(targetMode);
       setActiveItem(null); // Clear active item so previous mode details do not linger
       setTransitionState('entering');
+      transitionStateRef.current = 'entering';
 
       // 4. Incoming content enters from opposite direction and settles (250ms)
       enterTimerRef.current = window.setTimeout(() => {
         setTransitionState('idle');
+        transitionStateRef.current = 'idle';
       }, 250);
     }, 170);
-  }, [mode, transitionState, setSearchParams]);
+  }, [setSearchParams]);
 
-  // Synchronize browser back/forward navigation
+  // Synchronize browser back/forward navigation safely without feedback loops
   useEffect(() => {
-    const modeParam = searchParams.get('mode');
-    if (modeParam) {
-      const parsedMode: DiscoveryMode =
-        modeParam === 'teammates' || modeParam === 'candidates' || modeParam === 'leader'
-          ? 'leader'
-          : 'student';
-      if (parsedMode !== mode) {
-        handleModeSwitch(parsedMode);
+    const currentParam = searchParams.get('mode');
+    if (currentParam !== lastUrlModeRef.current) {
+      lastUrlModeRef.current = currentParam;
+      if (currentParam) {
+        const parsedMode: DiscoveryMode =
+          currentParam === 'teammates' || currentParam === 'candidates' || currentParam === 'leader'
+            ? 'leader'
+            : 'student';
+        if (parsedMode !== modeRef.current) {
+          handleModeSwitch(parsedMode, false);
+        }
+      } else {
+        // If query param removed (e.g. back to /discover), default to student
+        if (modeRef.current !== 'student') {
+          handleModeSwitch('student', false);
+        }
       }
     }
-  }, [searchParams, mode, handleModeSwitch]);
+  }, [searchParams, handleModeSwitch]);
 
   // Cleanup timers on unmount
   useEffect(() => {
