@@ -42,7 +42,7 @@ function useAppState() {
   const [active, setActive] = useStored<string[]>("active", ["ecotrack"])
   const [invited, setInvited] = useStored<string[]>("invited", ["cloud-desk"])
   const [completed] = useStored<string[]>("completed", [])
-  const [mode, setMode] = useStored<string>("mode", "Student")
+  const [mode, setMode] = useStored<string>("mode", "User")
   const [read, setRead] = useStored<number[]>("read", [])
   const [dismissed, setDismissed] = useStored<string[]>("dismissed", [])
   const [candidateInvites, setCandidateInvites] = useStored<string[]>(

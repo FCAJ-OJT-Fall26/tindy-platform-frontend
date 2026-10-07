@@ -213,9 +213,8 @@ function Stat({
 }
 
 export function Dashboard() {
-  const { profile, projects, saved, active, mode, skipped } = useTindy()
+  const { profile, projects, saved, active, skipped } = useTindy()
   const [tab, setTab] = useState("For you")
-  if (mode === "Project Leader") return <LeaderDashboard />
   const available = projects
     .filter((project) => !skipped.includes(project.id))
     .sort((first, second) =>
@@ -1784,7 +1783,7 @@ export function Auth() {
                 return
               }
               const data = new FormData(event.currentTarget)
-              setMode(String(data.get("mode") || "Student"))
+              setMode(String(data.get("mode") || "User"))
               if (register) {
                 setProfile({
                   ...profile,
@@ -1793,9 +1792,7 @@ export function Auth() {
                 })
                 navigate("/onboarding")
               } else
-                navigate(
-                  data.get("mode") === "Project Leader" ? "/leader" : "/",
-                )
+                navigate("/")
             }}
           >
             {register && (
@@ -1837,8 +1834,7 @@ export function Auth() {
                 <label className="field">
                   I’m joining as
                   <select name="mode">
-                    <option>Student</option>
-                    <option>Project Leader</option>
+                    <option value="User">User</option>
                   </select>
                 </label>
                 {!register && (
@@ -3912,8 +3908,7 @@ export function SettingsScreen() {
                 value={mode}
                 onChange={(event) => setMode(event.target.value)}
               >
-                <option>Student</option>
-                <option>Project Leader</option>
+                <option value="User">User</option>
               </select>
             </label>
             <Button>
@@ -3961,8 +3956,8 @@ export function SettingsScreen() {
           >
             <h2>Privacy & security</h2>
             <p>
-              Your profile is visible to the FCAJ community. Project leaders can
-              review it when you send interest.
+              Your profile is visible to the FCAJ community. Other users and
+              project creators can review it when you connect.
             </p>
             <div className="trust-note">
               <ShieldCheck size={17} />

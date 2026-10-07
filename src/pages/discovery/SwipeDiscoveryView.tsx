@@ -229,7 +229,7 @@ export default function SwipeDiscoveryView({
           <p className="text-xs text-slate-500 mt-1 max-w-xl leading-relaxed">
             {mode === 'student'
               ? 'Swipe right on projects you want to contribute to, left to pass, or up to save for later.'
-              : 'Review verified student candidates tailored to your project requirements with explainable AI fit scores.'}
+              : 'Review verified candidate profiles tailored to your project requirements with explainable AI fit scores.'}
           </p>
         </div>
 
@@ -244,7 +244,7 @@ export default function SwipeDiscoveryView({
                 : 'text-slate-700 hover:text-black'
             }`}
           >
-            Student Mode
+            Find Projects
           </button>
 
           <button
@@ -256,7 +256,7 @@ export default function SwipeDiscoveryView({
                 : 'text-slate-700 hover:text-black'
             }`}
           >
-            Leader Mode
+            Find Teammates
           </button>
         </div>
       </div>

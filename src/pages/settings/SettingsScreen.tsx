@@ -7,7 +7,7 @@ interface SettingsScreenProps {
 
 export default function SettingsScreen({ onNotify }: SettingsScreenProps) {
   const navigate = useNavigate();
-  const [role, setRole] = useState('Student');
+  const [role, setRole] = useState('User');
 
   return (
     <>
@@ -30,9 +30,7 @@ export default function SettingsScreen({ onNotify }: SettingsScreenProps) {
           <label>
             Primary Platform Role
             <select value={role} onChange={event => setRole(event.target.value)}>
-              <option>Student</option>
-              <option>Project Leader</option>
-              <option>Administrator</option>
+              <option value="User">User</option>
             </select>
           </label>
 

@@ -52,9 +52,9 @@ export default function DiscoveryFilters({
               : 'text-slate-700 hover:text-black'
               }`}
           >
-            <span>Student</span>
+            <span>Projects</span>
             <span className={`text-[9px] font-medium ${mode === 'student' ? 'text-slate-300' : 'text-slate-500'}`}>
-              Projects
+              Find Projects
             </span>
           </button>
 
@@ -66,9 +66,9 @@ export default function DiscoveryFilters({
               : 'text-slate-700 hover:text-black'
               }`}
           >
-            <span>Leader</span>
+            <span>Teammates</span>
             <span className={`text-[9px] font-medium ${mode === 'leader' ? 'text-slate-300' : 'text-slate-500'}`}>
-              Candidates
+              Find Candidates
             </span>
           </button>
         </div>

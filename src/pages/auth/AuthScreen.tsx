@@ -65,8 +65,7 @@ export default function AuthScreen() {
             <label>
               Primary Platform Role
               <select>
-                <option>Student</option>
-                <option>Project Leader</option>
+                <option value="User">User</option>
               </select>
             </label>
           )}

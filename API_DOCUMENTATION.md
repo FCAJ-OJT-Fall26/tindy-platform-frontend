@@ -58,16 +58,17 @@
 ```
 
 ### 1.3. Phân quyền người dùng (User Roles & Permissions)
-- `STUDENT`: Sinh viên tìm kiếm dự án, nộp hồ sơ, vuốt card, quản lý profile và tham gia nhóm.
-- `PROJECT_LEADER`: Chủ nhiệm dự án đăng tin tuyển dụng, xem stack ứng viên, shortlist, gửi lời mời và quản lý sprint.
-- `ADMIN`: Quản trị viên hệ thống quản lý kiểm duyệt dự án, cấu hình trọng số AI và quản lý trường học.
+- `USER`: Role người dùng hợp nhất (Unified User Role). Trong hệ sinh thái dự án, mọi User đều có đầy đủ quyền hạn để:
+  1. Khám phá, lưu và ứng tuyển tham gia các dự án khác (với tư cách ứng viên / thành viên đội ngũ).
+  2. Tự khởi tạo, đăng tin tuyển mộ thành viên và quản lý các dự án của riêng mình (với tư cách chủ nhiệm / người sáng lập dự án).
+- `ADMIN`: Quản trị viên hệ thống quản lý kiểm duyệt dự án, cấu hình trọng số thuật toán AI và quản lý trường học.
 
 ---
 
 ## 2. NHÓM 1: AUTHENTICATION & ACCESS CONTROL (XÁC THỰC & BẢO MẬT)
 
 ### `POST /api/v1/auth/register`
-- **Mô tả:** Đăng ký tài khoản sinh viên hoặc chủ nhiệm dự án mới.
+- **Mô tả:** Đăng ký tài khoản người dùng nền tảng mới.
 - **Quyền:** Public.
 - **Request Body:**
   ```json
@@ -75,7 +76,7 @@
     "fullName": "Alex Le",
     "email": "alex.le@fpt.edu.vn",
     "password": "StrongPassword123!",
-    "role": "STUDENT",
+    "role": "USER",
     "university": "FPT University",
     "acceptTerms": true
   }
@@ -87,7 +88,7 @@
       "id": "usr_9981",
       "email": "alex.le@fpt.edu.vn",
       "fullName": "Alex Le",
-      "role": "STUDENT",
+      "role": "USER",
       "isEmailVerified": false
     },
     "tokens": {
@@ -477,7 +478,7 @@
 ### `POST /api/v1/discovery/stack/reset`
 - **Mô tả:** Đặt lại toàn bộ stack bài để xem lại từ đầu.
 - **Quyền:** Bearer Token.
-- **Request Body:** `{ "mode": "STUDENT" }`
+- **Request Body:** `{ "mode": "projects" }` (hoặc `"candidates"`)
 - **Response `200 OK`:** Reset thành công.
 
 ### `GET /api/v1/discovery/matches/:targetId/explanation`
@@ -559,8 +560,8 @@
 - **Response `200 OK`:** Quay về trạng thái `Recommended`.
 
 ### `POST /api/v1/pipeline/candidates/:id/shortlist`
-- **Mô tả:** Thêm ứng viên vào Shortlist (Dành cho Lead) -> Chuyển funnel sang `Shortlisted`.
-- **Quyền:** Role `PROJECT_LEADER`.
+- **Mô tả:** Thêm ứng viên vào Shortlist (Dành cho người tạo/quản lý dự án) -> Chuyển funnel sang `Shortlisted`.
+- **Quyền:** Role `USER` (Project Owner / Manager).
 - **Response `200 OK`:**
   ```json
   {
@@ -571,7 +572,7 @@
 
 ### `POST /api/v1/pipeline/candidates/:id/invite`
 - **Mô tả:** Gửi lời mời trực tiếp kèm thư nhắn mời ứng viên gia nhập -> Chuyển funnel sang `Invited`.
-- **Quyền:** Role `PROJECT_LEADER`.
+- **Quyền:** Role `USER` (Project Owner / Manager).
 - **Request Body:**
   ```json
   {
@@ -621,8 +622,8 @@
 - **Response `200 OK`:** Chi tiết dự án, thành viên, mục tiêu, open positions, sprint metrics.
 
 ### `POST /api/v1/projects`
-- **Mô tả:** Tạo dự án mới (Dành cho Lead - ActionModal `create` / CreateProject Screen).
-- **Quyền:** Role `PROJECT_LEADER`.
+- **Mô tả:** Tạo dự án mới (Dành cho bất kỳ User nào - ActionModal `create` / CreateProject Screen).
+- **Quyền:** Role `USER`.
 - **Request Body:**
   ```json
   {
@@ -993,7 +994,7 @@
   ```json
   {
     "email": "alex.le@fpt.edu.vn",
-    "role": "Student",
+    "role": "User",
     "notifications": {
       "emailNotifications": true,
       "projectInvitations": true,
@@ -1015,7 +1016,7 @@
   ```json
   {
     "email": "alex.le@fpt.edu.vn",
-    "role": "Student"
+    "role": "User"
   }
   ```
 - **Response `200 OK`:** Cập nhật thành công.
