@@ -1023,6 +1023,32 @@ main {
   transform: translate(2px, -2px);
 }
 
+/* 9. Back to Sign In Micro-Interaction */
+.auth-back-signin-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 500;
+  transition: color 0.18s ease;
+  cursor: pointer;
+  background: transparent;
+  border: none;
+  padding: 0;
+}
+
+.auth-back-signin-btn .back-arrow-icon {
+  display: inline-flex;
+  transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.auth-back-signin-btn:hover {
+  color: #1e293b;
+}
+
+.auth-back-signin-btn:hover .back-arrow-icon {
+  transform: translateX(-3px);
+}
+
 
 
 

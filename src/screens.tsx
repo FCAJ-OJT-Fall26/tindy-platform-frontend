@@ -1699,12 +1699,14 @@ export function Auth() {
   const navigate = useNavigate()
   const { setMode, setProfile, profile } = useTindy()
 
-  // Track active mode: login vs register with opposite-direction slide transition
+  // Track active mode: login vs register vs forgot with horizontal slide transition
   const [displayRegister, setDisplayRegister] = useState(
     location.pathname === "/register",
   )
   const [transitioning, setTransitioning] = useState(false)
-  const [transitionDirection, setTransitionDirection] = useState<"to-register" | "to-login">("to-register")
+  const [transitionDirection, setTransitionDirection] = useState<
+    "to-register" | "to-login" | "to-forgot" | "from-forgot"
+  >("to-register")
   const [formPhase, setFormPhase] = useState<"idle" | "leaving" | "entering">("idle")
 
   const [forgot, setForgot] = useState(false)
@@ -1720,7 +1722,7 @@ export function Auth() {
     }
   }, [location.pathname])
 
-  // Core transition:
+  // Core transitions:
   // LOGIN → REGISTER:
   // - Outgoing Login form slides slightly LEFT (0 -> -40px) and fades out (1 -> 0)
   // - Incoming Register form enters from RIGHT (40px -> 0) and settles smoothly (0 -> 1)
@@ -1740,6 +1742,7 @@ export function Auth() {
     // Outgoing form slides out slightly faster (200ms)
     setTimeout(() => {
       setDisplayRegister(targetRegister)
+      setForgot(false)
       setFormPhase("entering")
       window.history.replaceState(null, "", targetRegister ? "/register" : "/login")
 
@@ -1751,13 +1754,55 @@ export function Auth() {
     }, 200)
   }
 
+  // 1. LOGIN → FORGOT PASSWORD:
+  // - Login moves slightly to the RIGHT and fades out (0 -> 40px, opacity 1 -> 0)
+  // - Forgot Password enters from the LEFT and settles (-40px -> 0, opacity 0 -> 1)
+  const handleOpenForgot = () => {
+    if (transitioning) return
+    setTransitionDirection("to-forgot")
+    setNotice("")
+    setTransitioning(true)
+    setFormPhase("leaving")
+
+    setTimeout(() => {
+      setForgot(true)
+      setFormPhase("entering")
+
+      setTimeout(() => {
+        setFormPhase("idle")
+        setTransitioning(false)
+      }, 380)
+    }, 200)
+  }
+
+  // 2. FORGOT PASSWORD → LOGIN:
+  // - Forgot Password moves slightly to the LEFT and fades out (0 -> -40px, opacity 1 -> 0)
+  // - Login enters from the RIGHT (40px -> 0, opacity 0 -> 1)
+  const handleBackToLogin = () => {
+    if (transitioning) return
+    setTransitionDirection("from-forgot")
+    setNotice("")
+    setTransitioning(true)
+    setFormPhase("leaving")
+
+    setTimeout(() => {
+      setForgot(false)
+      setFormPhase("entering")
+
+      setTimeout(() => {
+        setFormPhase("idle")
+        setTransitioning(false)
+      }, 380)
+    }, 200)
+  }
+
   const transitionClass =
     formPhase === "leaving"
-      ? transitionDirection === "to-register"
+      ? (transitionDirection === "to-register" || transitionDirection === "from-forgot")
         ? "auth-form-leave-to-left"
         : "auth-form-leave-to-right"
       : formPhase === "entering"
-        ? transitionDirection === "to-register"
+        ? (transitionDirection === "to-register" || transitionDirection === "from-forgot")
           ? "auth-form-enter-from-right"
           : "auth-form-enter-from-left"
         : ""
@@ -1960,8 +2005,8 @@ export function Auth() {
                   <div className="stagger-6">
                     <button
                       type="button"
-                      className="text-link forgot-link"
-                      onClick={() => setForgot(true)}
+                      className="text-link forgot-link cursor-pointer"
+                      onClick={handleOpenForgot}
                     >
                       Forgot password?
                     </button>
@@ -1997,13 +2042,12 @@ export function Auth() {
           <div className="stagger-8">
             {forgot ? (
               <button
-                className="text-link auth-switch"
-                onClick={() => {
-                  setForgot(false)
-                  setNotice("")
-                }}
+                type="button"
+                className="text-link auth-switch auth-back-signin-btn cursor-pointer"
+                onClick={handleBackToLogin}
               >
-                Back to sign in
+                <ArrowLeft size={14} className="back-arrow-icon" />
+                <span>Back to sign in</span>
               </button>
             ) : (
               <p className="auth-switch">
