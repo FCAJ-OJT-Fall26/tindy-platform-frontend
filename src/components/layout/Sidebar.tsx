@@ -1,125 +1,197 @@
-import React from 'react';
-import { NavLink, useNavigate } from 'react-router';
+import { useState, useEffect, useRef, useCallback } from "react"
+import { NavLink, Link, useLocation } from "react-router"
 import {
+  ChevronDown,
   LayoutDashboard,
   Compass,
-  FolderKanban,
   Bookmark,
+  FolderKanban,
   Users,
-  MessageCircle,
+  MessageSquare,
+  Bell,
   Settings,
-  ChevronDown,
-  ArrowRight,
-  User,
-  Sparkles
-} from 'lucide-react';
+  Sparkles,
+  X,
+  ArrowUpRight,
+} from "lucide-react"
+import { Avatar, Brand } from "../ui"
+import { useTindy } from "../../store"
 
 export const navItems = [
-  { label: 'Overview', path: '/', icon: LayoutDashboard },
-  { label: 'Discover projects', path: '/discover', icon: Compass },
-  { label: 'My projects', path: '/projects', icon: FolderKanban },
-  { label: 'Saved projects', path: '/saved', icon: Bookmark },
-  { label: 'Candidates', path: '/candidates', icon: Users },
-  { label: 'Messages', path: '/messages', icon: MessageCircle }
-];
+  { to: "/", label: "Dashboard", icon: LayoutDashboard },
+  { to: "/discover", label: "Discover Projects", icon: Compass },
+  { to: "/interests", label: "My Interests", icon: Bookmark },
+  { to: "/projects", label: "My Projects", icon: FolderKanban },
+  { to: "/candidates", label: "Candidates", icon: Users },
+  { to: "/messages", label: "Messages", icon: MessageSquare },
+  { to: "/notifications", label: "Notifications", icon: Bell },
+]
 
-function LogoImg() {
-  return (
-    <img
-      src="/logo.png"
-      alt="Platform logo"
-      className="w-7 h-7 object-contain"
-    />
-  );
+interface SidebarProps {
+  mobile: boolean
+  onClose: () => void
 }
 
-export default function Sidebar() {
-  const navigate = useNavigate();
+export default function Sidebar({ mobile, onClose }: SidebarProps) {
+  const { profile, read } = useTindy()
+  const location = useLocation()
+
+  const sidebarNavRef = useRef<HTMLDivElement>(null)
+  const [sidebarIndicator, setSidebarIndicator] = useState({ top: 0, height: 0, visible: false })
+  const [isReady, setIsReady] = useState(false)
+
+  const updateIndicator = useCallback(() => {
+    if (sidebarNavRef.current) {
+      const activeLink = sidebarNavRef.current.querySelector(".nav-item.active") as HTMLElement | null
+      if (activeLink) {
+        const containerRect = sidebarNavRef.current.getBoundingClientRect()
+        const linkRect = activeLink.getBoundingClientRect()
+        setSidebarIndicator({
+          top: linkRect.top - containerRect.top,
+          height: linkRect.height,
+          visible: true,
+        })
+      } else {
+        setSidebarIndicator((prev) => ({ ...prev, visible: false }))
+      }
+    }
+  }, [])
+
+  useEffect(() => {
+    const id = requestAnimationFrame(() => {
+      updateIndicator()
+      if (!isReady) {
+        requestAnimationFrame(() => setIsReady(true))
+      }
+    })
+    const timer = mobile ? setTimeout(updateIndicator, 220) : undefined
+    return () => {
+      cancelAnimationFrame(id)
+      if (timer) clearTimeout(timer)
+    }
+  }, [location.pathname, mobile, updateIndicator, isReady])
+
+  useEffect(() => {
+    let resizeTimer: number
+    const handleResize = () => {
+      cancelAnimationFrame(resizeTimer)
+      resizeTimer = requestAnimationFrame(updateIndicator)
+    }
+    window.addEventListener("resize", handleResize, { passive: true })
+    return () => {
+      window.removeEventListener("resize", handleResize)
+      cancelAnimationFrame(resizeTimer)
+    }
+  }, [updateIndicator])
 
   return (
-    <aside className="sidebar">
-      <NavLink className="brand" to="/" aria-label="Tindy Home">
-        <LogoImg />
-        <span>tindy<span className="brand-dot">.</span></span>
-      </NavLink>
+    <aside className={`sidebar ${mobile ? "open" : ""}`}>
+      <div className="sidebar-brand">
+        <Brand />
+        <button
+          className="icon-button mobile-close"
+          aria-label="Close navigation"
+          onClick={onClose}
+        >
+          <X size={20} />
+        </button>
+      </div>
 
-      <div className="community">
-        <div className="community-symbol">F</div>
+      <div className="workspace-switch">
+        <div className="fcaj-symbol">
+          F<span>↗</span>
+        </div>
         <div>
           <strong>FCAJ Community</strong>
-          <small>Build. Connect. Grow.</small>
+          <small>First Cloud AI Journey</small>
         </div>
         <ChevronDown size={14} />
       </div>
 
-      <div className="nav-label">WORKSPACE</div>
-      <nav>
-        {navItems.map(item => (
-          <NavLink
-            end={item.path === '/'}
-            to={item.path}
-            key={item.path}
-            className={({ isActive }) => (isActive ? 'nav-item active' : 'nav-item')}
-          >
-            <item.icon size={18} />
-            <span>{item.label}</span>
-            {item.label === 'Messages' && <b className="count">3</b>}
-          </NavLink>
-        ))}
-      </nav>
+      <div className="sidebar-nav-container" ref={sidebarNavRef}>
+        <div
+          className={`sidebar-active-indicator ${isReady ? "ready" : ""}`}
+          style={{
+            transform: `translateY(${sidebarIndicator.top}px)`,
+            height: `${sidebarIndicator.height}px`,
+            opacity: sidebarIndicator.visible ? 1 : 0,
+          }}
+          aria-hidden="true"
+        />
+        <div className="sidebar-label">WORKSPACE</div>
+        <nav>
+          {navItems.map((item) => (
+            <NavLink
+              end
+              to={item.to}
+              className={({ isActive }) =>
+                `nav-item ${isActive ? "active" : ""}`
+              }
+              key={item.to}
+            >
+              <item.icon size={18} />
+              <span>{item.label}</span>
+              {item.label === "Messages" && (
+                <span className="nav-count">2</span>
+              )}
+              {item.label === "Notifications" && read.length < 4 && (
+                <span className="nav-dot" />
+              )}
+            </NavLink>
+          ))}
+        </nav>
 
-      <div className="nav-label tools-label">YOUR GROWTH</div>
-      <nav>
+        <div className="sidebar-label">BUILD TOGETHER</div>
         <NavLink
-          to="/profile"
-          className={({ isActive }) => (isActive ? 'nav-item active' : 'nav-item')}
+          to="/leader"
+          className={({ isActive }) => `nav-item ${isActive ? "active" : ""}`}
         >
-          <User size={18} />
-          <span>My profile</span>
+          <Users size={18} />
+          Leader Workspace
+          <ArrowUpRight className="nav-trailing" size={13} />
         </NavLink>
         <NavLink
-          to="/ai-studio"
-          className={({ isActive }) => (isActive ? 'nav-item active' : 'nav-item')}
+          to="/ai"
+          className={({ isActive }) => `nav-item ${isActive ? "active" : ""}`}
         >
           <Sparkles size={18} />
-          <span>AI studio</span>
-          <span className="ml-auto text-[9px] font-bold px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-700 border border-indigo-200">
-            NEW
-          </span>
+          AI Studio<span className="beta">BETA</span>
         </NavLink>
-      </nav>
+      </div>
 
-      <div className="sidebar-promo bg-indigo-50/40 border border-indigo-100/80 p-3.5 rounded-xl mt-3">
-        <div className="flex items-center gap-1.5 text-indigo-700 mb-1">
-          <Sparkles size={13} />
-          <span className="font-bold text-xs text-slate-900">A little help from AI</span>
-        </div>
-        <p className="text-[11px] text-slate-500 mb-2 leading-relaxed">
-          Turn your experience into a profile that stands out.
+      <div className="sidebar-note">
+        <span className="tiny-squares">
+          <i />
+          <i />
+          <i />
+        </span>
+        <strong>Find your next chapter.</strong>
+        <p>
+          Real projects. Shared ambition.
+          <br />A community to build with.
         </p>
-        <button
-          onClick={() => navigate('/ai-studio')}
-          className="text-xs font-semibold text-indigo-700 hover:text-indigo-900 flex items-center justify-between w-full transition-colors"
-        >
-          <span>Build my profile</span>
-          <ArrowRight size={13} />
-        </button>
+        <Link to="/discover">
+          Explore opportunities <ArrowUpRight size={13} />
+        </Link>
       </div>
 
       <div className="sidebar-bottom">
-        <NavLink to="/settings" className="nav-item">
+        <NavLink
+          to="/settings"
+          className={({ isActive }) => `nav-item ${isActive ? "active" : ""}`}
+        >
           <Settings size={17} />
           <span>Settings</span>
         </NavLink>
-        <button className="account" onClick={() => navigate('/profile')}>
-          <span className="avatar">AL</span>
+        <Link to="/profile" className="sidebar-user">
+          <Avatar name={profile.name} color="neutral" />
           <div>
-            <strong>Alex Le</strong>
-            <small>Student Member</small>
+            <strong>{profile.name}</strong>
+            <small>{profile.university}</small>
           </div>
           <ChevronDown size={14} />
-        </button>
+        </Link>
       </div>
     </aside>
-  );
+  )
 }

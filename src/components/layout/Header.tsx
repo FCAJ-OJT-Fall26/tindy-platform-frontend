@@ -1,58 +1,67 @@
-import React from 'react';
-import { Menu, Bell } from 'lucide-react';
+import { Menu, ChevronRight, Search, Bell } from "lucide-react"
+import { Link, useLocation } from "react-router"
+import { Avatar } from "../ui"
+import { useTindy } from "../../store"
+import { navItems } from "./Sidebar"
 
 interface HeaderProps {
-  title: string;
-  onOpenMobileMenu: () => void;
-  onNavigateNotifications: () => void;
-  onNavigateProfile: () => void;
+  title?: string
+  onOpenMobileMenu: () => void
 }
 
-export default function Header({
-  title,
-  onOpenMobileMenu,
-  onNavigateNotifications,
-  onNavigateProfile,
-}: HeaderProps) {
+function getBreadcrumbTitle(pathname: string): string {
+  const matched = navItems.find((item) => item.to === pathname)
+  if (matched) return matched.label
+  if (pathname.includes("/candidate/")) return "Candidate Profile"
+  if (pathname.includes("/project/")) return "Project Details"
+  if (pathname.includes("leader")) return "Leader Workspace"
+  if (pathname.includes("ai")) return "AI Studio"
+  if (pathname.includes("settings")) return "Settings"
+  if (pathname.includes("team")) return "Team Workspace"
+  if (pathname.includes("privacypolicy")) return "Privacy Policy"
+  if (pathname.includes("termsofservice")) return "Terms of Service"
+  return "Workspace"
+}
+
+export default function Header({ title, onOpenMobileMenu }: HeaderProps) {
+  const { profile, read } = useTindy()
+  const location = useLocation()
+  const current = title || getBreadcrumbTitle(location.pathname)
+
   return (
     <header className="topbar">
-      <div className="flex items-center gap-3">
+      <div className="breadcrumb">
         <button
+          className="icon-button mobile-menu"
           onClick={onOpenMobileMenu}
-          className="md:hidden p-2 text-slate-700 hover:text-black rounded-lg border border-slate-200"
-          aria-label="Open mobile menu"
+          aria-label="Open mobile navigation menu"
         >
-          <Menu size={17} />
+          <Menu size={20} />
         </button>
-        <div className="breadcrumb">
-          Workspace <span>/</span> <strong>{title}</strong>
-        </div>
+        <span>Workspace</span>
+        <ChevronRight size={12} />
+        <strong>{current}</strong>
       </div>
-
-      <div className="top-actions">
-        <span className="community-status hidden sm:flex text-slate-700 font-medium">
-          Verified FCAJ Member
-        </span>
-        <div className="hidden lg:flex items-center gap-3 text-xs text-slate-600">
-          <a href="tel:+18005558463" className="hover:text-black font-medium">
-            +1 (800) 555-8463
-          </a>
-          <span className="text-slate-300">|</span>
-          <a href="mailto:contact@fcaj.org" className="hover:text-black font-medium">
-            contact@fcaj.org
-          </a>
-        </div>
-        <button
-          className="icon-button notification text-slate-700 hover:text-black"
-          aria-label="Notifications"
-          onClick={onNavigateNotifications}
+      <div className="topbar-actions">
+        <Link
+          to="/discover"
+          className="icon-button top-search"
+          aria-label="Search projects"
         >
-          <Bell size={18} />
-        </button>
-        <button className="avatar" onClick={onNavigateProfile}>
-          AL
-        </button>
+          <Search size={18} />
+        </Link>
+        <Link
+          to="/notifications"
+          className="icon-button bell-link"
+          aria-label="Notifications"
+        >
+          <Bell size={19} />
+          {read.length < 4 && <i />}
+        </Link>
+        <Link to="/profile" aria-label="View user profile">
+          <Avatar name={profile.name} color="neutral" />
+        </Link>
       </div>
     </header>
-  );
+  )
 }
