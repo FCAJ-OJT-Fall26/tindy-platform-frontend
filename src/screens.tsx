@@ -73,6 +73,21 @@ import {
   type Project,
 } from "./data"
 import { useTindy } from "./store"
+import {
+  registerApi,
+  loginApi,
+  getOnboardingProgressApi,
+  saveOnboardingStep1Api,
+  saveOnboardingStep2Api,
+  saveOnboardingStep3Api,
+  saveOnboardingStep4Api,
+  saveOnboardingStep5Api,
+  saveOnboardingStep6Api,
+  saveOnboardingStep7Api,
+  completeOnboardingApi,
+  ApiError,
+} from "./services"
+import type { PreferredRole } from "./types/auth"
 
 function useExplanation(
   evidence?: Pick<Profile, "skills" | "role" | "hours" | "experience">,
@@ -1710,7 +1725,7 @@ export function AIStudio() {
 export function Auth() {
   const location = useLocation()
   const navigate = useNavigate()
-  const { setMode, setProfile, profile } = useTindy()
+  const { setProfile, profile, setAuthUser } = useTindy()
 
   // Track active mode: login vs register vs forgot with horizontal slide transition
   const [displayRegister, setDisplayRegister] = useState(
@@ -1724,6 +1739,8 @@ export function Auth() {
 
   const [forgot, setForgot] = useState(false)
   const [notice, setNotice] = useState("")
+  const [loading, setLoading] = useState(false)
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string[]>>({})
   const [password, setPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
 
@@ -1955,30 +1972,86 @@ export function Auth() {
           </p>
 
           <form
-            onSubmit={(event) => {
+            onSubmit={async (event) => {
               event.preventDefault()
+              setNotice("")
+              setFieldErrors({})
+
               if (forgot) {
-                setNotice(
-                  "Demo only: no reset email has been sent. Authentication is not connected.",
-                )
+                setNotice("Forgot password is not supported yet by the backend. Please sign in with your credentials.")
                 return
               }
+
               if (displayRegister && password !== confirmPassword) {
                 setNotice("Passwords do not match. Please ensure both passwords match.")
                 return
               }
-              const data = new FormData(event.currentTarget)
-              setMode(String(data.get("mode") || "User"))
-              if (displayRegister) {
-                setProfile({
-                  ...profile,
-                  name: String(data.get("name") || profile.name),
-                  email: String(data.get("email") || profile.email),
-                  university: String(data.get("university") || "FPT University"),
-                })
-                navigate("/onboarding")
-              } else {
-                navigate("/")
+
+              const formData = new FormData(event.currentTarget)
+              setLoading(true)
+
+              try {
+                if (displayRegister) {
+                  const displayName = String(formData.get("name") || "").trim()
+                  const university = profile.university || "FPT University"
+                  const email = String(formData.get("email") || "").trim()
+                  const acceptTerms = formData.get("accept_terms") === "on"
+
+                  const session = await registerApi({
+                    display_name: displayName,
+                    university,
+                    email,
+                    password,
+                    accept_terms: acceptTerms,
+                  })
+
+                  setAuthUser(session.user)
+                  setProfile({
+                    ...profile,
+                    name: session.user.display_name || displayName,
+                    email: session.user.email || email,
+                    university: session.user.university || university,
+                  })
+
+                  navigate(session.redirect_to || "/onboarding")
+                } else {
+                  const identifier = String(formData.get("identifier") || "").trim()
+
+                  const session = await loginApi({
+                    identifier,
+                    password,
+                  })
+
+                  setAuthUser(session.user)
+                  setProfile({
+                    ...profile,
+                    name: session.user.display_name || profile.name,
+                    email: session.user.email || profile.email,
+                    university: session.user.university || profile.university,
+                  })
+
+                  navigate(session.redirect_to || (session.user.is_onboarding_completed ? "/discover" : "/onboarding"))
+                }
+              } catch (err: any) {
+                if (err instanceof ApiError) {
+                  if (err.errorCode === "AUTH_INVALID_CREDENTIALS") {
+                    setNotice("Invalid email/username or password. Please verify your credentials.")
+                  } else if (err.errorCode === "AUTH_EMAIL_ALREADY_EXISTS") {
+                    setNotice("This email address is already in use. Please sign in or use another email.")
+                  } else if (err.errorCode === "AUTH_TOO_MANY_ATTEMPTS") {
+                    setNotice("Too many login attempts. Please wait a minute before trying again.")
+                  } else if (err.errorCode === "VALIDATION_FAILED" && err.validationErrors) {
+                    setFieldErrors(err.validationErrors)
+                    const firstMsg = Object.values(err.validationErrors)[0]?.[0]
+                    setNotice(firstMsg || "Input data is invalid. Please check fields.")
+                  } else {
+                    setNotice(err.message || "An authentication error occurred.")
+                  }
+                } else {
+                  setNotice(err.message || "Network error. Failed to connect to server.")
+                }
+              } finally {
+                setLoading(false)
               }
             }}
           >
@@ -1991,44 +2064,31 @@ export function Auth() {
                   placeholder="Your full name"
                   autoComplete="name"
                 />
+                {fieldErrors.display_name && (
+                  <span className="text-[11px] text-rose-600 mt-1 block">
+                    {fieldErrors.display_name[0]}
+                  </span>
+                )}
               </label>
             )}
 
-            {displayRegister && (
-              <label className="field auth-field stagger-4">
-                <span className="field-label">University / Community</span>
-                <input
-                  required
-                  name="university"
-                  list="university-list"
-                  placeholder="e.g. FPT University, RMIT, VNU"
-                  defaultValue="FPT University"
-                  autoComplete="organization"
-                />
-                <datalist id="university-list">
-                  <option value="FPT University" />
-                  <option value="Vietnam National University (VNU)" />
-                  <option value="RMIT University Vietnam" />
-                  <option value="Hanoi University of Science & Technology" />
-                  <option value="Foreign Trade University" />
-                  <option value="Ton Duc Thang University" />
-                  <option value="FCAJ Community" />
-                </datalist>
-              </label>
-            )}
-
-            {/* Email input with subtle focus glow & micro-interaction */}
+            {/* Email or Identifier input with subtle focus glow & micro-interaction */}
             <label className="field auth-field stagger-4">
               <span className="field-label">
-                {displayRegister ? "Institutional email address" : "Email address"}
+                {displayRegister ? "Institutional email address" : "Email or Username"}
               </span>
               <input
                 required
-                name="email"
-                type="email"
-                placeholder="you@university.edu"
-                autoComplete="email"
+                name={displayRegister ? "email" : "identifier"}
+                type={displayRegister ? "email" : "text"}
+                placeholder={displayRegister ? "you@university.edu" : "email or username"}
+                autoComplete={displayRegister ? "email" : "username"}
               />
+              {(fieldErrors.email || fieldErrors.identifier) && (
+                <span className="text-[11px] text-rose-600 mt-1 block">
+                  {(fieldErrors.email || fieldErrors.identifier)?.[0]}
+                </span>
+              )}
             </label>
 
             {!forgot && (
@@ -2045,11 +2105,16 @@ export function Auth() {
                       setPassword(e.target.value)
                       if (notice) setNotice("")
                     }}
-                    placeholder="At least 8 characters"
+                    placeholder="At least 8 chars (uppercase, lowercase, number, symbol)"
                     autoComplete={
                       displayRegister ? "new-password" : "current-password"
                     }
                   />
+                  {fieldErrors.password && (
+                    <span className="text-[11px] text-rose-600 mt-1 block">
+                      {fieldErrors.password[0]}
+                    </span>
+                  )}
                 </label>
 
                 {displayRegister && (
@@ -2090,7 +2155,7 @@ export function Auth() {
 
                 {displayRegister && (
                   <label className="terms stagger-6">
-                    <input required type="checkbox" />I agree to the community
+                    <input required name="accept_terms" type="checkbox" />I agree to the community
                     guidelines and respectful collaboration.
                   </label>
                 )}
@@ -2099,20 +2164,27 @@ export function Auth() {
 
             {/* Submit button with hover lift, shadow increase, and arrow nudge */}
             <div className="stagger-7">
-              <button type="submit" className="auth-btn-primary">
+              <button
+                type="submit"
+                disabled={loading}
+                className="auth-btn-primary"
+                style={{ opacity: loading ? 0.7 : 1, cursor: loading ? "not-allowed" : "pointer" }}
+              >
                 <span>
-                  {forgot
-                    ? "Request reset link"
-                    : displayRegister
-                      ? "Create account"
-                      : "Sign in"}
+                  {loading
+                    ? "Processing..."
+                    : forgot
+                      ? "Request reset link"
+                      : displayRegister
+                        ? "Create account"
+                        : "Sign in"}
                 </span>
                 <ArrowRight size={16} className="btn-arrow-icon" />
               </button>
             </div>
           </form>
 
-          {notice && <div className="info-banner">{notice}</div>}
+          {notice && <div className="info-banner" style={{ color: "#e11d48", borderColor: "#fecdd3", background: "#fff1f2" }}>{notice}</div>}
 
           <div className="stagger-8">
             {forgot ? (
@@ -2142,8 +2214,7 @@ export function Auth() {
             <div className="trust-note">
               <Info size={14} />
               <span>
-                Interactive prototype. Sign-in is simulated; no passwords are
-                stored. Amazon Cognito is not connected.
+                Protected with TLS 1.3 · Local JWT Authentication enabled
               </span>
             </div>
           </div>
@@ -2154,46 +2225,266 @@ export function Auth() {
 }
 
 export function Onboarding() {
-  const { profile, setProfile } = useTindy()
+  const { profile, setProfile, setAuthUser } = useTindy()
   const navigate = useNavigate()
   const [step, setStep] = useState(0)
-  const [draft, setDraft] = useState(profile)
   const [done, setDone] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [initialLoading, setInitialLoading] = useState(true)
+  const [completedSteps, setCompletedSteps] = useState<number[]>([])
+  const [errorMessage, setErrorMessage] = useState("")
+
+  // Onboarding form state according to API contract
+  const [username, setUsername] = useState(profile.username || "")
+  const [displayName, setDisplayName] = useState(profile.name || "")
+  const [university, setUniversity] = useState(profile.university || "FPT University")
+  const [skills, setSkills] = useState<string[]>(profile.skills || [])
+  const [preferredRole, setPreferredRole] = useState<PreferredRole>(
+    (profile.role as PreferredRole) || "Full-stack Developer",
+  )
+  const [professionalInterests, setProfessionalInterests] = useState(profile.interests || "")
+  const [learningGoals, setLearningGoals] = useState(profile.goals || "")
+  const [availableHours, setAvailableHours] = useState<number>(Number(profile.hours) || 10)
+  const [previousProjects, setPreviousProjects] = useState(profile.experience || "")
+  const [technologiesToLearn, setTechnologiesToLearn] = useState(profile.technologies || "")
+  const [githubUrl, setGithubUrl] = useState(profile.github || "")
+  const [websiteUrl, setWebsiteUrl] = useState(profile.portfolio || "")
+  const [bio, setBio] = useState(profile.summary || "")
+  const [confirmed, setConfirmed] = useState(false)
+
   const steps = [
     "Basic information",
     "Technical skills",
     "Preferred roles",
-    "Interests",
+    "Interests & Goals",
     "Availability",
     "Projects & experience",
-    "GitHub / portfolio",
-    "AI profile summary",
+    "GitHub & Links",
+    "Review & complete profile",
   ]
-  const update = (key: keyof Omit<Profile, "skills">, value: string) =>
-    setDraft({ ...draft, [key]: value })
-  const input = (
-    label: string,
-    key: keyof Omit<Profile, "skills">,
-    multiline = false,
-  ) => (
-    <label className="field">
-      {label}
-      {multiline ? (
-        <textarea
-          rows={5}
-          value={draft[key]}
-          onChange={(event) => update(key, event.target.value)}
-          required
-        />
-      ) : (
-        <input
-          value={draft[key]}
-          onChange={(event) => update(key, event.target.value)}
-          required
-        />
-      )}
-    </label>
-  )
+
+  // Khôi phục tiến độ từ GET /api/me/onboarding
+  useEffect(() => {
+    let isMounted = true
+    getOnboardingProgressApi()
+      .then((data) => {
+        if (!isMounted) return
+        setCompletedSteps(data.completed_steps || [])
+
+        // Đổ dữ liệu từ server vào form
+        if (data.step_data) {
+          const s1 = data.step_data["1"]
+          if (s1) {
+            if (s1.username) setUsername(s1.username)
+            if (s1.display_name) setDisplayName(s1.display_name)
+            if (s1.university) setUniversity(s1.university)
+          }
+
+          const s2 = data.step_data["2"]
+          if (s2?.skills && s2.skills.length > 0) {
+            setSkills(s2.skills)
+          }
+
+          const s3 = data.step_data["3"]
+          if (s3?.preferred_role) {
+            setPreferredRole(s3.preferred_role)
+          }
+
+          const s4 = data.step_data["4"]
+          if (s4) {
+            if (s4.professional_interests) setProfessionalInterests(s4.professional_interests)
+            if (s4.learning_goals) setLearningGoals(s4.learning_goals)
+          }
+
+          const s5 = data.step_data["5"]
+          if (s5?.available_hours_per_week) {
+            setAvailableHours(s5.available_hours_per_week)
+          }
+
+          const s6 = data.step_data["6"]
+          if (s6) {
+            if (s6.previous_projects_and_contribution) setPreviousProjects(s6.previous_projects_and_contribution)
+            if (s6.technologies_to_learn) setTechnologiesToLearn(s6.technologies_to_learn)
+          }
+
+          const s7 = data.step_data["7"]
+          if (s7) {
+            if (s7.github_url) setGithubUrl(s7.github_url)
+            if (s7.personal_website_url) setWebsiteUrl(s7.personal_website_url)
+          }
+
+          const s8 = data.step_data["8"]
+          if (s8?.bio) {
+            setBio(s8.bio)
+          }
+        }
+
+        if (data.is_onboarding_completed) {
+          setDone(true)
+        } else if (data.current_step) {
+          setStep(Math.max(0, Math.min(7, data.current_step - 1)))
+        }
+      })
+      .catch((err) => {
+        console.warn("Could not load onboarding progress:", err)
+      })
+      .finally(() => {
+        if (isMounted) setInitialLoading(false)
+      })
+
+    return () => {
+      isMounted = false
+    }
+  }, [])
+
+  const handleStepSubmit = async (event: React.FormEvent) => {
+    event.preventDefault()
+    setErrorMessage("")
+    setLoading(true)
+
+    try {
+      if (step === 0) {
+        // Step 1
+        const res = await saveOnboardingStep1Api({
+          username: username.trim(),
+          display_name: displayName.trim(),
+          university: university.trim(),
+        })
+        setCompletedSteps(res.completed_steps)
+        setProfile((prev) => ({
+          ...prev,
+          name: displayName,
+          university,
+          username,
+        }))
+        setStep(res.next_step ? res.next_step - 1 : 1)
+      } else if (step === 1) {
+        // Step 2
+        const filteredSkills = skills.filter((s) => s.trim().length > 0)
+        if (filteredSkills.length === 0) {
+          setErrorMessage("Please enter at least one technical skill.")
+          setLoading(false)
+          return
+        }
+        const res = await saveOnboardingStep2Api({
+          skills: filteredSkills,
+        })
+        setCompletedSteps(res.completed_steps)
+        setProfile((prev) => ({ ...prev, skills: filteredSkills }))
+        setStep(res.next_step ? res.next_step - 1 : 2)
+      } else if (step === 2) {
+        // Step 3
+        const res = await saveOnboardingStep3Api({
+          preferred_role: preferredRole,
+        })
+        setCompletedSteps(res.completed_steps)
+        setProfile((prev) => ({ ...prev, role: preferredRole }))
+        setStep(res.next_step ? res.next_step - 1 : 3)
+      } else if (step === 3) {
+        // Step 4
+        const res = await saveOnboardingStep4Api({
+          professional_interests: professionalInterests.trim(),
+          learning_goals: learningGoals.trim(),
+        })
+        setCompletedSteps(res.completed_steps)
+        setProfile((prev) => ({
+          ...prev,
+          interests: professionalInterests,
+          goals: learningGoals,
+        }))
+        setStep(res.next_step ? res.next_step - 1 : 4)
+      } else if (step === 4) {
+        // Step 5
+        const hours = Math.max(1, Math.min(40, Number(availableHours) || 10))
+        const res = await saveOnboardingStep5Api({
+          available_hours_per_week: hours,
+        })
+        setCompletedSteps(res.completed_steps)
+        setProfile((prev) => ({ ...prev, hours }))
+        setStep(res.next_step ? res.next_step - 1 : 5)
+      } else if (step === 5) {
+        // Step 6
+        const res = await saveOnboardingStep6Api({
+          previous_projects_and_contribution: previousProjects.trim(),
+          technologies_to_learn: technologiesToLearn.trim(),
+        })
+        setCompletedSteps(res.completed_steps)
+        setProfile((prev) => ({
+          ...prev,
+          experience: previousProjects,
+          technologies: technologiesToLearn,
+        }))
+        setStep(res.next_step ? res.next_step - 1 : 6)
+      } else if (step === 6) {
+        // Step 7
+        const res = await saveOnboardingStep7Api({
+          github_url: githubUrl.trim() || null,
+          personal_website_url: websiteUrl.trim() || null,
+        })
+        setCompletedSteps(res.completed_steps)
+        setProfile((prev) => ({
+          ...prev,
+          github: githubUrl,
+          portfolio: websiteUrl,
+        }))
+
+        // Gợi ý bio nếu chưa có
+        if (!bio) {
+          setBio(
+            `${preferredRole} studying at ${university}, skilled in ${skills.slice(0, 4).join(", ")}. Interested in ${professionalInterests.toLowerCase()} and available ${availableHours} hours per week.`,
+          )
+        }
+        setStep(7)
+      } else if (step === 7) {
+        // Step 8 Complete
+        if (!confirmed) {
+          setErrorMessage("Please confirm that you have reviewed your profile information.")
+          setLoading(false)
+          return
+        }
+
+        const res = await completeOnboardingApi({
+          confirmed: true,
+          bio: bio.trim() || null,
+        })
+
+        setCompletedSteps(res.completed_steps)
+        setAuthUser((prev) => prev ? { ...prev, is_onboarding_completed: true } : null)
+        setProfile((prev) => ({ ...prev, summary: bio }))
+        setDone(true)
+      }
+    } catch (err: any) {
+      if (err instanceof ApiError) {
+        if (err.errorCode === "USERNAME_ALREADY_EXISTS") {
+          setErrorMessage("This username is already taken. Please choose another username.")
+        } else if (err.errorCode === "ONBOARDING_INCOMPLETE") {
+          const missing = err.missingSteps?.join(", ") || ""
+          setErrorMessage(`Please complete all required steps first. Missing steps: ${missing}`)
+        } else if (err.errorCode === "VALIDATION_FAILED" && err.validationErrors) {
+          const firstMsg = Object.values(err.validationErrors)[0]?.[0]
+          setErrorMessage(firstMsg || "Input data is invalid. Please check fields.")
+        } else {
+          setErrorMessage(err.message || "Failed to save onboarding step.")
+        }
+      } else {
+        setErrorMessage(err.message || "Failed to connect to server.")
+      }
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  if (initialLoading) {
+    return (
+      <div className="onboarding flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <Brand />
+          <p className="mt-4 text-sm text-slate-500">Loading your profile progress...</p>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="onboarding">
       <header>
@@ -2215,17 +2506,28 @@ export function Onboarding() {
             Tell us a little about yourself. We’ll help you find where you fit.
           </p>
           <ol>
-            {steps.map((name, index) => (
-              <li
-                className={
-                  index === step ? "active" : index < step ? "complete" : ""
-                }
-                key={name}
-              >
-                <span>{index < step ? <Check size={14} /> : index + 1}</span>
-                {name}
-              </li>
-            ))}
+            {steps.map((name, index) => {
+              const isStepDone = completedSteps.includes(index + 1)
+              return (
+                <li
+                  className={
+                    index === step ? "active" : isStepDone ? "complete" : ""
+                  }
+                  key={name}
+                  onClick={() => {
+                    // Cho phép nhảy về các bước đã lưu
+                    if (isStepDone || index <= step) {
+                      setStep(index)
+                      setErrorMessage("")
+                    }
+                  }}
+                  style={{ cursor: isStepDone || index <= step ? "pointer" : "default" }}
+                >
+                  <span>{isStepDone ? <Check size={14} /> : index + 1}</span>
+                  {name}
+                </li>
+              )
+            })}
           </ol>
         </aside>
         <section className="onboarding-panel">
@@ -2238,7 +2540,7 @@ export function Onboarding() {
               <p>
                 Find projects that match you. Meet the people you’ll build with.
               </p>
-              <Chips items={draft.skills} />
+              <Chips items={skills} />
               <Button onClick={() => navigate("/discover")}>
                 Discover projects <ArrowRight size={17} />
               </Button>
@@ -2256,39 +2558,60 @@ export function Onboarding() {
               <p className="muted">
                 {
                   [
-                    "Let’s start with the basics.",
-                    "What tools do you feel comfortable working with?",
+                    "Choose a unique username and check your basic information.",
+                    "What tools and technologies do you feel comfortable working with?",
                     "What would you like to contribute to a team?",
-                    "What kind of work gets you curious?",
+                    "What kind of work gets you curious and what do you want to learn?",
                     "Find a project that fits your schedule.",
-                    "Your experience matters — including class and side projects.",
-                    "Give your work a place to shine.",
+                    "Your experience matters — including course sprints and personal projects.",
+                    "Link your GitHub and online portfolios for review.",
                     "Review your story. Make it sound like you.",
                   ][step]
                 }
               </p>
-              <form
-                onSubmit={(event) => {
-                  event.preventDefault()
-                  setProfile(draft)
-                  if (step === 7) setDone(true)
-                  else {
-                    if (step === 6)
-                      setDraft({
-                        ...draft,
-                        summary: `${draft.role} studying at ${draft.university}, with skills in ${draft.skills.slice(0, 4).join(", ")}. ${draft.experience} Interested in ${draft.interests.toLowerCase()} and available ${draft.hours} hours per week.`,
-                      })
-                    setStep(step + 1)
-                  }
-                }}
-              >
+
+              {errorMessage && (
+                <div className="mb-4 p-3 rounded-lg border border-rose-200 bg-rose-50 text-rose-600 text-xs">
+                  {errorMessage}
+                </div>
+              )}
+
+              <form onSubmit={handleStepSubmit}>
                 <div className="onboarding-fields">
                   {step === 0 && (
                     <>
-                      {input("Full name", "name")}
-                      {input("University / community", "university")}
+                      <label className="field">
+                        Username (unique identifier: letters, numbers, _, .)
+                        <input
+                          required
+                          pattern="^[A-Za-z0-9_.]{3,50}$"
+                          placeholder="e.g. nguyenvana"
+                          value={username}
+                          onChange={(e) => setUsername(e.target.value)}
+                        />
+                        <span className="text-[11px] text-slate-400 mt-0.5">
+                          3–50 characters, only letters, numbers, dot and underscore.
+                        </span>
+                      </label>
+                      <label className="field">
+                        Full name
+                        <input
+                          required
+                          value={displayName}
+                          onChange={(e) => setDisplayName(e.target.value)}
+                        />
+                      </label>
+                      <label className="field">
+                        University / community
+                        <input
+                          required
+                          value={university}
+                          onChange={(e) => setUniversity(e.target.value)}
+                        />
+                      </label>
                     </>
                   )}
+
                   {step === 1 && (
                     <>
                       <label className="field">
@@ -2296,20 +2619,22 @@ export function Onboarding() {
                         <textarea
                           rows={3}
                           required
-                          value={draft.skills.join(", ")}
+                          value={skills.join(", ")}
+                          placeholder=".NET, React, PostgreSQL, Docker"
                           onChange={(event) =>
-                            setDraft({
-                              ...draft,
-                              skills: event.target.value
+                            setSkills(
+                              event.target.value
                                 .split(",")
-                                .map((item) => item.trim()),
-                            })
+                                .map((item) => item.trim())
+                                .filter(Boolean),
+                            )
                           }
                         />
                       </label>
-                      <Chips items={draft.skills.filter(Boolean)} />
+                      <Chips items={skills.filter(Boolean)} />
                     </>
                   )}
+
                   {step === 2 && (
                     <div className="role-options">
                       {[
@@ -2323,90 +2648,162 @@ export function Onboarding() {
                         <button
                           type="button"
                           key={role}
-                          className={draft.role === role ? "selected" : ""}
-                          onClick={() => update("role", role)}
+                          className={preferredRole === role ? "selected" : ""}
+                          onClick={() => setPreferredRole(role as PreferredRole)}
                         >
                           <Code2 size={18} />
                           {role}
-                          {draft.role === role && <Check size={16} />}
+                          {preferredRole === role && <Check size={16} />}
                         </button>
                       ))}
                     </div>
                   )}
+
                   {step === 3 && (
                     <>
-                      {input("Professional interests", "interests", true)}
-                      {input("Learning goals", "goals", true)}
+                      <label className="field">
+                        Professional interests
+                        <textarea
+                          rows={4}
+                          required
+                          placeholder="e.g. Cloud-native architecture, Distributed systems, Machine Learning"
+                          value={professionalInterests}
+                          onChange={(e) => setProfessionalInterests(e.target.value)}
+                        />
+                      </label>
+                      <label className="field">
+                        Learning goals
+                        <textarea
+                          rows={4}
+                          required
+                          placeholder="e.g. Master ASP.NET Core & Kubernetes microservices"
+                          value={learningGoals}
+                          onChange={(e) => setLearningGoals(e.target.value)}
+                        />
+                      </label>
                     </>
                   )}
+
                   {step === 4 && (
                     <>
                       <label className="field">
-                        Hours available per week
+                        Hours available per week (1 - 40)
                         <input
                           type="number"
                           required
                           min="1"
                           max="40"
-                          value={draft.hours}
+                          value={availableHours}
                           onChange={(event) =>
-                            update("hours", event.target.value)
+                            setAvailableHours(Math.max(1, Math.min(40, Number(event.target.value))))
                           }
                         />
                       </label>
                       <div className="info-banner">
                         <Clock size={18} />
-                        Be realistic. A sustainable schedule makes for a better
-                        team.
+                        Be realistic. A sustainable schedule makes for a better team experience.
                       </div>
                     </>
                   )}
+
                   {step === 5 && (
                     <>
-                      {input(
-                        "Previous projects & your contribution",
-                        "experience",
-                        true,
-                      )}
-                      {input("Technologies you want to learn", "technologies")}
+                      <label className="field">
+                        Previous projects & your contribution
+                        <textarea
+                          rows={4}
+                          required
+                          placeholder="Built a team workspace tool with real-time sockets..."
+                          value={previousProjects}
+                          onChange={(e) => setPreviousProjects(e.target.value)}
+                        />
+                      </label>
+                      <label className="field">
+                        Technologies you want to learn
+                        <input
+                          required
+                          placeholder="e.g. AWS Lambda, Kafka, GraphQL"
+                          value={technologiesToLearn}
+                          onChange={(e) => setTechnologiesToLearn(e.target.value)}
+                        />
+                      </label>
                     </>
                   )}
+
                   {step === 6 && (
                     <>
-                      {input("GitHub profile", "github")}
-                      {input("Portfolio URL", "portfolio")}
+                      <label className="field">
+                        GitHub profile URL (optional)
+                        <input
+                          type="url"
+                          placeholder="https://github.com/username"
+                          value={githubUrl}
+                          onChange={(e) => setGithubUrl(e.target.value)}
+                        />
+                      </label>
+                      <label className="field">
+                        Personal website / portfolio URL (optional)
+                        <input
+                          type="url"
+                          placeholder="https://yourportfolio.dev"
+                          value={websiteUrl}
+                          onChange={(e) => setWebsiteUrl(e.target.value)}
+                        />
+                      </label>
+                      <span className="text-[11px] text-slate-400">
+                        URLs must start with http:// or https://, or be left empty.
+                      </span>
                     </>
                   )}
+
                   {step === 7 && (
                     <>
                       <Badge tone="blue">
                         <Sparkles size={13} />
-                        AI ASSISTED DRAFT
+                        EDITABLE PROFILE SUMMARY
                       </Badge>
-                      {input("Your editable profile summary", "summary", true)}
-                      <label className="terms">
-                        <input required type="checkbox" />
-                        I’ve reviewed this summary and confirm it represents my
-                        experience.
+                      <label className="field">
+                        Profile Bio / Summary
+                        <textarea
+                          rows={5}
+                          maxLength={2000}
+                          placeholder="Tell collaborators about your strengths and passions..."
+                          value={bio}
+                          onChange={(e) => setBio(e.target.value)}
+                        />
                       </label>
-                      <p className="helper-text">
-                        Generated from your inputs using a demo template.
-                      </p>
+                      <label className="terms">
+                        <input
+                          required
+                          type="checkbox"
+                          checked={confirmed}
+                          onChange={(e) => setConfirmed(e.target.checked)}
+                        />
+                        I’ve reviewed my profile information and confirm it is accurate.
+                      </label>
                     </>
                   )}
                 </div>
+
                 <div className="onboarding-actions">
                   <Button
                     variant="ghost"
                     type="button"
-                    disabled={step === 0}
-                    onClick={() => setStep(step - 1)}
+                    disabled={step === 0 || loading}
+                    onClick={() => {
+                      setStep(step - 1)
+                      setErrorMessage("")
+                    }}
                   >
                     <ArrowLeft size={15} />
                     Back
                   </Button>
-                  <Button>
-                    {step === 7 ? "Confirm & finish" : "Continue"}
+                  <Button disabled={loading}>
+                    {loading
+                      ? "Saving..."
+                      : step === 7
+                        ? "Confirm & finish"
+                        : "Continue"}
                     <ArrowRight size={16} />
                   </Button>
                 </div>
@@ -2418,6 +2815,7 @@ export function Onboarding() {
     </div>
   )
 }
+
 
 const mockProjectTemplates: Array<{
   name: string

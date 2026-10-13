@@ -37,7 +37,14 @@ react(),
       watch: {
         ignored: [
           '**/.figma/**',
-],
+        ],
+      },
+      proxy: {
+        '/api': {
+          target: 'http://localhost:5217',
+          changeOrigin: true,
+          secure: false,
+        },
       },
     },
     preview: {

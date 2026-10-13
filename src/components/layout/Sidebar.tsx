@@ -13,7 +13,9 @@ import {
   Sparkles,
   X,
   ArrowUpRight,
+  LogOut,
 } from "lucide-react"
+import { useNavigate } from "react-router"
 import { Avatar, Brand } from "../ui"
 import { useTindy } from "../../store"
 
@@ -33,8 +35,9 @@ interface SidebarProps {
 }
 
 export default function Sidebar({ mobile, onClose }: SidebarProps) {
-  const { profile, read } = useTindy()
+  const { profile, read, logout } = useTindy()
   const location = useLocation()
+  const navigate = useNavigate()
 
   const sidebarNavRef = useRef<HTMLDivElement>(null)
   const [sidebarIndicator, setSidebarIndicator] = useState({ top: 0, height: 0, visible: false })
@@ -183,6 +186,18 @@ export default function Sidebar({ mobile, onClose }: SidebarProps) {
           <Settings size={17} />
           <span>Settings</span>
         </NavLink>
+        <button
+          type="button"
+          onClick={async () => {
+            await logout()
+            navigate("/login")
+          }}
+          className="nav-item cursor-pointer text-left w-full hover:text-rose-600 transition-colors"
+          style={{ background: "transparent", border: "none" }}
+        >
+          <LogOut size={17} />
+          <span>Sign Out</span>
+        </button>
         <Link to="/profile" className="sidebar-user">
           <Avatar name={profile.name} color="neutral" />
           <div>

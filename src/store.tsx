@@ -1,10 +1,14 @@
-import { createContext, useContext, useState, type ReactNode } from "react"
+import { createContext, useContext, useState, useEffect, type ReactNode } from "react"
 import {
   initialProfile,
   initialProjects,
   type Profile,
   type Project,
 } from "./data"
+import type { AuthUser } from "./types/auth"
+import { getStoredToken, clearStoredToken } from "./services/apiClient"
+import { getMeApi, logoutApi } from "./services/auth.service"
+
 function useStored<T>(key: string, initial: T) {
   const [value, setValue] = useState<T>(() => {
     try {
@@ -25,8 +29,12 @@ function useStored<T>(key: string, initial: T) {
     })
   return [value, update] as const
 }
+
 function useAppState() {
   const [profile, setProfile] = useStored<Profile>("profile", initialProfile)
+  const [authUser, setAuthUser] = useState<AuthUser | null>(null)
+  const [authLoading, setAuthLoading] = useState<boolean>(true)
+
   const [projects, setProjects] = useStored<Project[]>(
     "projects",
     initialProjects,
@@ -73,6 +81,45 @@ function useAppState() {
       3500,
     )
   }
+
+  // Khôi phục phiên làm việc (GET /api/me) khi ứng dụng khởi chạy
+  useEffect(() => {
+    const token = getStoredToken()
+    if (!token) {
+      setAuthLoading(false)
+      return
+    }
+
+    getMeApi()
+      .then((user) => {
+        setAuthUser(user)
+        if (user) {
+          setProfile((prev) => ({
+            ...prev,
+            name: user.display_name || prev.name,
+            email: user.email || prev.email,
+            university: user.university || prev.university,
+          }))
+        }
+      })
+      .catch(() => {
+        setAuthUser(null)
+      })
+      .finally(() => {
+        setAuthLoading(false)
+      })
+  }, [])
+
+  const logout = async () => {
+    try {
+      await logoutApi()
+    } catch {
+      clearStoredToken()
+    } finally {
+      setAuthUser(null)
+    }
+  }
+
   const toggleSave = (id: string) =>
     setSaved((old) =>
       old.includes(id) ? old.filter((item) => item !== id) : [...old, id],
@@ -84,6 +131,10 @@ function useAppState() {
   return {
     profile,
     setProfile,
+    authUser,
+    setAuthUser,
+    authLoading,
+    logout,
     projects,
     setProjects,
     saved,
@@ -118,12 +169,15 @@ function useAppState() {
     notify,
   }
 }
+
 type AppState = ReturnType<typeof useAppState>
 const Context = createContext<AppState | null>(null)
+
 export function TindyProvider({ children }: { children: ReactNode }) {
   const state = useAppState()
   return <Context.Provider value={state}>{children}</Context.Provider>
 }
+
 export function useTindy() {
   const state = useContext(Context)
   if (!state) throw new Error("Tindy provider is missing")
