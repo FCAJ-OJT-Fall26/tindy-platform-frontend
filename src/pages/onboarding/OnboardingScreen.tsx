@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef, useLayoutEffect } from "react"
 import { useNavigate, Link } from "react-router"
 import {
   ArrowLeft,
@@ -39,6 +39,70 @@ export function OnboardingScreen() {
   const [errorMessage, setErrorMessage] = useState("")
   const [draftError, setDraftError] = useState("")
   const [draftRetry, setDraftRetry] = useState(0)
+
+  const panelRef = useRef<HTMLElement>(null)
+  const prevHeightRef = useRef<number | null>(null)
+
+  // Fluid PowerPoint Morph transition for panel height when step changes
+  useLayoutEffect(() => {
+    const el = panelRef.current
+    if (!el) return
+
+    el.style.height = ""
+    const currentHeight = el.offsetHeight
+    const prevHeight = prevHeightRef.current
+
+    if (prevHeight !== null && Math.abs(prevHeight - currentHeight) > 3) {
+      el.style.height = `${prevHeight}px`
+      el.style.transition = "none"
+      void el.offsetHeight
+      el.style.transition = "height 0.52s cubic-bezier(0.2, 0.85, 0.25, 1)"
+      el.style.height = `${currentHeight}px`
+
+      const handleTransitionEnd = (e: TransitionEvent) => {
+        if (e.propertyName === "height" && e.target === el) {
+          el.style.height = ""
+          el.style.transition = ""
+        }
+      }
+      el.addEventListener("transitionend", handleTransitionEnd, { once: true })
+    }
+
+    prevHeightRef.current = currentHeight
+  }, [step])
+
+  // Fluid Morph animation for progress percentage counter
+  const targetPercent = Math.round(((step + 1) / 8) * 100)
+  const [displayPercent, setDisplayPercent] = useState(targetPercent)
+  const [pulseKey, setPulseKey] = useState(0)
+
+  useEffect(() => {
+    setPulseKey((k) => k + 1)
+    const startPercent = displayPercent
+    const diff = targetPercent - startPercent
+    if (diff === 0) return
+
+    const duration = 650
+    const startTime = performance.now()
+    let rafId: number
+
+    const tick = (now: number) => {
+      const elapsed = now - startTime
+      const progress = Math.min(elapsed / duration, 1)
+      const ease = 1 - Math.pow(1 - progress, 3)
+      const current = Math.round(startPercent + diff * ease)
+      setDisplayPercent(current)
+
+      if (progress < 1) {
+        rafId = requestAnimationFrame(tick)
+      } else {
+        setDisplayPercent(targetPercent)
+      }
+    }
+
+    rafId = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(rafId)
+  }, [targetPercent])
 
   const goToStep = (targetStep: number) => {
     setDirection(targetStep >= step ? "forward" : "backward")
@@ -411,10 +475,10 @@ export function OnboardingScreen() {
             })}
           </ol>
         </aside>
-        <section className={`onboarding-panel ${step === 1 ? "onboarding-skills-panel" : ""}`}>
+        <section ref={panelRef} className={`onboarding-panel ${step === 1 ? "onboarding-skills-panel" : ""}`}>
           <div className="step-caption">
             STEP {step + 1} OF 8{" "}
-            <span>{Math.round(((step + 1) / 8) * 100)}%</span>
+            <span key={pulseKey} className="step-caption-pulse">{displayPercent}%</span>
           </div>
           <div className="progress">
             <span style={{ width: `${((step + 1) / 8) * 100}%` }} />
