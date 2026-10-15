@@ -191,10 +191,14 @@ async function intercept(event) {
     headers: request.headers,
   })
   if (networkFailure && url.pathname === "/api/catalog/skills") {
-    await send("Fetch.failRequest", {
-      requestId,
-      errorReason: "ConnectionFailed",
-    })
+    try {
+      await send("Fetch.failRequest", {
+        requestId,
+        errorReason: "ConnectionFailed",
+      })
+    } catch {
+      /* A request may have been aborted by navigation or a newer fetch */
+    }
     return
   }
   let data = null

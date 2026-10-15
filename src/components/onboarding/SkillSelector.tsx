@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useEffect, useLayoutEffect, useRef, useState } from "react"
 import { Check, Plus, Search, X } from "lucide-react"
 import { getSkillCategoriesApi, getSkillsApi } from "../../services"
 import type {
@@ -7,6 +7,7 @@ import type {
   SkillCategory,
 } from "../../types/catalog"
 import { requestErrorMessage } from "./catalogFeedback"
+import SkillIcon from "./SkillIcon"
 
 interface Props {
   selected: SelectedSkill[]
@@ -34,6 +35,77 @@ export default function SkillSelector({
   const [categoriesRetry, setCategoriesRetry] = useState(0)
   const [resultsRetry, setResultsRetry] = useState(0)
 
+  const containerRef = useRef<HTMLDivElement>(null)
+  const prevPositionsRef = useRef<Map<string, { left: number; top: number }>>(
+    new Map(),
+  )
+  const categoryCacheRef = useRef<Map<string, CatalogSkill[]>>(new Map())
+
+  // FLIP animation: smoothly transition skill buttons into their alphabetical positions
+  useLayoutEffect(() => {
+    const container = containerRef.current
+    if (!container) return
+
+    const buttons = Array.from(
+      container.querySelectorAll<HTMLButtonElement>(".catalog-skill-option"),
+    )
+    const prevPositions = prevPositionsRef.current
+    const currentPositions = new Map<string, { left: number; top: number }>()
+
+    buttons.forEach((btn) => {
+      const id = btn.getAttribute("data-skill-id")
+      if (id) {
+        const rect = btn.getBoundingClientRect()
+        currentPositions.set(id, { left: rect.left, top: rect.top })
+      }
+    })
+
+    if (prevPositions.size > 0) {
+      buttons.forEach((btn) => {
+        const id = btn.getAttribute("data-skill-id")
+        if (!id) return
+
+        const current = currentPositions.get(id)
+        const prev = prevPositions.get(id)
+
+        if (prev && current) {
+          const deltaX = prev.left - current.left
+          const deltaY = prev.top - current.top
+
+          if (Math.abs(deltaX) > 0.5 || Math.abs(deltaY) > 0.5) {
+            btn.style.transform = `translate3d(${deltaX}px, ${deltaY}px, 0)`
+            btn.style.transition = "none"
+
+            requestAnimationFrame(() => {
+              btn.style.transition =
+                "transform 0.38s cubic-bezier(0.2, 0.9, 0.3, 1)"
+              btn.style.transform = "translate3d(0, 0, 0)"
+            })
+          }
+        } else {
+          btn.style.opacity = "0"
+          btn.style.transform = "scale(0.85) translateY(6px)"
+          btn.style.transition = "none"
+
+          requestAnimationFrame(() => {
+            btn.style.transition =
+              "transform 0.32s cubic-bezier(0.2, 0.9, 0.3, 1), opacity 0.25s ease"
+            btn.style.transform = "translate3d(0, 0, 0)"
+            btn.style.opacity = "1"
+          })
+        }
+
+        setTimeout(() => {
+          btn.style.transform = ""
+          btn.style.transition = ""
+          btn.style.opacity = ""
+        }, 420)
+      })
+    }
+
+    prevPositionsRef.current = currentPositions
+  }, [results])
+
   useEffect(() => {
     const controller = new AbortController()
     setCategoriesLoading(true)
@@ -55,15 +127,19 @@ export default function SkillSelector({
     return () => controller.abort()
   }, [categoriesRetry])
 
-  // The unfiltered catalog lets us distinguish inactive saved selections from
-  // skills that simply do not match the current search or category.
+  // Initial catalog load: sort skills alphabetically
   useEffect(() => {
     const controller = new AbortController()
     setCatalogLoading(true)
     setCatalogError("")
     getSkillsApi(undefined, undefined, controller.signal)
       .then((data) => {
-        if (!controller.signal.aborted) setAllSkills(data)
+        if (!controller.signal.aborted) {
+          const sorted = [...data].sort((a, b) =>
+            a.name.localeCompare(b.name, undefined, { sensitivity: "base" }),
+          )
+          setAllSkills(sorted)
+        }
       })
       .catch((error) => {
         if (!controller.signal.aborted)
@@ -75,21 +151,51 @@ export default function SkillSelector({
     return () => controller.abort()
   }, [catalogRetry])
 
+  // Category and search filtering with instant caching and alphabetical sorting
   useEffect(() => {
     if (catalogLoading || catalogError) return
-    if (!categoryId && !search.trim()) {
+
+    const trimmedSearch = search.trim()
+
+    // 1. All categories with no search: use allSkills sorted
+    if (!categoryId && !trimmedSearch) {
       setResults(allSkills)
       setResultsError("")
       setResultsLoading(false)
       return
     }
+
+    // 2. Category only (no search): check in-memory cache for instant switch (0ms)
+    if (
+      categoryId &&
+      !trimmedSearch &&
+      categoryCacheRef.current.has(categoryId)
+    ) {
+      setResults(categoryCacheRef.current.get(categoryId)!)
+      setResultsError("")
+      setResultsLoading(false)
+      return
+    }
+
+    // 3. Fetch from API
     const controller = new AbortController()
     setResultsLoading(true)
     setResultsError("")
-    const timer = window.setTimeout(() => {
-      getSkillsApi(categoryId || undefined, search, controller.signal)
+
+    const doFetch = () => {
+      getSkillsApi(categoryId || undefined, trimmedSearch, controller.signal)
         .then((data) => {
-          if (!controller.signal.aborted) setResults(data)
+          if (!controller.signal.aborted) {
+            const sorted = [...data].sort((a, b) =>
+              a.name.localeCompare(b.name, undefined, {
+                sensitivity: "base",
+              }),
+            )
+            if (categoryId && !trimmedSearch) {
+              categoryCacheRef.current.set(categoryId, sorted)
+            }
+            setResults(sorted)
+          }
         })
         .catch((error) => {
           if (!controller.signal.aborted)
@@ -98,10 +204,19 @@ export default function SkillSelector({
         .finally(() => {
           if (!controller.signal.aborted) setResultsLoading(false)
         })
-    }, 300)
-    return () => {
-      window.clearTimeout(timer)
-      controller.abort()
+    }
+
+    if (trimmedSearch) {
+      const timer = window.setTimeout(doFetch, 250)
+      return () => {
+        window.clearTimeout(timer)
+        controller.abort()
+      }
+    } else {
+      doFetch()
+      return () => {
+        controller.abort()
+      }
     }
   }, [
     allSkills,
@@ -178,6 +293,9 @@ export default function SkillSelector({
             className="catalog-results"
             aria-busy={catalogLoading || resultsLoading}
           >
+            {resultsLoading && (
+              <div className="catalog-loading-bar" aria-hidden="true" />
+            )}
             {catalogLoading ? (
               <p role="status">Loading skills…</p>
             ) : catalogError ? (
@@ -191,8 +309,6 @@ export default function SkillSelector({
                   Retry skills
                 </button>
               </div>
-            ) : resultsLoading ? (
-              <p role="status">Searching skills…</p>
             ) : resultsError ? (
               <div className="catalog-feedback" role="alert">
                 <p>{resultsError}</p>
@@ -204,7 +320,7 @@ export default function SkillSelector({
                   Retry search
                 </button>
               </div>
-            ) : results.length === 0 ? (
+            ) : results.length === 0 && !resultsLoading ? (
               <div className="catalog-feedback">
                 <p>No skills match these filters.</p>
                 <button
@@ -220,30 +336,38 @@ export default function SkillSelector({
               </div>
             ) : (
               <div
+                ref={containerRef}
                 className="catalog-skill-options"
                 aria-label="Available skills"
               >
-                {results.map((skill) => (
-                  <button
-                    key={skill.skill_id}
-                    type="button"
-                    aria-pressed={selectedIds.has(skill.skill_id)}
-                    className={`catalog-skill-option ${
-                      selectedIds.has(skill.skill_id) ? "selected" : ""
-                    }`}
-                    disabled={
-                      !selectedIds.has(skill.skill_id) && selected.length >= 30
-                    }
-                    onClick={() => toggle(skill)}
-                  >
-                    {selectedIds.has(skill.skill_id) ? (
-                      <Check size={14} />
-                    ) : (
-                      <Plus size={14} />
-                    )}
-                    {skill.name}
-                  </button>
-                ))}
+                {results.map((skill) => {
+                  const isSelected = selectedIds.has(skill.skill_id)
+                  return (
+                    <button
+                      key={skill.skill_id}
+                      data-skill-id={skill.skill_id}
+                      type="button"
+                      aria-pressed={isSelected}
+                      className={`catalog-skill-option ${
+                        isSelected ? "selected" : ""
+                      }`}
+                      disabled={!isSelected && selected.length >= 30}
+                      onClick={() => toggle(skill)}
+                    >
+                      <span
+                        className={`skill-toggle-indicator ${
+                          isSelected ? "is-selected" : ""
+                        }`}
+                        aria-hidden="true"
+                      >
+                        <Plus className="toggle-icon toggle-plus" size={14} />
+                        <Check className="toggle-icon toggle-check" size={14} />
+                      </span>
+                      <SkillIcon name={skill.name} size={15} />
+                      {skill.name}
+                    </button>
+                  )
+                })}
               </div>
             )}
           </div>
@@ -324,6 +448,7 @@ export default function SkillSelector({
                     )
                   }
                 >
+                  <SkillIcon name={name} size={13} />
                   {name}
                   {inactive && " (unavailable)"}
                   <X size={12} />
