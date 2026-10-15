@@ -41,34 +41,128 @@ export function OnboardingScreen() {
   const [draftRetry, setDraftRetry] = useState(0)
 
   const panelRef = useRef<HTMLElement>(null)
-  const prevHeightRef = useRef<number | null>(null)
+  const contentRef = useRef<HTMLDivElement>(null)
+  const prevRectRef = useRef<{ width: number; height: number; step: number } | null>(null)
+  const morphTimerRef = useRef<number | null>(null)
 
-  // Fluid PowerPoint Morph transition for panel height when step changes
+  // Fluid PowerPoint Morph transition separating container sizing from inner content
   useLayoutEffect(() => {
-    const el = panelRef.current
-    if (!el) return
+    const panel = panelRef.current
+    const content = contentRef.current
+    if (!panel || !content) return
 
-    el.style.height = ""
-    const currentHeight = el.offsetHeight
-    const prevHeight = prevHeightRef.current
-
-    if (prevHeight !== null && Math.abs(prevHeight - currentHeight) > 3) {
-      el.style.height = `${prevHeight}px`
-      el.style.transition = "none"
-      void el.offsetHeight
-      el.style.transition = "height 0.52s cubic-bezier(0.2, 0.85, 0.25, 1)"
-      el.style.height = `${currentHeight}px`
-
-      const handleTransitionEnd = (e: TransitionEvent) => {
-        if (e.propertyName === "height" && e.target === el) {
-          el.style.height = ""
-          el.style.transition = ""
-        }
-      }
-      el.addEventListener("transitionend", handleTransitionEnd, { once: true })
+    if (morphTimerRef.current !== null) {
+      window.clearTimeout(morphTimerRef.current)
+      morphTimerRef.current = null
     }
 
-    prevHeightRef.current = currentHeight
+    const prev = prevRectRef.current
+    if (!prev) {
+      prevRectRef.current = {
+        width: panel.offsetWidth,
+        height: panel.offsetHeight,
+        step,
+      }
+      return
+    }
+
+    if (prev.step === step) return
+
+    // Calculate destination container and content width before starting the transition
+    const isDestCatalog = step === 1
+    const windowW = window.innerWidth
+    let targetWidth: number
+
+    if (windowW <= 760) {
+      targetWidth = panel.offsetWidth
+    } else if (windowW <= 1000) {
+      const asideW = isDestCatalog ? 200 : 250
+      const gap = isDestCatalog ? 25 : 40
+      const avail = Math.min(windowW - 60, isDestCatalog ? 1200 : 1050)
+      targetWidth = Math.max(300, avail - asideW - gap)
+    } else {
+      const asideW = isDestCatalog ? 250 : 290
+      const gap = isDestCatalog ? 40 : 65
+      const avail = Math.min(windowW - 60, isDestCatalog ? 1200 : 1050)
+      targetWidth = Math.max(300, avail - asideW - gap)
+    }
+
+    const targetContentWidth = targetWidth - 70 // 35px padding on each side
+
+    // Pre-arrange destination content at its exact destination width to measure natural height
+    panel.style.transition = "none"
+    panel.style.width = `${targetWidth}px`
+    panel.style.height = ""
+    content.style.width = `${targetContentWidth}px`
+
+    const targetHeight = panel.offsetHeight
+    const prevWidth = prev.width
+    const prevHeight = prev.height
+
+    const widthDiff = Math.abs(prevWidth - targetWidth)
+    const heightDiff = Math.abs(prevHeight - targetHeight)
+
+    if (widthDiff > 2 || heightDiff > 2) {
+      panel.classList.add("is-morphing")
+      // Start container from previous dimensions, keeping content locked to destination width
+      panel.style.width = `${prevWidth}px`
+      panel.style.height = `${prevHeight}px`
+
+      // Force reflow
+      void panel.offsetWidth
+
+      // Animate container to destination dimensions without squeezing inner content
+      const easing = "cubic-bezier(0.22, 1, 0.36, 1)"
+      panel.style.transition = `width 480ms ${easing}, height 480ms ${easing}`
+      panel.style.width = `${targetWidth}px`
+      panel.style.height = `${targetHeight}px`
+
+      const cleanup = () => {
+        panel.classList.remove("is-morphing")
+        panel.style.width = ""
+        panel.style.height = ""
+        panel.style.transition = ""
+        content.style.width = ""
+        if (morphTimerRef.current !== null) {
+          window.clearTimeout(morphTimerRef.current)
+          morphTimerRef.current = null
+        }
+      }
+
+      const onEnd = (e: TransitionEvent) => {
+        if (e.target === panel && (e.propertyName === "height" || e.propertyName === "width")) {
+          panel.removeEventListener("transitionend", onEnd)
+          cleanup()
+        }
+      }
+      panel.addEventListener("transitionend", onEnd)
+      morphTimerRef.current = window.setTimeout(cleanup, 500)
+    } else {
+      panel.style.width = ""
+      panel.style.height = ""
+      content.style.width = ""
+    }
+
+    prevRectRef.current = {
+      width: targetWidth,
+      height: targetHeight,
+      step,
+    }
+  }, [step])
+
+  useEffect(() => {
+    const handleResize = () => {
+      const panel = panelRef.current
+      if (panel) {
+        prevRectRef.current = {
+          width: panel.offsetWidth,
+          height: panel.offsetHeight,
+          step,
+        }
+      }
+    }
+    window.addEventListener("resize", handleResize)
+    return () => window.removeEventListener("resize", handleResize)
   }, [step])
 
   // Fluid Morph animation for progress percentage counter
@@ -82,7 +176,7 @@ export function OnboardingScreen() {
     const diff = targetPercent - startPercent
     if (diff === 0) return
 
-    const duration = 650
+    const duration = 480
     const startTime = performance.now()
     let rafId: number
 
@@ -486,6 +580,7 @@ export function OnboardingScreen() {
 
           <div
             key={step}
+            ref={contentRef}
             className={`onboarding-step-content ${
               direction === "forward"
                 ? "step-slide-forward"
