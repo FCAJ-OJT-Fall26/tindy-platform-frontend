@@ -215,8 +215,8 @@ export function OnboardingScreen() {
       } else if (step === 4) {
         // Step 5 in UI: Interests & Goals (optional)
         const res = await saveOnboardingStep4Api({
-          professional_interests: professionalInterests.trim(),
-          learning_goals: learningGoals.trim(),
+          professional_interests: professionalInterests.trim() || null,
+          learning_goals: learningGoals.trim() || null,
         })
         setCompletedSteps(res.completed_steps)
         setProfile((prev) => ({
@@ -228,8 +228,8 @@ export function OnboardingScreen() {
       } else if (step === 5) {
         // Step 6 in UI: Projects & experience (optional)
         const res = await saveOnboardingStep6Api({
-          previous_projects_and_contribution: previousProjects.trim(),
-          technologies_to_learn: technologiesToLearn.trim(),
+          previous_projects_and_contribution: previousProjects.trim() || null,
+          technologies_to_learn: technologiesToLearn.trim() || null,
         })
         setCompletedSteps(res.completed_steps)
         setProfile((prev) => ({
@@ -303,16 +303,16 @@ export function OnboardingScreen() {
       if (step === 4) {
         // Skip Interests & Goals
         const res = await saveOnboardingStep4Api({
-          professional_interests: professionalInterests.trim(),
-          learning_goals: learningGoals.trim(),
+          professional_interests: professionalInterests.trim() || null,
+          learning_goals: learningGoals.trim() || null,
         })
         setCompletedSteps(res.completed_steps)
         goToStep(5)
       } else if (step === 5) {
         // Skip Projects & experience
         const res = await saveOnboardingStep6Api({
-          previous_projects_and_contribution: previousProjects.trim(),
-          technologies_to_learn: technologiesToLearn.trim(),
+          previous_projects_and_contribution: previousProjects.trim() || null,
+          technologies_to_learn: technologiesToLearn.trim() || null,
         })
         setCompletedSteps(res.completed_steps)
         goToStep(6)

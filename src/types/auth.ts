@@ -74,8 +74,8 @@ export interface OnboardingStep3Request {
 }
 
 export interface OnboardingStep4Request {
-  professional_interests: string
-  learning_goals: string
+  professional_interests?: string | null
+  learning_goals?: string | null
 }
 
 export interface OnboardingStep5Request {
@@ -83,8 +83,8 @@ export interface OnboardingStep5Request {
 }
 
 export interface OnboardingStep6Request {
-  previous_projects_and_contribution: string
-  technologies_to_learn: string
+  previous_projects_and_contribution?: string | null
+  technologies_to_learn?: string | null
 }
 
 export interface OnboardingStep7Request {
