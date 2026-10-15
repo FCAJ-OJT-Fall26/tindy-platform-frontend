@@ -319,6 +319,7 @@
     padding-left: 11px;
     padding-right: 11px;
     margin-right: 0;
+    overflow: visible;
   }
 }
 
@@ -334,25 +335,23 @@
 /* Retract in exit animation when a skill is removed ("thụt item vào") */
 .selected-skill-chips button.chip-retracting,
 .selected-skill-chips button.chip-popping-out {
-  animation: chipRetractIn 0.18s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
-  pointer-events: none;
+  width: 0 !important;
+  min-width: 0 !important;
+  max-width: 0 !important;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+  margin-right: -8px !important;
+  opacity: 0 !important;
+  border-color: transparent !important;
   overflow: hidden !important;
-  z-index: 5;
-}
-
-@keyframes chipRetractIn {
-  0% {
-    opacity: 1;
-    max-width: 240px;
-  }
-  100% {
-    opacity: 0;
-    max-width: 0;
-    padding-left: 0;
-    padding-right: 0;
-    margin-right: -8px;
-    border-color: transparent;
-  }
+  pointer-events: none !important;
+  animation: none !important;
+  transition: width 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+              max-width 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+              padding 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+              margin 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+              opacity 0.18s ease,
+              border-color 0.18s ease !important;
 }
 
 .selected-skill-chips button .chip-remove-icon {

@@ -280,19 +280,43 @@ export default function SkillSelector({
     }
   }, [allSkills, catalogLoading, catalogError, selected, onChange])
 
-  const [removingId, setRemovingId] = useState<string | null>(null)
+  const [removingIds, setRemovingIds] = useState<string[]>([])
+  const selectedRef = useRef(selected)
+  selectedRef.current = selected
+  const removalTimersRef = useRef<Map<string, number>>(new Map())
   const chipsContainerRef = useRef<HTMLDivElement>(null)
-  const prevChipPositionsRef = useRef<Map<string, { left: number; top: number }>>(
-    new Map(),
-  )
+
+  useEffect(() => {
+    return () => {
+      removalTimersRef.current.forEach((timer) => window.clearTimeout(timer))
+      removalTimersRef.current.clear()
+    }
+  }, [])
 
   function removeSkill(skillId: string) {
-    if (removingId === skillId) return
-    setRemovingId(skillId)
-    setTimeout(() => {
-      onChange(selected.filter((item) => item.skill_id !== skillId))
-      setRemovingId(null)
-    }, 180)
+    if (removingIds.includes(skillId)) return
+
+    const container = chipsContainerRef.current
+    const btn = container?.querySelector<HTMLButtonElement>(
+      `[data-chip-id="${skillId}"]`,
+    )
+    if (btn) {
+      // Pin current pixel width so transition shrinks smoothly from its actual width from frame 0
+      const w = btn.offsetWidth
+      btn.style.width = `${w}px`
+      btn.style.minWidth = "0"
+      void btn.offsetWidth
+    }
+
+    setRemovingIds((prev) => [...prev, skillId])
+
+    const timer = window.setTimeout(() => {
+      removalTimersRef.current.delete(skillId)
+      onChange(selectedRef.current.filter((item) => item.skill_id !== skillId))
+      setRemovingIds((prev) => prev.filter((id) => id !== skillId))
+    }, 200)
+
+    removalTimersRef.current.set(skillId, timer)
   }
 
   function toggle(skill: CatalogSkill) {
@@ -302,67 +326,6 @@ export default function SkillSelector({
       onChange([...selected, skill])
     }
   }
-
-  // FLIP animation for selected chips: smoothly slide remaining chips together ("dồn lại giống stack")
-  useLayoutEffect(() => {
-    const container = chipsContainerRef.current
-    if (!container) return
-
-    const chipButtons = Array.from(
-      container.querySelectorAll<HTMLButtonElement>("[data-chip-id]"),
-    )
-    const prevPositions = prevChipPositionsRef.current
-    const currentPositions = new Map<string, { left: number; top: number }>()
-
-    chipButtons.forEach((btn) => {
-      const id = btn.getAttribute("data-chip-id")
-      if (id) {
-        const rect = btn.getBoundingClientRect()
-        currentPositions.set(id, { left: rect.left, top: rect.top })
-      }
-    })
-
-    if (prevPositions.size > 0) {
-      chipButtons.forEach((btn) => {
-        const id = btn.getAttribute("data-chip-id")
-        if (!id || id === removingId) return
-
-        const prev = prevPositions.get(id)
-        const current = currentPositions.get(id)
-
-        if (prev && current) {
-          const deltaX = prev.left - current.left
-          const deltaY = prev.top - current.top
-
-          if (Math.abs(deltaX) > 0.5 || Math.abs(deltaY) > 0.5) {
-            const rx = Math.round(deltaX)
-            const ry = Math.round(deltaY)
-            btn.style.transform = `translate3d(${rx}px, ${ry}px, 0)`
-            btn.style.transition = "none"
-
-            requestAnimationFrame(() => {
-              btn.style.transition =
-                "transform 0.22s cubic-bezier(0.16, 1, 0.3, 1)"
-              btn.style.transform = "translate3d(0, 0, 0)"
-
-              const onEnd = () => {
-                btn.style.transform = ""
-                btn.style.transition = ""
-                btn.removeEventListener("transitionend", onEnd)
-              }
-              btn.addEventListener("transitionend", onEnd)
-              setTimeout(() => {
-                btn.style.transform = ""
-                btn.style.transition = ""
-              }, 250)
-            })
-          }
-        }
-      })
-    }
-
-    prevChipPositionsRef.current = currentPositions
-  }, [selected, removingId])
 
   return (
     <div className="skill-selector">
@@ -430,7 +393,9 @@ export default function SkillSelector({
                 aria-label="Available skills"
               >
                 {results.map((skill) => {
-                  const isSelected = selectedIds.has(skill.skill_id)
+                  const isSelected =
+                    selectedIds.has(skill.skill_id) &&
+                    !removingIds.includes(skill.skill_id)
                   return (
                     <button
                       key={skill.skill_id}
@@ -523,7 +488,7 @@ export default function SkillSelector({
                 !catalogLoading &&
                 !catalogError &&
                 !activeSkills.has(skill.skill_id)
-              const isPoppingOut = removingId === skill.skill_id
+              const isPoppingOut = removingIds.includes(skill.skill_id)
               return (
                 <button
                   type="button"
