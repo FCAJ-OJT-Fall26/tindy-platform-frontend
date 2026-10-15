@@ -2,9 +2,10 @@
  * Type definitions based on TINDY_FRONTEND_AUTH_ONBOARDING_API.md
  * and TINDY_AUTH_ONBOARDING_FLOW.md
  */
+import type { CatalogSkill } from './catalog'
 
 // Success Envelope
-export interface ApiResponse<T = any> {
+export interface ApiResponse<T = unknown> {
   success: boolean
   message: string
   data: T
@@ -65,19 +66,11 @@ export interface OnboardingStep1Request {
 }
 
 export interface OnboardingStep2Request {
-  skills: string[]
+  skill_ids: string[]
 }
 
-export type PreferredRole =
-  | 'Backend Developer'
-  | 'Frontend Developer'
-  | 'Full-stack Developer'
-  | 'AI Engineer'
-  | 'Cloud Engineer'
-  | 'UI/UX Designer'
-
 export interface OnboardingStep3Request {
-  preferred_role: PreferredRole
+  preferred_role_id: string
 }
 
 export interface OnboardingStep4Request {
@@ -127,10 +120,12 @@ export interface OnboardingStepDataMap {
     university: string
   }
   '2': {
-    skills: string[]
+    skill_ids: string[]
+    skills: CatalogSkill[]
   }
   '3': {
-    preferred_role: PreferredRole | null
+    preferred_role_id: string | null
+    preferred_role: string | null
   }
   '4': {
     professional_interests: string | null
@@ -157,5 +152,9 @@ export interface OnboardingProgressData {
   completed_steps: number[]
   current_step: number
   is_onboarding_completed: boolean
-  step_data: OnboardingStepDataMap
+  step_data?: {
+    [Step in keyof OnboardingStepDataMap]?: {
+      [Field in keyof OnboardingStepDataMap[Step]]?: OnboardingStepDataMap[Step][Field] | null
+    } | null
+  } | null
 }

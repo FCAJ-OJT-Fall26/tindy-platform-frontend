@@ -1,6 +1,286 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;450;500;550;600;650;700;750&family=Manrope:wght@400;500;600;650;700;750;800&display=swap');
 @import 'tailwindcss';
 
+/* Onboarding catalogs reuse the shared form, color, and button styles. */
+.onboarding-form-fields {
+  border: 0;
+  padding: 0;
+  min-width: 0;
+}
+
+.onboarding-layout.onboarding-catalog-layout {
+  max-width: 1200px;
+  grid-template-columns: 250px minmax(0,1fr);
+  gap: 40px;
+}
+
+.onboarding-skills-panel {
+  min-width: 0;
+}
+
+.skill-selector-layout {
+  display: grid;
+  grid-template-columns: minmax(0,1fr) 170px;
+  gap: 20px;
+}
+
+.skill-selector-main {
+  min-width: 0;
+}
+
+.catalog-search {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 11px 12px;
+  color: var(--muted);
+}
+
+.catalog-search:focus-within {
+  border-color: var(--primary);
+}
+
+.catalog-search input {
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  outline: none;
+  font-size: 12px;
+  color: var(--ink);
+}
+
+.catalog-results {
+  min-height: 180px;
+  max-height: 340px;
+  overflow-y: auto;
+  margin-top: 14px;
+}
+
+.catalog-results>p,.catalog-feedback {
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.7;
+}
+
+.catalog-feedback {
+  padding: 12px 0;
+}
+
+.catalog-feedback p {
+  margin: 0 0 12px;
+}
+
+.catalog-skill-options {
+  display: flex;
+  align-content: flex-start;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 3px;
+}
+
+.catalog-skill-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 9px 11px;
+  text-align: left;
+  color: var(--muted);
+  font-size: 11px;
+  overflow-wrap: anywhere;
+}
+
+.catalog-skill-option.selected {
+  border-color: #96aedb;
+  background: #f1f5fe;
+  color: var(--primary);
+}
+
+.skill-category-filter {
+  min-width: 0;
+  border-left: 1px solid var(--border);
+  padding-left: 16px;
+}
+
+.skill-category-filter h3 {
+  margin: 0 0 12px;
+}
+
+.skill-category-filter p {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.skill-category-options {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.skill-category-options button {
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  padding: 9px 10px;
+  font-size: 11px;
+  text-align: left;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.skill-category-options button.selected {
+  background: #f1f5fe;
+  color: var(--primary);
+  font-weight: 600;
+}
+
+.skill-category-options button:hover,.catalog-skill-option:hover:not(:disabled) {
+  background: #f1f5fe;
+}
+
+.selected-skills {
+  margin-top: 22px;
+  padding-top: 18px;
+  border-top: 1px solid var(--border);
+}
+
+.selected-skills-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.selected-skills-heading h3 {
+  margin: 0;
+}
+
+.selected-skills-heading>span {
+  font-size: 11px;
+  color: var(--primary);
+  font-weight: 600;
+}
+
+.selected-skill-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.selected-skill-chips button {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid #dbe5fa;
+  border-radius: 6px;
+  background: #f1f5fe;
+  color: var(--primary);
+  padding: 7px 10px;
+  font-size: 11px;
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+
+.selected-skill-chips button.unavailable {
+  background: #fff7ed;
+  color: #a96d17;
+  border-color: #f6dfba;
+}
+
+.catalog-selection-hint {
+  font-size: 11px;
+  color: var(--muted);
+  line-height: 1.7;
+}
+
+.catalog-validation {
+  font-size: 12px;
+  color: var(--error);
+  line-height: 1.7;
+}
+
+.catalog-role-options>button {
+  background: var(--surface);
+}
+
+.catalog-role-options>button>span {
+  min-width: 0;
+}
+
+.catalog-role-options strong {
+  display: block;
+  font-weight: 600;
+  color: var(--ink);
+  font-size: 12px;
+}
+
+.catalog-role-options small {
+  display: block;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.65;
+  margin-top: 5px;
+}
+
+.catalog-draft-error {
+  max-width: 500px;
+}
+
+.catalog-draft-error>.text-link {
+  margin-left: 16px;
+}
+
+@media(max-width:1000px) {
+  .onboarding-layout.onboarding-catalog-layout {
+    grid-template-columns: 200px minmax(0,1fr);
+    gap: 25px;
+  }
+  .skill-selector-layout {
+    grid-template-columns: minmax(0,1fr) 145px;
+    gap: 14px;
+  }
+}
+
+@media(max-width:760px) {
+  .onboarding-layout.onboarding-catalog-layout {
+    grid-template-columns: 1fr;
+    gap: 24px;
+    max-width: 650px;
+  }
+  .skill-selector-layout {
+    display: flex;
+    flex-direction: column-reverse;
+    gap: 16px;
+  }
+  .skill-category-filter {
+    border-left: 0;
+    padding-left: 0;
+  }
+  .skill-category-options {
+    flex-direction: row;
+    overflow-x: auto;
+    padding: 3px 3px 8px;
+  }
+  .skill-category-options button {
+    flex-shrink: 0;
+    white-space: nowrap;
+    border: 1px solid var(--border);
+  }
+  .catalog-results {
+    max-height: 300px;
+    min-height: 150px;
+  }
+  .catalog-skill-option {
+    min-height: 40px;
+  }
+}
+
 @theme {
   --color-primary: #304fc5;
   --color-background: #f6f8fb;

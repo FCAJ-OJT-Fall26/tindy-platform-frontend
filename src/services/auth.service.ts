@@ -91,10 +91,11 @@ export async function getMeApi() {
  * GET /api/me/onboarding
  * Get saved progress and form draft data for Onboarding steps.
  */
-export async function getOnboardingProgressApi() {
+export async function getOnboardingProgressApi(signal?: AbortSignal) {
   const res = await apiRequest<OnboardingProgressData>('/api/me/onboarding', {
     method: 'GET',
     requiresAuth: true,
+    signal,
   })
   return res.data
 }
@@ -127,7 +128,7 @@ export async function saveOnboardingStep2Api(data: OnboardingStep2Request) {
 
 /**
  * PUT /api/me/onboarding/3
- * Step 3: Preferred Role (1 of 6 allowed values)
+ * Step 3: Active Professional Role UUID
  */
 export async function saveOnboardingStep3Api(data: OnboardingStep3Request) {
   const res = await apiRequest<OnboardingStepSavedData>('/api/me/onboarding/3', {
