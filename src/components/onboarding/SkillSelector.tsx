@@ -335,7 +335,9 @@ export default function SkillSelector({
           const deltaY = prev.top - current.top
 
           if (Math.abs(deltaX) > 0.5 || Math.abs(deltaY) > 0.5) {
-            btn.style.transform = `translate3d(${deltaX}px, ${deltaY}px, 0)`
+            const rx = Math.round(deltaX)
+            const ry = Math.round(deltaY)
+            btn.style.transform = `translate3d(${rx}px, ${ry}px, 0)`
             btn.style.transition = "none"
 
             requestAnimationFrame(() => {
@@ -349,6 +351,10 @@ export default function SkillSelector({
                 btn.removeEventListener("transitionend", onEnd)
               }
               btn.addEventListener("transitionend", onEnd)
+              setTimeout(() => {
+                btn.style.transform = ""
+                btn.style.transition = ""
+              }, 250)
             })
           }
         }
