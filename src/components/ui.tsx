@@ -16,6 +16,9 @@ import {
 } from "lucide-react"
 import { factors, score, type Profile, type Project } from "../data"
 import { useTindy } from "../store"
+import SkillIcon from "./onboarding/SkillIcon"
+
+export { SkillIcon }
 
 export function Button({
   children,
@@ -60,11 +63,23 @@ export function Badge({
 }) {
   return <span className={`badge ${tone}`}>{children}</span>
 }
-export function Chips({ items }: { items: string[] }) {
+export function Chips({
+  items,
+  showIcon = true,
+}: {
+  items: string[]
+  showIcon?: boolean
+}) {
+  const validItems = (items || []).filter(
+    (item) => typeof item === "string" && item.trim().length > 0,
+  )
   return (
     <div className="chips">
-      {items.map((item) => (
-        <span key={item}>{item}</span>
+      {validItems.map((item) => (
+        <span key={item}>
+          {showIcon && <SkillIcon name={item} size={13} />}
+          <span>{item}</span>
+        </span>
       ))}
     </div>
   )

@@ -2,6 +2,7 @@ import React from 'react';
 import { Clock, ArrowUpRight } from 'lucide-react';
 import { DiscoveryCandidate } from '../../types/discovery';
 import AiMatchBadge from '../common/AiMatchBadge';
+import SkillIcon from '../onboarding/SkillIcon';
 
 interface CandidateCardContentProps {
   candidate: DiscoveryCandidate;
@@ -103,13 +104,14 @@ export default function CandidateCardContent({
                 return (
                   <span
                     key={skill}
-                    className={`text-xs px-2 py-0.5 rounded font-medium border ${
+                    className={`text-xs px-2 py-0.5 rounded font-medium border inline-flex items-center gap-1.5 ${
                       isStrong
                         ? 'bg-slate-900 text-white border-slate-900'
                         : 'bg-slate-50 text-slate-700 border-slate-200'
                     }`}
                   >
-                    {skill}
+                    <SkillIcon name={skill} size={12} />
+                    <span>{skill}</span>
                   </span>
                 );
               })}

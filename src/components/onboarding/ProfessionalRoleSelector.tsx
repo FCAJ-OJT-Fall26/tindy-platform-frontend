@@ -1,5 +1,98 @@
 import { useEffect, useState } from "react"
-import { Check, Code2 } from "lucide-react"
+import {
+  Brain,
+  Briefcase,
+  Check,
+  Cloud,
+  Code2,
+  Database,
+  Gamepad2,
+  Infinity,
+  Layers,
+  Layout,
+  LineChart,
+  Palette,
+  Server,
+  Shield,
+  ShieldCheck,
+  Smartphone,
+} from "lucide-react"
+
+function getRoleIcon(name: string) {
+  const lower = name.toLowerCase()
+  if (lower.includes("backend")) return Server
+  if (lower.includes("frontend")) return Layout
+  if (lower.includes("full-stack") || lower.includes("fullstack")) return Layers
+  if (
+    lower.includes("ai") ||
+    lower.includes("machine learning") ||
+    lower.includes("intelligence") ||
+    lower.includes("llm")
+  ) {
+    return Brain
+  }
+  if (lower.includes("cloud")) return Cloud
+  if (
+    lower.includes("ui") ||
+    lower.includes("ux") ||
+    lower.includes("design")
+  ) {
+    return Palette
+  }
+  if (
+    lower.includes("mobile") ||
+    lower.includes("android") ||
+    lower.includes("ios") ||
+    lower.includes("flutter") ||
+    lower.includes("react native")
+  ) {
+    return Smartphone
+  }
+  if (
+    lower.includes("devops") ||
+    lower.includes("sre") ||
+    lower.includes("infrastructure")
+  ) {
+    return Infinity
+  }
+  if (
+    lower.includes("data") ||
+    lower.includes("database")
+  ) {
+    return Database
+  }
+  if (
+    lower.includes("qa") ||
+    lower.includes("quality") ||
+    lower.includes("test")
+  ) {
+    return ShieldCheck
+  }
+  if (
+    lower.includes("business") ||
+    lower.includes("analyst") ||
+    lower.includes("analytics")
+  ) {
+    return LineChart
+  }
+  if (
+    lower.includes("security") ||
+    lower.includes("cyber") ||
+    lower.includes("infosec")
+  ) {
+    return Shield
+  }
+  if (
+    lower.includes("product") ||
+    lower.includes("project") ||
+    lower.includes("scrum") ||
+    lower.includes("leader")
+  ) {
+    return Briefcase
+  }
+  if (lower.includes("game")) return Gamepad2
+  return Code2
+}
 import { getProfessionalRolesApi } from "../../services"
 import type { ProfessionalRole } from "../../types/catalog"
 import { requestErrorMessage } from "./catalogFeedback"
@@ -99,24 +192,30 @@ export default function ProfessionalRoleSelector({
           className="role-options catalog-role-options"
           aria-label="Preferred professional role"
         >
-          {roles.map((role) => (
-            <button
-              type="button"
-              key={role.professional_role_id}
-              aria-pressed={selectedId === role.professional_role_id}
-              className={
-                selectedId === role.professional_role_id ? "selected" : ""
-              }
-              onClick={() => onChange(role)}
-            >
-              <Code2 size={18} />
-              <span>
-                <strong>{role.name}</strong>
-                {role.description && <small>{role.description}</small>}
-              </span>
-              {selectedId === role.professional_role_id && <Check size={16} />}
-            </button>
-          ))}
+          {roles.map((role) => {
+            const Icon = getRoleIcon(role.name)
+            const isSelected = selectedId === role.professional_role_id
+            return (
+              <button
+                type="button"
+                key={role.professional_role_id}
+                aria-pressed={isSelected}
+                className={isSelected ? "selected" : ""}
+                onClick={() => onChange(role)}
+              >
+                <span className="role-icon-wrapper" aria-hidden="true">
+                  <Icon size={19} className="role-icon" />
+                </span>
+                <span>
+                  <strong>{role.name}</strong>
+                  {role.description && <small>{role.description}</small>}
+                </span>
+                {isSelected && (
+                  <Check size={16} className="role-check-indicator" strokeWidth={2.5} />
+                )}
+              </button>
+            )
+          })}
         </div>
       )}
       {!selectedId && roles.length > 0 && (

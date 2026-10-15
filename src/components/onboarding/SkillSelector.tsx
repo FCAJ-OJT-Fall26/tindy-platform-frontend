@@ -246,34 +246,110 @@ export default function SkillSelector({
     onValidityChange(valid)
   }, [valid, onValidityChange])
 
-  // Resolve names only; catalog requests never replace the user's selected IDs.
+  // Resolve names and IDs; preserve valid IDs while mapping existing profile skill names
   useEffect(() => {
-    if (catalogLoading || catalogError) return
+    if (catalogLoading || catalogError || allSkills.length === 0) return
     const names = new Map(
       allSkills.map((skill) => [skill.skill_id, skill.name]),
     )
-    if (
-      selected.some(
-        (skill) =>
-          names.has(skill.skill_id) && names.get(skill.skill_id) !== skill.name,
-      )
-    ) {
-      onChange(
-        selected.map((skill) => ({
-          ...skill,
-          name: names.get(skill.skill_id) ?? skill.name,
-        })),
-      )
+    const byName = new Map(
+      allSkills.map((skill) => [skill.name.toLowerCase().trim(), skill]),
+    )
+
+    let changed = false
+    const updated = selected.map((skill) => {
+      if (names.has(skill.skill_id)) {
+        const canonicalName = names.get(skill.skill_id)!
+        if (skill.name !== canonicalName) {
+          changed = true
+          return { ...skill, name: canonicalName }
+        }
+        return skill
+      }
+      const lookup = (skill.name || skill.skill_id).toLowerCase().trim()
+      if (byName.has(lookup)) {
+        const found = byName.get(lookup)!
+        changed = true
+        return { skill_id: found.skill_id, name: found.name }
+      }
+      return skill
+    })
+
+    if (changed) {
+      onChange(updated)
     }
   }, [allSkills, catalogLoading, catalogError, selected, onChange])
 
+  const [removingId, setRemovingId] = useState<string | null>(null)
+  const chipsContainerRef = useRef<HTMLDivElement>(null)
+  const prevChipPositionsRef = useRef<Map<string, { left: number; top: number }>>(
+    new Map(),
+  )
+
+  function removeSkill(skillId: string) {
+    if (removingId === skillId) return
+    setRemovingId(skillId)
+    setTimeout(() => {
+      onChange(selected.filter((item) => item.skill_id !== skillId))
+      setRemovingId(null)
+    }, 150)
+  }
+
   function toggle(skill: CatalogSkill) {
     if (selectedIds.has(skill.skill_id)) {
-      onChange(selected.filter((item) => item.skill_id !== skill.skill_id))
+      removeSkill(skill.skill_id)
     } else if (selected.length < 30) {
       onChange([...selected, skill])
     }
   }
+
+  // FLIP animation for selected chips: smoothly slide remaining chips together ("dồn lại giống stack")
+  useLayoutEffect(() => {
+    const container = chipsContainerRef.current
+    if (!container) return
+
+    const chipButtons = Array.from(
+      container.querySelectorAll<HTMLButtonElement>("[data-chip-id]"),
+    )
+    const prevPositions = prevChipPositionsRef.current
+    const currentPositions = new Map<string, { left: number; top: number }>()
+
+    chipButtons.forEach((btn) => {
+      const id = btn.getAttribute("data-chip-id")
+      if (id) {
+        const rect = btn.getBoundingClientRect()
+        currentPositions.set(id, { left: rect.left, top: rect.top })
+      }
+    })
+
+    if (prevPositions.size > 0) {
+      chipButtons.forEach((btn) => {
+        const id = btn.getAttribute("data-chip-id")
+        if (!id || id === removingId) return
+
+        const prev = prevPositions.get(id)
+        const current = currentPositions.get(id)
+
+        if (prev && current) {
+          const deltaX = prev.left - current.left
+          const deltaY = prev.top - current.top
+
+          if (Math.abs(deltaX) > 0.5 || Math.abs(deltaY) > 0.5) {
+            btn.style.transform = `translate3d(${deltaX}px, ${deltaY}px, 0)`
+            btn.style.transition = "none"
+
+            requestAnimationFrame(() => {
+              btn.style.transition =
+                "transform 0.3s cubic-bezier(0.2, 0.9, 0.3, 1)"
+              btn.style.transform = "translate3d(0, 0, 0)"
+            })
+          }
+        }
+      })
+    }
+
+    prevChipPositionsRef.current = currentPositions
+  }, [selected, removingId])
 
   return (
     <div className="skill-selector">
@@ -424,7 +500,7 @@ export default function SkillSelector({
           Choose 1–30 skills. Your selection stays as you explore categories.
         </p>
         {selected.length > 0 ? (
-          <div className="selected-skill-chips">
+          <div className="selected-skill-chips" ref={chipsContainerRef}>
             {selected.map((skill, index) => {
               const name =
                 activeSkills.get(skill.skill_id)?.name ||
@@ -434,19 +510,17 @@ export default function SkillSelector({
                 !catalogLoading &&
                 !catalogError &&
                 !activeSkills.has(skill.skill_id)
+              const isPoppingOut = removingId === skill.skill_id
               return (
                 <button
                   type="button"
                   key={skill.skill_id}
-                  className={inactive ? "unavailable" : ""}
+                  data-chip-id={skill.skill_id}
+                  className={`${inactive ? "unavailable" : ""} ${
+                    isPoppingOut ? "chip-popping-out" : ""
+                  }`.trim()}
                   aria-label={`Remove ${name}`}
-                  onClick={() =>
-                    onChange(
-                      selected.filter(
-                        (item) => item.skill_id !== skill.skill_id,
-                      ),
-                    )
-                  }
+                  onClick={() => removeSkill(skill.skill_id)}
                 >
                   <SkillIcon name={name} size={13} />
                   {name}

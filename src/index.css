@@ -269,6 +269,7 @@
   flex-wrap: wrap;
   gap: 8px;
   margin-top: 12px;
+  position: relative;
 }
 
 .selected-skill-chips button {
@@ -284,17 +285,57 @@
   text-align: left;
   overflow-wrap: anywhere;
   cursor: pointer;
-  transition: all 0.15s ease;
+  animation: chipDashOut 0.28s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  will-change: transform, opacity;
+  transition: background 0.15s ease, border-color 0.15s ease;
 }
 
-.selected-skill-chips button:hover {
+/* Dash out entrance animation when a skill is added */
+@keyframes chipDashOut {
+  0% {
+    opacity: 0;
+    transform: scale(0.6) translate3d(-18px, 0, 0);
+  }
+  65% {
+    opacity: 1;
+    transform: scale(1.08) translate3d(2px, 0, 0);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translate3d(0, 0, 0);
+  }
+}
+
+.selected-skill-chips button:hover:not(.chip-popping-out) {
   background: #e6edfc;
   border-color: #c5d7f8;
   transform: translateY(-1px);
 }
 
-.selected-skill-chips button:active {
+.selected-skill-chips button:active:not(.chip-popping-out) {
   transform: scale(0.97);
+}
+
+/* Pop up exit animation when a skill is removed */
+.selected-skill-chips button.chip-popping-out {
+  animation: chipPopUpExit 0.16s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
+  pointer-events: none;
+  z-index: 5;
+}
+
+@keyframes chipPopUpExit {
+  0% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+  45% {
+    opacity: 0.95;
+    transform: scale(1.18) translateY(-6px);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0.6) translateY(-14px);
+  }
 }
 
 .selected-skill-chips button.unavailable {
@@ -315,27 +356,152 @@
   line-height: 1.7;
 }
 
-.catalog-role-options>button {
-  background: var(--surface);
+/* Catalog Professional Roles: Layout, Monochrome Icons & Interactive Transitions */
+.catalog-role-options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
 }
 
-.catalog-role-options>button>span {
+.catalog-role-options > button {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  text-align: left;
+  cursor: pointer;
+  outline: none;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  transition: border-color 0.16s ease,
+              background-color 0.16s ease,
+              box-shadow 0.16s ease;
+}
+
+/* Hover: crisp, clear border & subtle surface highlight with zero blur */
+.catalog-role-options > button:hover:not(:disabled) {
+  border-color: #304fc5;
+  background: #ffffff;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.05);
+}
+
+.catalog-role-options > button:focus {
+  outline: none;
+}
+
+.catalog-role-options > button:focus-visible {
+  outline: 2px solid #304fc5;
+  outline-offset: 2px;
+}
+
+/* Active press */
+.catalog-role-options > button:active:not(:disabled) {
+  background: #f8fafc;
+  transition-duration: 0.08s;
+}
+
+/* Selected state: distinct blue border, accent ring & light blue tint with sharp text */
+.catalog-role-options > button.selected {
+  background: #f1f5fe;
+  border-color: #304fc5;
+  box-shadow: 0 0 0 1.5px #304fc5;
+}
+
+/* Role monochrome icon wrapper */
+.role-icon-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 7px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  color: #64748b;
+  flex-shrink: 0;
+  transition: color 0.16s ease,
+              background-color 0.16s ease,
+              border-color 0.16s ease,
+              transform 0.16s ease;
+}
+
+.catalog-role-options > button:hover .role-icon-wrapper {
+  color: #1e293b;
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+  transform: translateY(-1px);
+}
+
+.catalog-role-options > button.selected .role-icon-wrapper {
+  background: #eef2ff;
+  border-color: #c7d2fe;
+  color: #304fc5;
+}
+
+/* Role text */
+.catalog-role-options > button > span:not(.role-icon-wrapper):not(.role-check-indicator) {
   min-width: 0;
+  flex: 1;
 }
 
 .catalog-role-options strong {
   display: block;
   font-weight: 600;
   color: var(--ink);
-  font-size: 12px;
+  font-size: 13px;
+  line-height: 1.4;
+  transition: color 0.15s ease;
+}
+
+.catalog-role-options > button:hover strong {
+  color: #0f172a;
+}
+
+.catalog-role-options > button.selected strong {
+  color: #1e3a8a;
 }
 
 .catalog-role-options small {
   display: block;
   color: var(--muted);
   font-size: 11px;
-  line-height: 1.65;
-  margin-top: 5px;
+  line-height: 1.55;
+  margin-top: 4px;
+  transition: color 0.15s ease;
+}
+
+.catalog-role-options > button:hover small {
+  color: #475569;
+}
+
+/* Pop-in checkmark indicator */
+.role-check-indicator {
+  margin-left: auto;
+  color: #304fc5;
+  flex-shrink: 0;
+  animation: checkPopIn 0.22s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+@keyframes checkPopIn {
+  0% {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@media (max-width: 640px) {
+  .catalog-role-options {
+    grid-template-columns: 1fr;
+  }
 }
 
 .catalog-draft-error {
@@ -344,6 +510,62 @@
 
 .catalog-draft-error>.text-link {
   margin-left: 16px;
+}
+
+/* Onboarding Step Window & Content Transitions */
+.onboarding-panel {
+  position: relative;
+  overflow: hidden;
+  transition: min-height 0.35s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.3s ease, border-color 0.3s ease;
+}
+
+.onboarding-step-content {
+  will-change: transform, opacity;
+}
+
+.onboarding-step-content.step-slide-forward {
+  animation: onboardingSlideForward 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.onboarding-step-content.step-slide-backward {
+  animation: onboardingSlideBackward 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes onboardingSlideForward {
+  0% {
+    opacity: 0;
+    transform: translate3d(28px, 0, 0);
+  }
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes onboardingSlideBackward {
+  0% {
+    opacity: 0;
+    transform: translate3d(-28px, 0, 0);
+  }
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+/* Sidebar step circle check pop animation */
+.onboarding-layout li > span {
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.onboarding-layout li.complete > span {
+  animation: stepCheckPop 0.32s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes stepCheckPop {
+  0% { transform: scale(0.8); }
+  50% { transform: scale(1.15); }
+  100% { transform: scale(1); }
 }
 
 @media(max-width:1000px) {
@@ -1112,12 +1334,24 @@ main {
 
 /* 13. Chips & Badges */
 .chips > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  vertical-align: middle;
   transition: transform 0.18s ease, background-color 0.18s ease, border-color 0.18s ease;
 }
 
+.chips > span .skill-brand-icon {
+  flex-shrink: 0;
+  display: inline-block;
+  vertical-align: middle;
+  border-radius: 2px;
+}
+
 .chips > span:hover {
-  transform: translateY(-1px);
+  transform: translateY(-1.5px);
   border-color: #cbd7e6;
+  background-color: #edf2f8;
 }
 
 .badge {
@@ -2411,6 +2645,24 @@ button.text-link {
   font-weight: 600;
   box-shadow: 0 2px 8px rgba(53, 83, 181, 0.25);
 }
+
+/* Profile Skill Section (Standard Catalog) */
+.profile-skill-section {
+  margin: 24px 0 16px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border);
+}
+
+.profile-skill-section h3 {
+  font-size: 15px;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.profile-skill-section .skill-selector {
+  margin-top: 14px;
+}
+
 
 
 

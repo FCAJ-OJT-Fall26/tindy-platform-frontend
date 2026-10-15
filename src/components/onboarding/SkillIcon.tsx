@@ -635,6 +635,127 @@ export const SkillIcon: React.FC<SkillIconProps> = ({
     )
   }
 
+  // 48. FastAPI
+  if (norm.includes("fastapi")) {
+    return (
+      <svg {...svgProps}>
+        <circle cx="12" cy="12" r="10" fill="#059669" />
+        <path d="M13 5L7 13h5l-1 6 6-8h-5l1-6z" fill="#FFFFFF" />
+      </svg>
+    )
+  }
+
+  // 49. OpenAI / LLM
+  if (norm.includes("openai") || norm.includes("chatgpt") || norm.includes("llm")) {
+    return (
+      <svg {...svgProps}>
+        <circle cx="12" cy="12" r="10" fill="#10A37F" />
+        <path
+          d="M12 7a5 5 0 014.33 2.5l-1.3.75A3.5 3.5 0 0012 8.5v-1.5zm3.75 3.25A5 5 0 0117 12h-1.5a3.5 3.5 0 00-.5-1.75l1.25-.75zm.75 4.75A5 5 0 0112 17v-1.5a3.5 3.5 0 002.25-1.25l1.25.75zM12 17a5 5 0 01-4.33-2.5l1.3-.75A3.5 3.5 0 0012 15.5v1.5zm-3.75-3.25A5 5 0 017 12h1.5a3.5 3.5 0 00.5 1.75l-1.25.75zM7.5 9a5 5 0 014.5-2v1.5a3.5 3.5 0 00-2.25 1.25L7.5 9z"
+          fill="#FFFFFF"
+        />
+        <circle cx="12" cy="12" r="2" fill="#FFFFFF" />
+      </svg>
+    )
+  }
+
+  // 50. Supabase
+  if (norm.includes("supabase")) {
+    return (
+      <svg {...svgProps}>
+        <rect width="24" height="24" rx="4" fill="#1E293B" />
+        <path
+          d="M13.2 4.5L5.5 14.2a.5.5 0 00.4.8h5.3v4.5l7.7-9.7a.5.5 0 00-.4-.8h-5.3V4.5z"
+          fill="#3ECF8E"
+        />
+      </svg>
+    )
+  }
+
+  // 51. Solidity / Web3
+  if (norm.includes("solidity") || norm.includes("web3") || norm.includes("ethereum")) {
+    return (
+      <svg {...svgProps}>
+        <polygon points="12,3 5.5,12 12,15.5 18.5,12" fill="#627EEA" />
+        <polygon points="12,16.5 5.5,13 12,21 18.5,13" fill="#4559A4" />
+      </svg>
+    )
+  }
+
+  // 52. C++ / C
+  if (norm === "c++" || norm === "cpp" || norm === "c") {
+    return (
+      <svg {...svgProps}>
+        <rect width="24" height="24" rx="4" fill="#00599C" />
+        <path
+          d="M10 8.5a3.5 3.5 0 00-3.5 3.5 3.5 3.5 0 003.5 3.5c1.2 0 2.2-.6 2.8-1.5l-1.2-.8c-.4.5-1 .8-1.6.8-1.4 0-2.3-1-2.3-2s.9-2 2.3-2c.6 0 1.2.3 1.6.8l1.2-.8c-.6-.9-1.6-1.5-2.8-1.5zm4 3h1v-1h1v1h1v1h-1v1h-1v-1h-1v-1zm4.5 0h1v-1h1v1h1v1h-1v1h-1v-1h-1v-1z"
+          fill="#FFFFFF"
+        />
+      </svg>
+    )
+  }
+
+  // 53. Bootstrap
+  if (norm.includes("bootstrap")) {
+    return (
+      <svg {...svgProps}>
+        <rect width="24" height="24" rx="5" fill="#7952B3" />
+        <path
+          d="M8.5 7.5h4.2c1.4 0 2.3.7 2.3 1.8 0 .8-.5 1.4-1.3 1.6 1 .2 1.7.9 1.7 1.9 0 1.3-1.1 2.2-2.7 2.2H8.5V7.5zm2.2 3.1h1.7c.6 0 1-.3 1-.8s-.4-.8-1-.8h-1.7v1.6zm0 2.9h2c.7 0 1.1-.3 1.1-.9s-.4-.9-1.1-.9h-2v1.8z"
+          fill="#FFFFFF"
+        />
+      </svg>
+    )
+  }
+
+  // 54. Excel / Spreadsheet
+  if (norm.includes("excel") || norm.includes("spreadsheet")) {
+    return (
+      <svg {...svgProps}>
+        <rect width="24" height="24" rx="4" fill="#107C41" />
+        <path
+          d="M8 8l3 4-3 4h2l2-2.8 2 2.8h2l-3-4 3-4h-2l-2 2.8L10 8H8z"
+          fill="#FFFFFF"
+        />
+      </svg>
+    )
+  }
+
+  // 55. Power BI
+  if (norm.includes("power bi") || norm.includes("powerbi")) {
+    return (
+      <svg {...svgProps}>
+        <rect width="24" height="24" rx="4" fill="#292929" />
+        <rect x="6" y="13" width="3" height="7" rx="1" fill="#F2C811" />
+        <rect x="10.5" y="9" width="3" height="11" rx="1" fill="#F2C811" />
+        <rect x="15" y="5" width="3" height="15" rx="1" fill="#F2C811" />
+      </svg>
+    )
+  }
+
+  // 56. Google Cloud / GCP
+  if (norm.includes("gcp") || norm.includes("google cloud")) {
+    return (
+      <svg {...svgProps}>
+        <path
+          d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96z"
+          fill="#4285F4"
+        />
+      </svg>
+    )
+  }
+
+  // 57. Firebase
+  if (norm.includes("firebase")) {
+    return (
+      <svg {...svgProps}>
+        <path d="M4.5 17.5L7 3.5l4 7.5-6.5 6.5z" fill="#FFA000" />
+        <path d="M4.5 17.5l8 4.5 7-12-15 7.5z" fill="#F57C00" />
+        <path d="M12.5 22l7-4.5L16.5 6 12.5 22z" fill="#FFCA28" />
+      </svg>
+    )
+  }
+
   // Generic keyword fallbacks:
   // Database fallback
   if (norm.includes("database") || norm.includes("db") || norm.includes("sql")) {

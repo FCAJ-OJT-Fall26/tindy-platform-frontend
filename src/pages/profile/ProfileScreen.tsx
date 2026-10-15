@@ -24,6 +24,8 @@ import {
 } from "../../components/ui"
 import type { Profile } from "../../data"
 import { useTindy } from "../../store"
+import SkillSelector from "../../components/onboarding/SkillSelector"
+import type { SelectedSkill } from "../../types/catalog"
 
 function SectionHeading({
   title,
@@ -44,10 +46,13 @@ export default function ProfileScreen() {
   const { profile, setProfile, notify } = useTindy()
   const [edit, setEdit] = useState(false)
   const [draft, setDraft] = useState(profile)
+  const [selectedSkills, setSelectedSkills] = useState<SelectedSkill[]>(() =>
+    profile.skills.map((name) => ({ skill_id: name, name })),
+  )
+  const [skillsValid, setSkillsValid] = useState(true)
   const [file, setFile] = useState("AWS Cloud Practitioner.pdf")
   const [photo, setPhoto] = useState("")
   const [experience, setExperience] = useState(false)
-  const [skill, setSkill] = useState("")
   const field = (
     label: string,
     key: keyof Omit<Profile, "skills">,
@@ -93,6 +98,9 @@ export default function ProfileScreen() {
             <Button
               onClick={() => {
                 setDraft(profile)
+                setSelectedSkills(
+                  profile.skills.map((name) => ({ skill_id: name, name })),
+                )
                 setEdit(!edit)
               }}
             >
@@ -175,7 +183,10 @@ export default function ProfileScreen() {
           className="panel profile-edit"
           onSubmit={(event) => {
             event.preventDefault()
-            setProfile(draft)
+            const finalSkills = selectedSkills
+              .map((s) => s.name || s.skill_id)
+              .filter(Boolean) as string[]
+            setProfile({ ...draft, skills: finalSkills })
             setEdit(false)
             notify("Profile updated · Ready for better matches")
           }}
@@ -194,49 +205,18 @@ export default function ProfileScreen() {
           {field("Project experience", "experience", true)}
           {field("Learning goals", "goals", true)}
           {field("Technologies I want to learn", "technologies")}
-          <h3>Technical skills</h3>
-          <div className="editable-chips">
-            {draft.skills.map((item) => (
-              <span key={item}>
-                {item}
-                <button
-                  type="button"
-                  aria-label={`Remove ${item}`}
-                  onClick={() =>
-                    setDraft({
-                      ...draft,
-                      skills: draft.skills.filter((value) => value !== item),
-                    })
-                  }
-                >
-                  <X size={12} />
-                </button>
-              </span>
-            ))}
-          </div>
-          <div className="inline-input">
-            <input
-              placeholder="Add a skill"
-              value={skill}
-              onChange={(event) => setSkill(event.target.value)}
+          <div className="profile-skill-section">
+            <h3>Technical skills</h3>
+            <p className="muted" style={{ marginBottom: "12px", fontSize: "11px" }}>
+              Choose 1–30 skills from the standard catalog to improve team and project recommendations.
+            </p>
+            <SkillSelector
+              selected={selectedSkills}
+              onChange={setSelectedSkills}
+              onValidityChange={setSkillsValid}
             />
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={() => {
-                if (skill.trim()) {
-                  setDraft({
-                    ...draft,
-                    skills: [...new Set([...draft.skills, skill.trim()])],
-                  })
-                  setSkill("")
-                }
-              }}
-            >
-              Add
-            </Button>
           </div>
-          <Button>
+          <Button disabled={!skillsValid || selectedSkills.length === 0} style={{ marginTop: "24px" }}>
             Save profile <Check size={16} />
           </Button>
         </form>

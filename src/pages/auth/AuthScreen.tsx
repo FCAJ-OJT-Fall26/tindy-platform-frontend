@@ -308,7 +308,7 @@ export function AuthScreen() {
               try {
                 if (displayRegister) {
                   const displayName = String(formData.get("name") || "").trim()
-                  const university = profile.university || "FPT University"
+                  const university = String(formData.get("university") || "FPT University").trim()
                   const email = String(formData.get("email") || "").trim()
                   const acceptTerms = formData.get("accept_terms") === "on"
 
@@ -384,6 +384,12 @@ export function AuthScreen() {
                     {fieldErrors.display_name[0]}
                   </span>
                 )}
+                <input
+                  name="university"
+                  style={{ display: "none" }}
+                  tabIndex={-1}
+                  aria-hidden="true"
+                />
               </label>
             )}
 

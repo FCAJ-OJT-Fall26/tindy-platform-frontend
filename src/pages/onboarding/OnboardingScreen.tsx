@@ -32,12 +32,19 @@ export function OnboardingScreen() {
   const { setProfile, setAuthUser } = useTindy()
   const navigate = useNavigate()
   const [step, setStep] = useState(0)
+  const [direction, setDirection] = useState<"forward" | "backward">("forward")
   const [loading, setLoading] = useState(false)
   const [initialLoading, setInitialLoading] = useState(true)
   const [completedSteps, setCompletedSteps] = useState<number[]>([])
   const [errorMessage, setErrorMessage] = useState("")
   const [draftError, setDraftError] = useState("")
   const [draftRetry, setDraftRetry] = useState(0)
+
+  const goToStep = (targetStep: number) => {
+    setDirection(targetStep >= step ? "forward" : "backward")
+    setStep(targetStep)
+    setErrorMessage("")
+  }
 
   // Onboarding form state according to API contract
   const [username, setUsername] = useState("")
@@ -168,7 +175,7 @@ export function OnboardingScreen() {
           university,
         }))
         setAuthUser(prev => prev ? { ...prev, username: username.trim(), display_name: displayName.trim(), university: university.trim() } : null)
-        setStep(res.next_step ? res.next_step - 1 : 1)
+        goToStep(res.next_step ? res.next_step - 1 : 1)
       } else if (step === 1) {
         // Step 2
         const selectedSkillIds = [...new Set(selectedSkills.map(skill => skill.skill_id))]
@@ -181,7 +188,7 @@ export function OnboardingScreen() {
         })
         setCompletedSteps(res.completed_steps)
         setProfile((prev) => ({ ...prev, skills: selectedSkills.flatMap(skill => skill.name ? [skill.name] : []) }))
-        setStep(res.next_step ? res.next_step - 1 : 2)
+        goToStep(res.next_step ? res.next_step - 1 : 2)
       } else if (step === 2) {
         // Step 3
         if (!selectedRoleId || !roleValid) {
@@ -193,7 +200,7 @@ export function OnboardingScreen() {
         })
         setCompletedSteps(res.completed_steps)
         setProfile((prev) => ({ ...prev, role: selectedRoleName ?? "" }))
-        setStep(res.next_step ? res.next_step - 1 : 3)
+        goToStep(res.next_step ? res.next_step - 1 : 3)
       } else if (step === 3) {
         // Step 4
         const res = await saveOnboardingStep4Api({
@@ -206,7 +213,7 @@ export function OnboardingScreen() {
           interests: professionalInterests,
           goals: learningGoals,
         }))
-        setStep(res.next_step ? res.next_step - 1 : 4)
+        goToStep(res.next_step ? res.next_step - 1 : 4)
       } else if (step === 4) {
         // Step 5
         const hours = Math.max(1, Math.min(40, Number(availableHours) || 10))
@@ -215,7 +222,7 @@ export function OnboardingScreen() {
         })
         setCompletedSteps(res.completed_steps)
         setProfile((prev) => ({ ...prev, hours: String(hours) }))
-        setStep(res.next_step ? res.next_step - 1 : 5)
+        goToStep(res.next_step ? res.next_step - 1 : 5)
       } else if (step === 5) {
         // Step 6
         const res = await saveOnboardingStep6Api({
@@ -228,7 +235,7 @@ export function OnboardingScreen() {
           experience: previousProjects,
           technologies: technologiesToLearn,
         }))
-        setStep(res.next_step ? res.next_step - 1 : 6)
+        goToStep(res.next_step ? res.next_step - 1 : 6)
       } else if (step === 6) {
         // Step 7
         const res = await saveOnboardingStep7Api({
@@ -242,7 +249,7 @@ export function OnboardingScreen() {
           portfolio: websiteUrl,
         }))
 
-        setStep(res.next_step ? res.next_step - 1 : 7)
+        goToStep(res.next_step ? res.next_step - 1 : 7)
       } else if (step === 7) {
         // Step 8 Complete
         if (!confirmed) {
@@ -343,8 +350,7 @@ export function OnboardingScreen() {
                   onClick={() => {
                     // Cho phép nhảy về các bước đã lưu
                     if (!loading && (isStepDone || index <= step)) {
-                      setStep(index)
-                      setErrorMessage("")
+                      goToStep(index)
                     }
                   }}
                   style={{ cursor: isStepDone || index <= step ? "pointer" : "default" }}
@@ -364,7 +370,16 @@ export function OnboardingScreen() {
           <div className="progress">
             <span style={{ width: `${((step + 1) / 8) * 100}%` }} />
           </div>
-          <h1>{steps[step]}</h1>
+
+          <div
+            key={step}
+            className={`onboarding-step-content ${
+              direction === "forward"
+                ? "step-slide-forward"
+                : "step-slide-backward"
+            }`}
+          >
+            <h1>{steps[step]}</h1>
           <p className="muted">
             {
               [
@@ -569,8 +584,7 @@ export function OnboardingScreen() {
                 type="button"
                 disabled={step === 0 || loading}
                 onClick={() => {
-                  setStep(step - 1)
-                  setErrorMessage("")
+                  goToStep(step - 1)
                 }}
               >
                 <ArrowLeft size={15} />
@@ -586,6 +600,7 @@ export function OnboardingScreen() {
               </Button>
             </div>
           </form>
+          </div>
         </section>
       </div>
     </div>

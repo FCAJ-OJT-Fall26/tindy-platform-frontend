@@ -3,6 +3,7 @@ import { X, Clock, Bookmark, ArrowLeft, Heart, Star } from 'lucide-react';
 import { DiscoveryProject } from '../../types/discovery';
 import AiMatchBadge from '../common/AiMatchBadge';
 import FunnelStatusTracker from '../common/FunnelStatusTracker';
+import SkillIcon from '../onboarding/SkillIcon';
 
 interface ProjectDetailModalProps {
   project: DiscoveryProject | null;
@@ -153,9 +154,10 @@ export default function ProjectDetailModal({
                   {(project.skills || []).map((skill) => (
                     <span
                       key={skill}
-                      className="text-xs px-2.5 py-0.5 rounded bg-slate-900 text-white font-medium"
+                      className="text-xs px-2.5 py-0.5 rounded bg-slate-900 text-white font-medium inline-flex items-center gap-1.5"
                     >
-                      {skill}
+                      <SkillIcon name={skill} size={13} />
+                      <span>{skill}</span>
                     </span>
                   ))}
                 </div>
@@ -170,9 +172,10 @@ export default function ProjectDetailModal({
                     {(project.niceToHave || project.niceToHaveSkills || []).map((skill) => (
                       <span
                         key={skill}
-                        className="text-xs px-2.5 py-0.5 rounded bg-white text-slate-700 border border-slate-200 font-medium"
+                        className="text-xs px-2.5 py-0.5 rounded bg-white text-slate-700 border border-slate-200 font-medium inline-flex items-center gap-1.5"
                       >
-                        {skill}
+                        <SkillIcon name={skill} size={13} />
+                        <span>{skill}</span>
                       </span>
                     ))}
                   </div>

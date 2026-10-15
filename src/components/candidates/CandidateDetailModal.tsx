@@ -3,6 +3,7 @@ import { X, Clock, Bookmark, ArrowLeft, Star, Check } from 'lucide-react';
 import { DiscoveryCandidate } from '../../types/discovery';
 import AiMatchBadge from '../common/AiMatchBadge';
 import FunnelStatusTracker from '../common/FunnelStatusTracker';
+import SkillIcon from '../onboarding/SkillIcon';
 
 interface CandidateDetailModalProps {
   candidate: DiscoveryCandidate | null;
@@ -147,9 +148,10 @@ export default function CandidateDetailModal({
                 {candidate.skills.map((skill) => (
                   <span
                     key={skill}
-                    className="text-xs px-2.5 py-1 rounded bg-slate-900 text-white font-medium"
+                    className="text-xs px-2.5 py-1 rounded bg-slate-900 text-white font-medium inline-flex items-center gap-1.5"
                   >
-                    {skill}
+                    <SkillIcon name={skill} size={13} />
+                    <span>{skill}</span>
                   </span>
                 ))}
               </div>
