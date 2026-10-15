@@ -1,4 +1,4 @@
-import type { ApiProblemDetails } from '../types/auth'
+import type { ApiProblemDetails, ApiResponse } from '../types/auth'
 
 const TOKEN_KEY = 'tindy_access_token'
 
@@ -56,6 +56,36 @@ interface RequestOptions extends RequestInit {
   requiresAuth?: boolean
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
+function isEnvelope<T>(value: unknown): value is ApiResponse<T> {
+  return isRecord(value) && typeof value.success === 'boolean' && typeof value.message === 'string' && 'data' in value
+}
+
+function parseProblem(value: unknown, status: number, title: string): ApiProblemDetails {
+  if (!isRecord(value)) {
+    return { status, title, detail: typeof value === 'string' ? value : 'An unexpected error occurred.' }
+  }
+  const errors: Record<string, string[]> = {}
+  if (isRecord(value.errors)) {
+    for (const [field, messages] of Object.entries(value.errors)) {
+      if (Array.isArray(messages)) errors[field] = messages.filter((message): message is string => typeof message === 'string')
+    }
+  }
+  return {
+    status,
+    title: typeof value.title === 'string' ? value.title : title,
+    detail: typeof value.detail === 'string' ? value.detail : undefined,
+    instance: typeof value.instance === 'string' ? value.instance : undefined,
+    error_code: typeof value.error_code === 'string' ? value.error_code : undefined,
+    traceId: typeof value.traceId === 'string' ? value.traceId : undefined,
+    errors: Object.keys(errors).length ? errors : undefined,
+    missing_steps: Array.isArray(value.missing_steps) ? value.missing_steps.filter((step): step is number => typeof step === 'number') : undefined,
+  }
+}
+
 /**
  * Standard fetch wrapper handling:
  * - Content-Type: application/json
@@ -66,7 +96,7 @@ interface RequestOptions extends RequestInit {
 export async function apiRequest<T>(
   endpoint: string,
   options: RequestOptions = {}
-): Promise<{ success: boolean; message: string; data: T }> {
+): Promise<ApiResponse<T>> {
   const { requiresAuth = true, headers: customHeaders, ...rest } = options
 
   const headers = new Headers(customHeaders || {})
@@ -97,7 +127,7 @@ export async function apiRequest<T>(
   const contentType = response.headers.get('content-type') || ''
   const isJson = contentType.includes('application/json') || contentType.includes('problem+json')
 
-  let responseData: any = null
+  let responseData: unknown = null
   if (isJson) {
     try {
       responseData = await response.json()
@@ -110,13 +140,7 @@ export async function apiRequest<T>(
 
   if (!response.ok) {
     // Backend returns ProblemDetails
-    const problem: ApiProblemDetails = typeof responseData === 'object' && responseData !== null
-      ? responseData
-      : {
-          status: response.status,
-          title: response.statusText,
-          detail: typeof responseData === 'string' ? responseData : 'An unexpected error occurred.',
-        }
+    const problem = parseProblem(responseData, response.status, response.statusText)
 
     // Auto-clean token on 401 AUTH_UNAUTHORIZED
     if (response.status === 401 && requiresAuth) {
@@ -126,6 +150,12 @@ export async function apiRequest<T>(
     throw new ApiError(response.status, problem)
   }
 
-  // Response matches { success: boolean, message: string, data: T }
+  // A failed or malformed envelope must not advance onboarding as a success.
+  if (!isEnvelope<T>(responseData)) {
+    throw new ApiError(response.status, { status: response.status, title: 'Invalid server response. Please try again.' })
+  }
+  if (!responseData.success) {
+    throw new ApiError(response.status, { ...parseProblem(responseData, response.status, 'Request failed'), detail: responseData.message })
+  }
   return responseData
 }
