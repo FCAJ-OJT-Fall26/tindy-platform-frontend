@@ -51,13 +51,21 @@ export function OnboardingScreen() {
     const content = contentRef.current
     if (!panel || !content) return
 
+    // Capture in-flight dimensions if a transition was interrupted by rapid interaction
+    let prevWidth: number
+    let prevHeight: number
+    const prev = prevRectRef.current
+
     if (morphTimerRef.current !== null) {
       window.clearTimeout(morphTimerRef.current)
       morphTimerRef.current = null
-    }
-
-    const prev = prevRectRef.current
-    if (!prev) {
+      const currentRect = panel.getBoundingClientRect()
+      prevWidth = currentRect.width
+      prevHeight = currentRect.height
+    } else if (prev) {
+      prevWidth = prev.width
+      prevHeight = prev.height
+    } else {
       prevRectRef.current = {
         width: panel.offsetWidth,
         height: panel.offsetHeight,
@@ -66,38 +74,55 @@ export function OnboardingScreen() {
       return
     }
 
-    if (prev.step === step) return
+    if (prev && prev.step === step) return
 
-    // Calculate destination container and content width before starting the transition
-    const isDestCatalog = step === 1
-    const windowW = window.innerWidth
-    let targetWidth: number
-
-    if (windowW <= 760) {
-      targetWidth = panel.offsetWidth
-    } else if (windowW <= 1000) {
-      const asideW = isDestCatalog ? 200 : 250
-      const gap = isDestCatalog ? 25 : 40
-      const avail = Math.min(windowW - 60, isDestCatalog ? 1200 : 1050)
-      targetWidth = Math.max(300, avail - asideW - gap)
-    } else {
-      const asideW = isDestCatalog ? 250 : 290
-      const gap = isDestCatalog ? 40 : 65
-      const avail = Math.min(windowW - 60, isDestCatalog ? 1200 : 1050)
-      targetWidth = Math.max(300, avail - asideW - gap)
+    // Check prefers-reduced-motion
+    const prefersReduced = typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    if (prefersReduced) {
+      panel.style.width = ""
+      panel.style.height = ""
+      panel.style.transition = ""
+      content.style.width = ""
+      prevRectRef.current = {
+        width: panel.offsetWidth,
+        height: panel.offsetHeight,
+        step,
+      }
+      return
     }
 
-    const targetContentWidth = targetWidth - 70 // 35px padding on each side
+    // Determine destination layout dimensions directly from the DOM layout
+    const layout = panel.parentElement
+    let targetWidth: number
+    let targetHeight: number
+    let targetContentWidth: number
 
-    // Pre-arrange destination content at its exact destination width to measure natural height
-    panel.style.transition = "none"
-    panel.style.width = `${targetWidth}px`
-    panel.style.height = ""
-    content.style.width = `${targetContentWidth}px`
+    if (layout) {
+      const origLayoutTransition = layout.style.transition
+      layout.style.transition = "none"
+      panel.style.transition = "none"
+      panel.style.width = ""
+      panel.style.height = ""
+      content.style.width = ""
 
-    const targetHeight = panel.offsetHeight
-    const prevWidth = prev.width
-    const prevHeight = prev.height
+      // Read natural destination container width
+      targetWidth = panel.offsetWidth
+      const panelStyle = window.getComputedStyle(panel)
+      const padLeft = parseFloat(panelStyle.paddingLeft || "0")
+      const padRight = parseFloat(panelStyle.paddingRight || "0")
+      targetContentWidth = Math.max(0, targetWidth - (padLeft + padRight))
+
+      // Pre-arrange content at destination width to measure natural destination height
+      content.style.width = `${targetContentWidth}px`
+      targetHeight = panel.offsetHeight
+
+      layout.style.transition = origLayoutTransition
+    } else {
+      targetWidth = panel.offsetWidth
+      targetContentWidth = targetWidth - 70
+      content.style.width = `${targetContentWidth}px`
+      targetHeight = panel.offsetHeight
+    }
 
     const widthDiff = Math.abs(prevWidth - targetWidth)
     const heightDiff = Math.abs(prevHeight - targetHeight)
@@ -129,14 +154,19 @@ export function OnboardingScreen() {
         }
       }
 
+      let endedCount = 0
+      const propertiesToWait = widthDiff > 2 && heightDiff > 2 ? 2 : 1
       const onEnd = (e: TransitionEvent) => {
         if (e.target === panel && (e.propertyName === "height" || e.propertyName === "width")) {
-          panel.removeEventListener("transitionend", onEnd)
-          cleanup()
+          endedCount++
+          if (endedCount >= propertiesToWait) {
+            panel.removeEventListener("transitionend", onEnd)
+            cleanup()
+          }
         }
       }
       panel.addEventListener("transitionend", onEnd)
-      morphTimerRef.current = window.setTimeout(cleanup, 500)
+      morphTimerRef.current = window.setTimeout(cleanup, 520)
     } else {
       panel.style.width = ""
       panel.style.height = ""
