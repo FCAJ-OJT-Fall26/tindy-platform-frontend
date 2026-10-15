@@ -44,9 +44,9 @@ export default function MobileMenuDrawer({ isOpen, onClose }: MobileMenuDrawerPr
           </span>
           {navItems.map(item => (
             <NavLink
-              key={item.path}
-              to={item.path}
-              end={item.path === '/'}
+              key={item.to}
+              to={item.to}
+              end={item.to === '/'}
               onClick={onClose}
               className={({ isActive }) =>
                 `flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs font-medium transition-colors ${

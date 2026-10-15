@@ -2,9 +2,18 @@ import { createContext, useContext, useState, useEffect, type ReactNode } from "
 import {
   initialProfile,
   initialProjects,
+  initialCandidates,
   type Profile,
   type Project,
 } from "./data"
+
+export {
+  initialProfile,
+  initialProjects,
+  initialCandidates,
+  type Profile,
+  type Project,
+}
 import type { AuthUser } from "./types/auth"
 import { getStoredToken, clearStoredToken } from "./services/apiClient"
 import { getMeApi, logoutApi } from "./services/auth.service"
@@ -138,6 +147,7 @@ function useAppState() {
     projects,
     setProjects,
     saved,
+    setSaved,
     toggleSave,
     interested,
     setInterested,

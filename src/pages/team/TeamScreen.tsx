@@ -1,93 +1,141 @@
-import React, { useState } from 'react';
-import { Plus } from 'lucide-react';
+import { useState } from "react"
+import { Link } from "react-router"
+import { MessageSquare, Plus, ArrowRight, Send } from "lucide-react"
+import { useTindy } from "../../store"
+import {
+  PageHeader,
+  SectionHeading,
+  Button,
+  Avatar,
+  Badge,
+  Modal,
+} from "../../components/ui"
 
-interface TeamScreenProps {
-  onOpenInviteModal: () => void;
-  onOpenPositionModal: () => void;
-  onNavigateMessages: () => void;
-  onNotify: (text: string) => void;
-}
-
-export default function TeamScreen({
-  onOpenInviteModal,
-  onOpenPositionModal,
-  onNavigateMessages,
-  onNotify,
-}: TeamScreenProps) {
-  const [announcements, setAnnouncements] = useState(false);
-  const [updateText, setUpdateText] = useState('');
-
-  const members = [
-    'Jamie Le · Project Lead',
-    'Alex Le · Frontend Developer',
-    'An Nguyen · Backend Developer',
-    'Kim Tran · UI/UX Designer'
-  ];
-
-  const handlePost = () => {
-    if (!updateText.trim()) return;
-    setAnnouncements(true);
-    setUpdateText('');
-    onNotify('Announcement published to EcoTrack roster');
-  };
+export function TeamScreen() {
+  const { profile, notify } = useTindy()
+  const [announcement, setAnnouncement] = useState("")
+  const [posts, setPosts] = useState([
+    "Welcome to EcoTrack! Our kickoff is Friday at 5 PM. Bring your ideas.",
+  ])
+  const [invite, setInvite] = useState(false)
+  const [team, setTeam] = useState([
+    "Jamie Le",
+    profile.name,
+    "An Hoang",
+    "Linh Tran",
+  ])
 
   return (
     <>
-      <div className="page-heading">
-        <div>
-          <div className="eyebrow">ACADEMIC PROJECT DISCOVERY & COLLABORATION</div>
-          <h1>EcoTrack Team Workspace<span className="heading-dot">.</span></h1>
-          <p>Collaborative milestones, sprint membership, and recruitment positions.</p>
-        </div>
-      </div>
-
-      <div className="two-panels">
+      <PageHeader
+        eyebrow="TEAM WORKSPACE"
+        title="EcoTrack"
+        description="A shared space for the people building a greener future."
+        action={
+          <Link
+            className="btn btn-primary"
+            to="/messages?conversation=EcoTrack%20team"
+          >
+            <MessageSquare size={16} />
+            Open team chat
+          </Link>
+        }
+      />
+      <div className="two-column">
         <section className="panel">
-          <h2>Team Members</h2>
-          {members.map(person => (
-            <div className="file-row" key={person}>
-              <span>{person}</span>
-              <span className="soft-badge">ACTIVE</span>
+          <SectionHeading
+            title="Your team"
+            action={
+              <Button variant="secondary" onClick={() => setInvite(true)}>
+                <Plus size={14} />
+                Invite
+              </Button>
+            }
+          />
+          {team.map((person, index) => (
+            <div className="team-person" key={person}>
+              <Avatar name={person} color={index === 0 ? "green" : "neutral"} />
+              <div>
+                <strong>{person}</strong>
+                <p>
+                  {index === 0
+                    ? "Project leader"
+                    : index === 1
+                      ? "Backend Developer"
+                      : index === 2
+                        ? "AI Engineer"
+                        : "Frontend Developer"}
+                </p>
+              </div>
+              <Badge tone="success">ACTIVE</Badge>
             </div>
           ))}
-          <button className="button primary mt-4" onClick={onOpenInviteModal}>
-            <Plus size={15} />
-            <span>Invite Teammate</span>
-          </button>
-          <h3 className="spaced">Open Recruitment Roles</h3>
-          <div className="file-row">
-            <span>Frontend Developer</span>
-            <span className="text-xs text-slate-500">1 open position</span>
-          </div>
-          <button className="button outline text-xs" onClick={onOpenPositionModal}>
-            Add Position
-          </button>
+          <Link to="/leader" className="text-link spaced">
+            Leader workspace <ArrowRight size={14} />
+          </Link>
         </section>
-
         <section className="panel">
-          <h2>Sprint Announcements</h2>
-          <p className="text-xs text-slate-600">Sprint kickoff meeting scheduled for Friday at 5:00 PM UTC.</p>
-          {announcements && (
-            <p className="text-xs text-slate-900 bg-slate-100 p-2 rounded border border-slate-200">
-              Announcement successfully published to team members.
-            </p>
-          )}
-          <textarea
-            placeholder="Publish sprint update or milestone notes to team..."
-            rows={4}
-            value={updateText}
-            onChange={e => setUpdateText(e.target.value)}
-          />
-          <div className="flex gap-2 mt-3">
-            <button className="button primary text-xs" onClick={handlePost}>
-              Post Announcement
-            </button>
-            <button className="button outline text-xs" onClick={onNavigateMessages}>
-              <span>Open Team Chat</span>
-            </button>
-          </div>
+          <h2>Team announcements</h2>
+          {posts.map((post, index) => (
+            <div className="announcement" key={index}>
+              <Badge tone="blue">TEAM UPDATE</Badge>
+              <p>{post}</p>
+              <small>Published to your team</small>
+            </div>
+          ))}
+          <form
+            onSubmit={(event) => {
+              event.preventDefault()
+              if (announcement.trim()) {
+                setPosts([...posts, announcement])
+                setAnnouncement("")
+                notify("Announcement published")
+              }
+            }}
+          >
+            <label className="field">
+              Share an update
+              <textarea
+                rows={3}
+                value={announcement}
+                onChange={(event) => setAnnouncement(event.target.value)}
+                placeholder="What should the team know?"
+              />
+            </label>
+            <Button disabled={!announcement.trim()}>
+              Post announcement <Send size={14} />
+            </Button>
+          </form>
         </section>
       </div>
+      {invite && (
+        <Modal title="Invite teammate" onClose={() => setInvite(false)}>
+          <h2>Make room for one more.</h2>
+          <form
+            onSubmit={(event) => {
+              event.preventDefault()
+              const data = new FormData(event.currentTarget)
+              setTeam([...team, String(data.get("name"))])
+              setInvite(false)
+              notify("Demo teammate added")
+            }}
+          >
+            <label className="field">
+              Name
+              <input required name="name" />
+            </label>
+            <label className="field">
+              Email
+              <input required type="email" />
+            </label>
+            <Button>
+              Send invitation <ArrowRight size={15} />
+            </Button>
+          </form>
+        </Modal>
+      )}
     </>
-  );
+  )
 }
+
+export default TeamScreen

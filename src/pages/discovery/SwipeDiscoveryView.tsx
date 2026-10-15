@@ -27,11 +27,8 @@ export default function SwipeDiscoveryView({
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
 
-  let tindyNotify: ((msg: string) => void) | undefined;
-  try {
-    const tindy = useTindy();
-    tindyNotify = tindy.notify;
-  } catch {}
+  const tindy = useTindy();
+  const tindyNotify = tindy.notify;
 
   // Determine starting mode based on URL search query if provided, or fallback to initialMode
   const getInitialMode = (): DiscoveryMode => {
@@ -266,18 +263,22 @@ export default function SwipeDiscoveryView({
 
     if (direction === 'left') {
       setSkippedIds((prev) => [...prev, item.id]);
+      tindy.setSkipped((prev) => [...new Set([...prev, item.id])]);
       showToast(`Skipped "${item.name}".`);
     } else if (direction === 'up') {
       if (displayMode === 'student') {
         setSavedProjectIds((prev) => [...new Set([...prev, item.id])]);
+        tindy.setSaved((prev) => [...new Set([...prev, item.id])]);
         showToast(`Saved "${item.name}" for later.`);
       } else {
         setSavedCandidateIds((prev) => [...new Set([...prev, item.id])]);
+        tindy.setCandidateShortlisted((prev) => [...new Set([...prev, item.name])]);
         showToast(`Saved candidate ${item.name} for later.`);
       }
     } else if (direction === 'right') {
       if (displayMode === 'student') {
         setInterestedProjectIds((prev) => [...new Set([...prev, item.id])]);
+        tindy.setInterested((prev) => [...new Set([...prev, item.id])]);
         showToast(`Marked interest in "${item.name}". Project lead notified!`);
       } else {
         setShortlistModalCandidate(item as DiscoveryCandidate);
@@ -293,17 +294,21 @@ export default function SwipeDiscoveryView({
 
     if (lastAction.direction === 'left') {
       setSkippedIds((prev) => prev.filter((id) => id !== lastAction.id));
+      tindy.setSkipped((prev) => prev.filter((id) => id !== lastAction.id));
       showToast(`Restored "${lastAction.item.name}" to stack.`);
     } else if (lastAction.direction === 'up') {
       if (displayMode === 'student') {
         setSavedProjectIds((prev) => prev.filter((id) => id !== lastAction.id));
+        tindy.setSaved((prev) => prev.filter((id) => id !== lastAction.id));
       } else {
         setSavedCandidateIds((prev) => prev.filter((id) => id !== lastAction.id));
+        tindy.setCandidateShortlisted((prev) => prev.filter((name) => name !== lastAction.item.name));
       }
       showToast(`Removed "${lastAction.item.name}" from saved.`);
     } else if (lastAction.direction === 'right') {
       if (displayMode === 'student') {
         setInterestedProjectIds((prev) => prev.filter((id) => id !== lastAction.id));
+        tindy.setInterested((prev) => prev.filter((id) => id !== lastAction.id));
       } else {
         setShortlistedCandidateIds((prev) => prev.filter((id) => id !== lastAction.id));
       }

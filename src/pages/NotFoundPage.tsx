@@ -1,51 +1,143 @@
-import React from 'react';
-import { useNavigate } from 'react-router';
+import { Link } from "react-router"
+import {
+  LayoutDashboard,
+  Compass,
+  Sparkles,
+  FolderKanban,
+  Users,
+  Mail,
+} from "lucide-react"
 
-export default function NotFoundPage() {
-  const navigate = useNavigate();
-
+export function NotFound() {
   return (
-    <div className="min-h-[75vh] flex flex-col items-center justify-center text-center p-6 max-w-lg mx-auto">
-      <div className="w-16 h-16 rounded-xl bg-slate-100 text-slate-900 flex items-center justify-center font-mono font-extrabold text-2xl mb-4 border border-slate-200 shadow-xs">
+    <div
+      style={{
+        maxWidth: "680px",
+        margin: "40px auto",
+        textAlign: "center",
+        padding: "30px 20px",
+      }}
+    >
+      <div
+        style={{
+          display: "inline-flex",
+          alignItems: "center",
+          justifyContent: "center",
+          width: "80px",
+          height: "80px",
+          borderRadius: "20px",
+          background: "linear-gradient(135deg, #e0e7ff 0%, #f1f5f9 100%)",
+          color: "var(--primary)",
+          fontSize: "30px",
+          fontWeight: "800",
+          marginBottom: "20px",
+          boxShadow: "0 4px 12px rgba(48, 79, 197, 0.12)",
+        }}
+      >
         404
       </div>
-      <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
-        Page Not Found
+      <h1
+        style={{
+          fontSize: "28px",
+          letterSpacing: "-0.8px",
+          color: "var(--ink)",
+          marginBottom: "10px",
+        }}
+      >
+        Page not found
       </h1>
-      <p className="text-xs text-slate-500 mt-2 leading-relaxed">
-        The destination you are trying to access does not exist, has been archived, or was moved to another URL path.
+      <p
+        className="muted"
+        style={{
+          fontSize: "13px",
+          lineHeight: "1.7",
+          maxWidth: "480px",
+          margin: "0 auto 30px",
+        }}
+      >
+        The page you are looking for doesn’t exist, has been moved, or is
+        temporarily unavailable. Let’s get you back to the opportunities that
+        matter.
       </p>
 
-      <div className="flex flex-col sm:flex-row items-center gap-3 mt-6 w-full max-w-sm">
-        <button
-          onClick={() => navigate('/')}
-          className="button primary w-full text-xs py-2.5"
+      <div
+        style={{
+          display: "flex",
+          gap: "12px",
+          justifyContent: "center",
+          flexWrap: "wrap",
+          marginBottom: "40px",
+        }}
+      >
+        <Link
+          className="btn btn-primary"
+          to="/"
+          style={{ padding: "11px 20px" }}
         >
-          <span>Return to Overview</span>
-        </button>
-        <button
-          onClick={() => navigate('/discover')}
-          className="button outline w-full text-xs py-2.5"
+          <LayoutDashboard size={16} />
+          Go to Dashboard
+        </Link>
+        <Link
+          className="btn btn-secondary"
+          to="/discover"
+          style={{ padding: "11px 20px" }}
         >
-          <span>Discover Projects</span>
-        </button>
+          <Compass size={16} />
+          Discover Projects
+        </Link>
+        <Link
+          className="btn btn-secondary"
+          to="/ai"
+          style={{ padding: "11px 20px" }}
+        >
+          <Sparkles size={16} />
+          AI Studio
+        </Link>
       </div>
 
-      <div className="mt-8 pt-6 border-t border-slate-200 w-full text-xs text-slate-500 flex flex-col sm:flex-row items-center justify-center gap-4">
-        <span>Technical desk:</span>
-        <a
-          href="mailto:support@fcaj.org"
-          className="text-slate-900 hover:text-black font-semibold"
+      <div
+        className="panel"
+        style={{
+          textAlign: "left",
+          padding: "20px",
+          background: "#f8fafc",
+          borderRadius: "8px",
+        }}
+      >
+        <h3
+          style={{
+            fontSize: "13px",
+            marginBottom: "12px",
+            color: "var(--ink)",
+          }}
         >
-          support@fcaj.org
-        </a>
-        <a
-          href="tel:+18005558463"
-          className="text-slate-900 hover:text-black font-semibold"
+          Need assistance or looking for another section?
+        </h3>
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+            gap: "12px",
+            fontSize: "12px",
+          }}
         >
-          +1 (800) 555-8463
-        </a>
+          <Link to="/projects" className="text-link" style={{ gap: "6px" }}>
+            <FolderKanban size={14} /> My Projects workspace
+          </Link>
+          <Link to="/team" className="text-link" style={{ gap: "6px" }}>
+            <Users size={14} /> Team workspace
+          </Link>
+          <a
+            href="mailto:support@fcaj.community"
+            className="text-link"
+            style={{ gap: "6px" }}
+          >
+            <Mail size={14} /> support@fcaj.community
+          </a>
+        </div>
       </div>
     </div>
-  );
+  )
 }
+
+export default NotFound

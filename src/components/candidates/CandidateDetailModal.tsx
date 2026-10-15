@@ -99,8 +99,12 @@ export default function CandidateDetailModal({
                 <span className="text-[11px] font-bold text-slate-900 bg-slate-100 px-2.5 py-0.5 rounded border border-slate-200">
                   {candidate.university}
                 </span>
-                <span className="text-xs text-slate-400">•</span>
-                <span className="text-xs text-slate-600 font-medium">Graduation: {candidate.graduationYear}</span>
+                {candidate.graduationYear && (
+                  <>
+                    <span className="text-xs text-slate-400">•</span>
+                    <span className="text-xs text-slate-600 font-medium">Graduation: {candidate.graduationYear}</span>
+                  </>
+                )}
               </div>
               <h2 className="text-2xl font-extrabold text-slate-900 tracking-tight mt-1">
                 {candidate.name}
@@ -174,16 +178,16 @@ export default function CandidateDetailModal({
             <div className="space-y-2">
               {candidate.relevantProjects.map((p) => (
                 <div
-                  key={p.name}
+                  key={p.title}
                   className="p-3.5 rounded-xl border border-slate-200 bg-white space-y-1.5"
                 >
                   <div className="flex items-center justify-between">
-                    <h4 className="font-bold text-slate-900 text-xs">{p.name}</h4>
+                    <h4 className="font-bold text-slate-900 text-xs">{p.title}</h4>
                     <span className="text-[10px] font-semibold text-slate-700 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
                       {p.role}
                     </span>
                   </div>
-                  <p className="text-xs text-slate-600 leading-relaxed">{p.desc}</p>
+                  <p className="text-xs text-slate-600 leading-relaxed">{p.description}</p>
                   <div className="flex flex-wrap gap-1 pt-1">
                     {p.tech.map((t) => (
                       <span

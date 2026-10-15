@@ -91,6 +91,51 @@ export function PageHeader({
     </div>
   )
 }
+
+export function SectionHeading({
+  title,
+  description,
+  action,
+}: {
+  title: string
+  description?: string
+  action?: ReactNode
+}) {
+  return (
+    <div className="section-heading">
+      <div>
+        <h2>{title}</h2>
+        {description && <p>{description}</p>}
+      </div>
+      {action}
+    </div>
+  )
+}
+
+export function Stat({
+  label,
+  value,
+  detail,
+  icon,
+  tone = "indigo",
+}: {
+  label: string
+  value: ReactNode
+  detail: string
+  icon: ReactNode
+  tone?: string
+}) {
+  return (
+    <article className="stat-card">
+      <div className="stat-card-top">
+        <span>{label}</span>
+        <span className={`stat-icon ${tone}`}>{icon}</span>
+      </div>
+      <strong className="stat-value">{value}</strong>
+      <small>{detail}</small>
+    </article>
+  )
+}
 export function EmptyState({
   title,
   description,

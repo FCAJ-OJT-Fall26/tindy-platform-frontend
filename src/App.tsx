@@ -19,10 +19,10 @@ import {
   Candidates,
   CandidateDetail,
   NotFound,
-} from "./screens"
-import SwipeDiscoveryView from "./pages/discovery/SwipeDiscoveryView"
-import PrivacyPolicy from "./pages/legal/PrivacyPolicy"
-import TermsOfService from "./pages/legal/TermsOfService"
+  SwipeDiscoveryView,
+  PrivacyPolicy,
+  TermsOfService,
+} from "./pages"
 
 const router = createBrowserRouter([
   {

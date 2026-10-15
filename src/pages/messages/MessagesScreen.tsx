@@ -1,204 +1,285 @@
-import React, { useState, useEffect } from 'react';
-import { Search, Paperclip, Send, Users, Shield } from 'lucide-react';
+import { useState } from "react"
+import { useSearchParams, Link } from "react-router"
+import {
+  Search,
+  ShieldCheck,
+  FolderKanban,
+  Paperclip,
+  CheckCheck,
+  Send,
+  ArrowUpRight,
+} from "lucide-react"
+import { useTindy } from "../../store"
+import {
+  PageHeader,
+  Avatar,
+  Badge,
+  Button,
+  EmptyState,
+} from "../../components/ui"
 
-interface MessagesScreenProps {
-  onNavigateTeam: () => void;
-  onNotify: (text: string) => void;
-  selectedConversation?: string;
+export type ChatMessage = {
+  body: string
+  outgoing: boolean
+  file?: boolean
 }
 
-interface ChatChannel {
-  id: string;
-  name: string;
-  avatar: string;
-  subtitle: string;
-  role: string;
-  status: string;
-  isTeam: boolean;
-}
-
-const CHANNELS: Record<string, ChatChannel> = {
-  'EcoTrack Team': {
-    id: 'ecotrack',
-    name: 'EcoTrack Team',
-    avatar: 'ET',
-    subtitle: 'Active Sprint Channel · 4 members',
-    role: 'Frontend Engineering Sprint',
-    status: 'Sprint 3 In Progress',
-    isTeam: true,
-  },
-  'Jamie Le': {
-    id: 'jamie',
-    name: 'Jamie Le',
-    avatar: 'JL',
-    subtitle: 'Project Lead · EcoTrack',
-    role: 'Lead Project Coordinator',
-    status: 'Online',
-    isTeam: false,
-  },
-  'StudyBuddy Team': {
-    id: 'studybuddy',
-    name: 'StudyBuddy Team',
-    avatar: 'SB',
-    subtitle: 'Sprint Planning Channel · 3 members',
-    role: 'EdTech AI Project',
-    status: 'Kickoff Friday',
-    isTeam: true,
-  },
-};
-
-const DEFAULT_MESSAGES: Record<string, string[]> = {
-  'EcoTrack Team': [
-    'Jamie Le: Welcome Alex to the EcoTrack sprint! Kelly has updated the telemetry wireframes.',
-    'Alex Le: Thanks Jamie! I am currently working on the solar energy sensor components and chart hooks.',
-    'Kelly Tran: The color tokens and chart specs are pushed to GitHub branch `feature/telemetry`.',
-  ],
-  'Jamie Le': [
-    'Hello Alex, your experience with React and state management aligns well with the EcoTrack sprint requirements.',
-    'Thank you Jamie. I have reviewed the technical specifications and sprint roadmap.',
-  ],
-  'StudyBuddy Team': [
-    'Michael Kim: Welcome team! We will be syncing on the FastAPI endpoints tomorrow morning.',
-    'Alex Le: Looking forward to it, let me know if you need help with the OpenAPI schema.',
-  ],
-};
-
-export default function MessagesScreen({
-  onNavigateTeam,
-  onNotify,
-  selectedConversation,
-}: MessagesScreenProps) {
-  const [activeChat, setActiveChat] = useState<string>(
-    selectedConversation || 'EcoTrack Team'
-  );
-  const [query, setQuery] = useState('');
-  const [draft, setDraft] = useState('');
-
-  // Per-conversation message storage
-  const [conversationsMap, setConversationsMap] = useState<Record<string, string[]>>(
-    DEFAULT_MESSAGES
-  );
-
-  useEffect(() => {
-    if (selectedConversation && CHANNELS[selectedConversation]) {
-      setActiveChat(selectedConversation);
-    }
-  }, [selectedConversation]);
-
-  const channelInfo = CHANNELS[activeChat] || CHANNELS['EcoTrack Team'];
-  const currentMessages = conversationsMap[activeChat] || [];
-
-  const handleSelectChannel = (name: string) => {
-    setActiveChat(name);
-    onNotify(`Switched to ${name}`);
-  };
-
-  const handleSend = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!draft.trim()) return;
-
-    setConversationsMap((prev) => ({
-      ...prev,
-      [activeChat]: [...(prev[activeChat] || []), `Alex Le: ${draft.trim()}`],
-    }));
-
-    setDraft('');
-    onNotify('Message sent');
-  };
+export function Messages() {
+  const [params, setParams] = useSearchParams()
+  const { notify, profile } = useTindy()
+  const [query, setQuery] = useState("")
+  const [draft, setDraft] = useState("")
+  const [tab, setTab] = useState("General chat")
+  const [history, setHistory] = useState<Record<string, ChatMessage[]>>({})
+  const current = params.get("conversation") || "Minh Nguyen"
+  const people = [
+    ...new Set(["Minh Nguyen", "EcoTrack team", "Cao Thanh Nhan", current]),
+  ]
+  const team = current.includes("team")
+  const initial: ChatMessage[] =
+    current === "Minh Nguyen"
+      ? [
+          {
+            body: `Hey ${profile.name.split(" ")[0]}! Your experience with .NET and RAG caught my eye. I think you’d be a great fit for our AI Customer Support project.`,
+            outgoing: false,
+          },
+          {
+            body: "Thanks for reaching out! The project sounds really interesting. I’d love to learn more about the architecture.",
+            outgoing: true,
+          },
+          {
+            body: "Absolutely. We’re building the backend on .NET, with PostgreSQL and AWS. Would you have 8–10 hours a week to collaborate?",
+            outgoing: false,
+          },
+        ]
+      : [
+          {
+            body: team
+              ? "Welcome to the team! Our next check-in is Friday at 5 PM. Share what you’re working on here."
+              : `Hi! I’d love to connect about AI Customer Support System.`,
+            outgoing: !team,
+          },
+        ]
+  const messages = history[current] || initial
+  const send = (body: string, file = false) => {
+    if (!body.trim()) return
+    setHistory((old) => ({
+      ...old,
+      [current]: [...messages, { body, outgoing: true, file }],
+    }))
+    setDraft("")
+    if (!file) notify("Message sent")
+  }
 
   return (
     <>
-      <div className="page-heading">
-        <div>
-          <div className="eyebrow">ACADEMIC PROJECT DISCOVERY & COLLABORATION</div>
-          <h1>
-            Direct Communications<span className="heading-dot">.</span>
-          </h1>
-          <p>Collaborate with project leads, candidates, and team members.</p>
-        </div>
-      </div>
-
-      <section className="chat-panel">
-        <aside className="chat-list">
-          <label className="search-field">
-            <Search size={15} />
+      <PageHeader
+        title="Conversations that move things forward."
+        description="Connect with project leaders, candidates, and your team."
+      />
+      <section className="messaging">
+        <aside className="conversation-sidebar">
+          <div className="conversation-heading">
+            <h3>Messages</h3>
+            <span className="badge">{people.length}</span>
+          </div>
+          <label className="search-input">
+            <Search size={16} />
             <input
-              placeholder="Search conversations..."
+              aria-label="Search conversations"
+              placeholder="Search conversations…"
               value={query}
-              onChange={(e) => setQuery(e.target.value)}
+              onChange={(event) => setQuery(event.target.value)}
             />
           </label>
-          {Object.keys(CHANNELS)
-            .filter((person) => person.toLowerCase().includes(query.toLowerCase()))
-            .map((person) => {
-              const ch = CHANNELS[person];
-              const isActive = activeChat === person;
-              return (
+          <div className="conversation-list">
+            {people
+              .filter((person) =>
+                person.toLowerCase().includes(query.toLowerCase()),
+              )
+              .map((person, index) => (
                 <button
                   key={person}
-                  onClick={() => handleSelectChannel(person)}
-                  className={`conversation ${isActive ? 'active' : ''} cursor-pointer`}
+                  className={`conversation ${
+                    current === person ? "active" : ""
+                  }`}
+                  onClick={() => {
+                    setParams({ conversation: person })
+                    setTab("General chat")
+                    setDraft("")
+                  }}
                 >
-                  <span className="avatar">{ch.avatar}</span>
+                  <Avatar
+                    name={person}
+                    color={index === 0 ? "teal" : index === 1 ? "green" : "sky"}
+                  />
                   <div>
-                    <strong>{ch.name}</strong>
-                    <small>{ch.subtitle}</small>
+                    <div>
+                      <strong>{person}</strong>
+                      <small>{index === 0 ? "10:42" : "Yesterday"}</small>
+                    </div>
+                    <span>
+                      {person.includes("team")
+                        ? "EcoTrack · Team conversation"
+                        : "AI Customer Support System"}
+                    </span>
+                    <p>
+                      {history[person]?.at(-1)?.body ||
+                        (index === 0
+                          ? "Would you have 8–10 hours a week?"
+                          : "Let’s build something meaningful.")}
+                    </p>
                   </div>
-                  <i />
+                  {index === 0 && <i />}
                 </button>
-              );
-            })}
-        </aside>
-
-        <div className="chat-main">
-          <div className="chat-heading">
-            <span className="avatar">{channelInfo.avatar}</span>
-            <div>
-              <h3>{channelInfo.name}</h3>
-              <small>
-                <i className="live-dot" /> {channelInfo.subtitle}
-              </small>
-            </div>
-            <button className="button outline text-xs ml-auto cursor-pointer" onClick={onNavigateTeam}>
-              View Team Workspace
-            </button>
+              ))}
           </div>
-
-          <div className="chat-messages">
-            <span className="date-separator">Today, October 6</span>
-            {currentMessages.map((msg, index) => {
-              const isMine = msg.startsWith('Alex Le:');
-              return (
-                <div className={`message ${isMine ? 'outgoing' : ''}`} key={index}>
-                  <p>{msg}</p>
-                  <small>
-                    10:{24 + index} AM {isMine ? '(Delivered)' : ''}
-                  </small>
-                </div>
-              );
-            })}
-          </div>
-
-          <form className="chat-input" onSubmit={handleSend}>
-            <label className="icon-button cursor-pointer" aria-label="Attach documentation">
-              <Paperclip size={16} />
-              <input
-                type="file"
-                hidden
-                onChange={() => onNotify('Attachment selected')}
+          {query &&
+            !people.some((person) =>
+              person.toLowerCase().includes(query.toLowerCase()),
+            ) && (
+              <EmptyState
+                title="No conversations found"
+                description="Try a different name."
               />
-            </label>
-            <input
-              placeholder={`Write message to ${channelInfo.name}...`}
-              value={draft}
-              onChange={(e) => setDraft(e.target.value)}
-            />
-            <button className="button primary cursor-pointer" aria-label="Send message">
-              <Send size={15} />
-            </button>
-          </form>
+            )}
+          <div className="conversation-context">
+            <ShieldCheck size={15} />
+            <span>
+              Your project conversations,
+              <br />
+              all in one place.
+            </span>
+          </div>
+        </aside>
+        <div className="chat-main">
+          <div className="chat-header">
+            <Avatar name={current} color="teal" />
+            <div>
+              <h3>{current}</h3>
+              <p>
+                <span className="online-dot" />
+                {team ? "Team conversation" : "Project leader / candidate"}{" "}
+                <b>·</b> FCAJ
+              </p>
+            </div>
+            <Link
+              to={team ? "/project/ecotrack" : "/project/cloud-desk"}
+              className="btn btn-secondary"
+            >
+              View project <ArrowUpRight size={13} />
+            </Link>
+          </div>
+          <div className="chat-project-context">
+            <FolderKanban size={15} />
+            <span>{team ? "EcoTrack" : "AI Customer Support System"}</span>
+            <Badge>PROJECT CONTEXT</Badge>
+          </div>
+          {team && (
+            <div className="tabs chat-tabs">
+              {["General chat", "Announcements", "Team members"].map((item) => (
+                <button
+                  key={item}
+                  className={tab === item ? "active" : ""}
+                  onClick={() => setTab(item)}
+                >
+                  {item}
+                </button>
+              ))}
+            </div>
+          )}
+          {tab === "Announcements" ? (
+            <div className="chat-announcement">
+              <Badge tone="blue">TEAM UPDATE</Badge>
+              <h3>Kickoff · Friday, 5 PM</h3>
+              <p>
+                Bring your ideas and questions. We’ll review the architecture
+                and plan our first sprint.
+              </p>
+            </div>
+          ) : tab === "Team members" ? (
+            <div className="chat-announcement">
+              {["Jamie Le", profile.name, "An Hoang", "Linh Tran"].map(
+                (person) => (
+                  <div className="team-person" key={person}>
+                    <Avatar name={person} />
+                    <strong>{person}</strong>
+                    <Badge>MEMBER</Badge>
+                  </div>
+                ),
+              )}
+            </div>
+          ) : (
+            <>
+              <div className="chat-messages">
+                <div className="chat-date">
+                  <span>Today</span>
+                </div>
+                {messages.map((message, index) => (
+                  <div
+                    className={`message-row ${
+                      message.outgoing ? "outgoing" : ""
+                    }`}
+                    key={index}
+                  >
+                    {!message.outgoing && (
+                      <Avatar name={current} color="teal" />
+                    )}
+                    <div>
+                      <div className="chat-bubble">
+                        {message.file && <Paperclip size={15} />} {message.body}
+                      </div>
+                      <small>
+                        {message.outgoing ? "You" : current.split(" ")[0]} · 10:
+                        {(32 + index).toString().padStart(2, "0")}{" "}
+                        {message.outgoing && <CheckCheck size={12} />}
+                      </small>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <form
+                className="message-composer"
+                onSubmit={(event) => {
+                  event.preventDefault()
+                  send(draft)
+                }}
+              >
+                <label className="attach-file" title="Attach a file">
+                  <Paperclip size={20} />
+                  <input
+                    type="file"
+                    hidden
+                    onChange={(event) => {
+                      const file = event.target.files?.[0]
+                      if (file) {
+                        send(file.name, true)
+                        notify(
+                          "Attachment added · Filename only in this prototype",
+                        )
+                      }
+                    }}
+                  />
+                </label>
+                <input
+                  aria-label="Write a message"
+                  placeholder="Write a message…"
+                  value={draft}
+                  onChange={(event) => setDraft(event.target.value)}
+                />
+                <Button disabled={!draft.trim()} aria-label="Send message">
+                  <Send size={17} />
+                </Button>
+              </form>
+              <div className="chat-demo-note">
+                Local demo conversation · Messages are not sent to a server.
+              </div>
+            </>
+          )}
         </div>
       </section>
     </>
-  );
+  )
 }
+
+export default Messages

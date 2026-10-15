@@ -7,7 +7,7 @@ export interface MatchFactor {
 
 export interface MatchBreakdown {
   overall: number; // e.g. 92
-  verdict: 'Excellent Match' | 'Strong Match' | 'Good Match' | 'Moderate Match';
+  verdict: 'Excellent Match' | 'Strong Match' | 'Good Match' | 'Moderate Match' | 'Warning: Low Match' | 'Low Match';
   factors: MatchFactor[];
   strongMatches: string[];
   skillGaps: {
@@ -63,6 +63,7 @@ export interface DiscoveryCandidate {
   avatar: string;
   initials: string;
   hours: string;
+  graduationYear?: string;
   summary: string;
   skills: string[];
   relevantProjects: {

@@ -97,7 +97,9 @@ export default function DiscoverySegmentedControl<T extends string>({
         return (
           <button
             key={opt.value}
-            ref={(el) => (buttonRefs.current[idx] = el)}
+            ref={(el) => {
+              buttonRefs.current[idx] = el;
+            }}
             role="tab"
             aria-selected={isActive}
             type="button"
