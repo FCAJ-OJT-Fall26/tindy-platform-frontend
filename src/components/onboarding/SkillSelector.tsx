@@ -292,7 +292,7 @@ export default function SkillSelector({
     setTimeout(() => {
       onChange(selected.filter((item) => item.skill_id !== skillId))
       setRemovingId(null)
-    }, 150)
+    }, 180)
   }
 
   function toggle(skill: CatalogSkill) {
@@ -340,8 +340,15 @@ export default function SkillSelector({
 
             requestAnimationFrame(() => {
               btn.style.transition =
-                "transform 0.3s cubic-bezier(0.2, 0.9, 0.3, 1)"
+                "transform 0.22s cubic-bezier(0.16, 1, 0.3, 1)"
               btn.style.transform = "translate3d(0, 0, 0)"
+
+              const onEnd = () => {
+                btn.style.transform = ""
+                btn.style.transition = ""
+                btn.removeEventListener("transitionend", onEnd)
+              }
+              btn.addEventListener("transitionend", onEnd)
             })
           }
         }
@@ -517,7 +524,7 @@ export default function SkillSelector({
                   key={skill.skill_id}
                   data-chip-id={skill.skill_id}
                   className={`${inactive ? "unavailable" : ""} ${
-                    isPoppingOut ? "chip-popping-out" : ""
+                    isPoppingOut ? "chip-retracting chip-popping-out" : ""
                   }`.trim()}
                   aria-label={`Remove ${name}`}
                   onClick={() => removeSkill(skill.skill_id)}
@@ -525,7 +532,7 @@ export default function SkillSelector({
                   <SkillIcon name={name} size={13} />
                   {name}
                   {inactive && " (unavailable)"}
-                  <X size={12} />
+                  <X size={12} className="chip-remove-icon" />
                 </button>
               )
             })}

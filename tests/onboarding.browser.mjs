@@ -435,7 +435,7 @@ try {
   await waitFor(hasText("Security Researcher"), "roles reloaded")
   await clickText("Continue")
   await waitFor(
-    'document.querySelector("h1")?.textContent === "Interests & Goals"',
+    'document.querySelector("h1")?.textContent === "Availability"',
     "step 4",
   )
   assert.deepEqual(
@@ -444,14 +444,18 @@ try {
     { preferred_role_id: roles[0].professional_role_id },
   )
   console.log(`PASS ${++count}: Step 3 sends the actual professional role UUID`)
-  await check(
-    'document.querySelector("textarea").value === "Security and data"',
-    "Restores saved interests and learning goals",
-  )
-  await clickText("Continue")
   await waitFor(
     'document.querySelector("input[type=number]")?.value === "12"',
     "availability",
+  )
+  await clickText("Continue")
+  await waitFor(
+    'document.querySelector("h1")?.textContent === "Interests & Goals"',
+    "step 5",
+  )
+  await check(
+    'document.querySelector("textarea").value === "Security and data"',
+    "Restores saved interests and learning goals",
   )
   await clickText("Continue")
   await waitFor(

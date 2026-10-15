@@ -134,15 +134,18 @@
 }
 
 .catalog-skill-option.selected {
-  border-color: #96aedb;
-  background: #f1f5fe;
-  color: var(--primary);
-  box-shadow: 0 1px 3px rgba(48, 79, 197, 0.08);
+  border-color: #304fc5;
+  background: #f0f4ff;
+  color: #1e293b;
+  font-weight: 600;
+  box-shadow: 0 0 0 1px #304fc5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 .catalog-skill-option.selected:hover:not(:disabled) {
-  background: #e8effd;
-  border-color: #7d9ddb;
+  background: #e4edff;
+  border-color: #1d4ed8;
 }
 
 /* Toggle transition from + to check and vice versa */
@@ -276,66 +279,102 @@
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  border: 1px solid #dbe5fa;
+  border: 1px solid #304fc5;
   border-radius: 6px;
-  background: #f1f5fe;
-  color: var(--primary);
-  padding: 7px 10px;
+  background: #ffffff;
+  color: #1e293b;
+  padding: 6px 11px;
   font-size: 11px;
+  font-weight: 600;
   text-align: left;
-  overflow-wrap: anywhere;
+  overflow: hidden;
+  white-space: nowrap;
   cursor: pointer;
-  animation: chipDashOut 0.28s cubic-bezier(0.34, 1.56, 0.64, 1) both;
-  will-change: transform, opacity;
-  transition: background 0.15s ease, border-color 0.15s ease;
+  outline: none;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+  animation: chipPushOut 0.22s cubic-bezier(0.16, 1, 0.3, 1) both;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
 }
 
-/* Dash out entrance animation when a skill is added */
-@keyframes chipDashOut {
+/* Push out entrance animation when a skill is added ("đẩy item ra") */
+@keyframes chipPushOut {
   0% {
     opacity: 0;
-    transform: scale(0.6) translate3d(-18px, 0, 0);
+    transform: translateX(-16px) scale(0.85);
+    max-width: 0;
+    padding-left: 0;
+    padding-right: 0;
+    margin-right: -8px;
   }
   65% {
     opacity: 1;
-    transform: scale(1.08) translate3d(2px, 0, 0);
+    transform: translateX(2px) scale(1.02);
+    max-width: 220px;
+    padding-left: 11px;
+    padding-right: 11px;
+    margin-right: 0;
   }
   100% {
     opacity: 1;
-    transform: scale(1) translate3d(0, 0, 0);
+    transform: translateX(0) scale(1);
+    max-width: 220px;
+    padding-left: 11px;
+    padding-right: 11px;
+    margin-right: 0;
   }
 }
 
-.selected-skill-chips button:hover:not(.chip-popping-out) {
-  background: #e6edfc;
-  border-color: #c5d7f8;
-  transform: translateY(-1px);
+.selected-skill-chips button:hover:not(.chip-retracting):not(.chip-popping-out) {
+  background: #f8fafc;
+  border-color: #1d4ed8;
 }
 
-.selected-skill-chips button:active:not(.chip-popping-out) {
-  transform: scale(0.97);
+.selected-skill-chips button:active:not(.chip-retracting):not(.chip-popping-out) {
+  background: #f1f5f9;
 }
 
-/* Pop up exit animation when a skill is removed */
+/* Retract in exit animation when a skill is removed ("thụt item vào") */
+.selected-skill-chips button.chip-retracting,
 .selected-skill-chips button.chip-popping-out {
-  animation: chipPopUpExit 0.16s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
+  animation: chipRetractIn 0.18s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
   pointer-events: none;
   z-index: 5;
 }
 
-@keyframes chipPopUpExit {
+@keyframes chipRetractIn {
   0% {
     opacity: 1;
-    transform: scale(1) translateY(0);
+    transform: translateX(0) scale(1);
+    max-width: 220px;
   }
-  45% {
-    opacity: 0.95;
-    transform: scale(1.18) translateY(-6px);
+  35% {
+    opacity: 0.85;
+    transform: translateX(-4px) scale(0.92);
   }
   100% {
     opacity: 0;
-    transform: scale(0.6) translateY(-14px);
+    transform: translateX(-16px) scale(0.6);
+    max-width: 0;
+    padding-left: 0;
+    padding-right: 0;
+    margin-right: -8px;
+    border-color: transparent;
   }
+}
+
+.selected-skill-chips button .chip-remove-icon {
+  color: #64748b;
+  margin-left: 2px;
+  flex-shrink: 0;
+  transition: color 0.15s ease, transform 0.15s ease;
+}
+
+.selected-skill-chips button:hover .chip-remove-icon {
+  color: #dc2626;
+  transform: scale(1.15);
 }
 
 .selected-skill-chips button.unavailable {
@@ -566,6 +605,23 @@
   0% { transform: scale(0.8); }
   50% { transform: scale(1.15); }
   100% { transform: scale(1); }
+}
+
+.onboarding-action-buttons {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.btn-skip {
+  color: var(--muted);
+  font-weight: 550;
+  transition: all 0.18s ease;
+}
+
+.btn-skip:hover {
+  color: var(--ink);
+  background: #edf2f7;
 }
 
 @media(max-width:1000px) {

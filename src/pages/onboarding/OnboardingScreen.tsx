@@ -65,12 +65,14 @@ export function OnboardingScreen() {
   const [bio, setBio] = useState("")
   const [confirmed, setConfirmed] = useState(false)
 
+  const isOptionalStep = step === 4 || step === 5 || step === 6
+
   const steps = [
     "Basic information",
     "Technical skills",
     "Preferred role",
-    "Interests & Goals",
     "Availability",
+    "Interests & Goals",
     "Projects & experience",
     "GitHub & Links",
     "Review & complete profile",
@@ -202,7 +204,16 @@ export function OnboardingScreen() {
         setProfile((prev) => ({ ...prev, role: selectedRoleName ?? "" }))
         goToStep(res.next_step ? res.next_step - 1 : 3)
       } else if (step === 3) {
-        // Step 4
+        // Step 4 in UI: Availability
+        const hours = Math.max(1, Math.min(40, Number(availableHours) || 10))
+        const res = await saveOnboardingStep5Api({
+          available_hours_per_week: hours,
+        })
+        setCompletedSteps(res.completed_steps)
+        setProfile((prev) => ({ ...prev, hours: String(hours) }))
+        goToStep(4)
+      } else if (step === 4) {
+        // Step 5 in UI: Interests & Goals (optional)
         const res = await saveOnboardingStep4Api({
           professional_interests: professionalInterests.trim(),
           learning_goals: learningGoals.trim(),
@@ -213,18 +224,9 @@ export function OnboardingScreen() {
           interests: professionalInterests,
           goals: learningGoals,
         }))
-        goToStep(res.next_step ? res.next_step - 1 : 4)
-      } else if (step === 4) {
-        // Step 5
-        const hours = Math.max(1, Math.min(40, Number(availableHours) || 10))
-        const res = await saveOnboardingStep5Api({
-          available_hours_per_week: hours,
-        })
-        setCompletedSteps(res.completed_steps)
-        setProfile((prev) => ({ ...prev, hours: String(hours) }))
-        goToStep(res.next_step ? res.next_step - 1 : 5)
+        goToStep(5)
       } else if (step === 5) {
-        // Step 6
+        // Step 6 in UI: Projects & experience (optional)
         const res = await saveOnboardingStep6Api({
           previous_projects_and_contribution: previousProjects.trim(),
           technologies_to_learn: technologiesToLearn.trim(),
@@ -235,9 +237,9 @@ export function OnboardingScreen() {
           experience: previousProjects,
           technologies: technologiesToLearn,
         }))
-        goToStep(res.next_step ? res.next_step - 1 : 6)
+        goToStep(6)
       } else if (step === 6) {
-        // Step 7
+        // Step 7 in UI: GitHub & Links (optional)
         const res = await saveOnboardingStep7Api({
           github_url: githubUrl.trim() || null,
           personal_website_url: websiteUrl.trim() || null,
@@ -248,8 +250,7 @@ export function OnboardingScreen() {
           github: githubUrl,
           portfolio: websiteUrl,
         }))
-
-        goToStep(res.next_step ? res.next_step - 1 : 7)
+        goToStep(7)
       } else if (step === 7) {
         // Step 8 Complete
         if (!confirmed) {
@@ -282,6 +283,53 @@ export function OnboardingScreen() {
         } else if (err.errorCode === "ONBOARDING_INCOMPLETE") {
           const missing = err.missingSteps?.join(", ") || ""
           setErrorMessage(`Please complete all required steps first. Missing steps: ${missing}`)
+        } else {
+          setErrorMessage(requestErrorMessage(err))
+        }
+      } else {
+        setErrorMessage(requestErrorMessage(err))
+      }
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleSkipStep = async () => {
+    if (loading) return
+    setErrorMessage("")
+    setLoading(true)
+
+    try {
+      if (step === 4) {
+        // Skip Interests & Goals
+        const res = await saveOnboardingStep4Api({
+          professional_interests: professionalInterests.trim(),
+          learning_goals: learningGoals.trim(),
+        })
+        setCompletedSteps(res.completed_steps)
+        goToStep(5)
+      } else if (step === 5) {
+        // Skip Projects & experience
+        const res = await saveOnboardingStep6Api({
+          previous_projects_and_contribution: previousProjects.trim(),
+          technologies_to_learn: technologiesToLearn.trim(),
+        })
+        setCompletedSteps(res.completed_steps)
+        goToStep(6)
+      } else if (step === 6) {
+        // Skip GitHub & Links
+        const res = await saveOnboardingStep7Api({
+          github_url: githubUrl.trim() || null,
+          personal_website_url: websiteUrl.trim() || null,
+        })
+        setCompletedSteps(res.completed_steps)
+        goToStep(7)
+      }
+    } catch (err: unknown) {
+      if (err instanceof ApiError) {
+        if (err.status === 401) {
+          setAuthUser(null)
+          setErrorMessage(requestErrorMessage(err))
         } else {
           setErrorMessage(requestErrorMessage(err))
         }
@@ -340,7 +388,8 @@ export function OnboardingScreen() {
           </p>
           <ol>
             {steps.map((name, index) => {
-              const isStepDone = completedSteps.includes(index + 1)
+              const backendStepNum = [1, 2, 3, 5, 4, 6, 7, 8][index]
+              const isStepDone = completedSteps.includes(backendStepNum)
               return (
                 <li
                   className={
@@ -386,8 +435,8 @@ export function OnboardingScreen() {
                 "Choose a unique username and check your basic information.",
                 "What tools and technologies do you feel comfortable working with?",
                 "What would you like to contribute to a team?",
-                "What kind of work gets you curious and what do you want to learn?",
                 "Find a project that fits your schedule.",
+                "What kind of work gets you curious and what do you want to learn?",
                 "Your experience matters — including course sprints and personal projects.",
                 "Link your GitHub and online portfolios for review.",
                 "Review your story. Make it sound like you.",
@@ -455,31 +504,6 @@ export function OnboardingScreen() {
               {step === 3 && (
                 <>
                   <label className="field">
-                    Professional interests
-                    <textarea
-                      rows={4}
-                      required
-                      placeholder="e.g. Cloud-native architecture, Distributed systems, Machine Learning"
-                      value={professionalInterests}
-                      onChange={(e) => setProfessionalInterests(e.target.value)}
-                    />
-                  </label>
-                  <label className="field">
-                    Learning goals
-                    <textarea
-                      rows={4}
-                      required
-                      placeholder="e.g. Master ASP.NET Core & Kubernetes microservices"
-                      value={learningGoals}
-                      onChange={(e) => setLearningGoals(e.target.value)}
-                    />
-                  </label>
-                </>
-              )}
-
-              {step === 4 && (
-                <>
-                  <label className="field">
                     Hours available per week (1 - 40)
                     <input
                       type="number"
@@ -499,22 +523,43 @@ export function OnboardingScreen() {
                 </>
               )}
 
+              {step === 4 && (
+                <>
+                  <label className="field">
+                    Professional interests (optional)
+                    <textarea
+                      rows={4}
+                      placeholder="e.g. Cloud-native architecture, Distributed systems, Machine Learning"
+                      value={professionalInterests}
+                      onChange={(e) => setProfessionalInterests(e.target.value)}
+                    />
+                  </label>
+                  <label className="field">
+                    Learning goals (optional)
+                    <textarea
+                      rows={4}
+                      placeholder="e.g. Master ASP.NET Core & Kubernetes microservices"
+                      value={learningGoals}
+                      onChange={(e) => setLearningGoals(e.target.value)}
+                    />
+                  </label>
+                </>
+              )}
+
               {step === 5 && (
                 <>
                   <label className="field">
-                    Previous projects & your contribution
+                    Previous projects & your contribution (optional)
                     <textarea
                       rows={4}
-                      required
                       placeholder="Built a team workspace tool with real-time sockets..."
                       value={previousProjects}
                       onChange={(e) => setPreviousProjects(e.target.value)}
                     />
                   </label>
                   <label className="field">
-                    Technologies you want to learn
+                    Technologies you want to learn (optional)
                     <input
-                      required
                       placeholder="e.g. AWS Lambda, Kafka, GraphQL"
                       value={technologiesToLearn}
                       onChange={(e) => setTechnologiesToLearn(e.target.value)}
@@ -590,14 +635,27 @@ export function OnboardingScreen() {
                 <ArrowLeft size={15} />
                 Back
               </Button>
-              <Button disabled={loading || (step === 1 && !skillsValid) || (step === 2 && !roleValid)}>
-                {loading
-                  ? "Saving..."
-                  : step === 7
-                    ? "Confirm & finish"
-                    : "Continue"}
-                <ArrowRight size={16} />
-              </Button>
+              <div className="onboarding-action-buttons">
+                {isOptionalStep && (
+                  <Button
+                    variant="ghost"
+                    type="button"
+                    disabled={loading}
+                    onClick={handleSkipStep}
+                    className="btn-skip"
+                  >
+                    Skip
+                  </Button>
+                )}
+                <Button disabled={loading || (step === 1 && !skillsValid) || (step === 2 && !roleValid)}>
+                  {loading
+                    ? "Saving..."
+                    : step === 7
+                      ? "Confirm & finish"
+                      : "Continue"}
+                  <ArrowRight size={16} />
+                </Button>
+              </div>
             </div>
           </form>
           </div>

@@ -175,7 +175,7 @@ export default function SwipeCardStack({
     );
   }
 
-  const visibleItems = items.slice(currentIndex, currentIndex + 3);
+  const visibleItems = items.slice(currentIndex, currentIndex + 2);
 
   return (
     <div className="w-full max-w-md mx-auto flex flex-col items-center select-none">
@@ -193,12 +193,10 @@ export default function SwipeCardStack({
                 : isDragging
                 ? `translate(${dragOffset.x}px, ${dragOffset.y}px) rotate(${dragOffset.x * 0.05}deg)`
                 : 'translate(0px, 0px)'
-              : index === 1
-              ? 'translateY(12px) scale(0.97)'
-              : 'translateY(22px) scale(0.94)',
+              : 'translateY(10px) scale(0.98)',
             zIndex: 30 - index,
-            opacity: index === 2 ? 0.75 : index === 1 ? 0.9 : 1,
-            transition: isDragging && isTop ? 'none' : 'transform 260ms ease-out, opacity 260ms ease-out',
+            opacity: 1,
+            transition: isDragging && isTop ? 'none' : 'transform 260ms ease-out',
           };
 
           return (
