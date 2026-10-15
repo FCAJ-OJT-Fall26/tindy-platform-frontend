@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState } from "react"
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
 import { Check, Plus, Search, X } from "lucide-react"
 import { getSkillCategoriesApi, getSkillsApi } from "../../services"
 import type {
@@ -280,52 +280,244 @@ export default function SkillSelector({
     }
   }, [allSkills, catalogLoading, catalogError, selected, onChange])
 
-  const [removingIds, setRemovingIds] = useState<string[]>([])
-  const selectedRef = useRef(selected)
-  selectedRef.current = selected
-  const removalTimersRef = useRef<Map<string, number>>(new Map())
+  const [exitingMap, setExitingMap] = useState<
+    Map<string, { skill: SelectedSkill; initialWidth?: number }>
+  >(new Map())
+  const orderRef = useRef<string[]>([])
+  const exitingTimersRef = useRef<Map<string, number>>(new Map())
+  const prevChipPositionsRef = useRef<Map<string, { left: number; top: number }>>(
+    new Map(),
+  )
+  const prevContainerHeightRef = useRef<number | null>(null)
   const chipsContainerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     return () => {
-      removalTimersRef.current.forEach((timer) => window.clearTimeout(timer))
-      removalTimersRef.current.clear()
+      exitingTimersRef.current.forEach((timer) => window.clearTimeout(timer))
+      exitingTimersRef.current.clear()
     }
   }, [])
 
+  // If a skill currently marked as exiting is re-added by the user, cancel its exit
+  useEffect(() => {
+    const selectedIdsSet = new Set(selected.map((s) => s.skill_id))
+    setExitingMap((prev) => {
+      let changed = false
+      const next = new Map(prev)
+      for (const [id] of prev) {
+        if (selectedIdsSet.has(id)) {
+          next.delete(id)
+          changed = true
+          const timer = exitingTimersRef.current.get(id)
+          if (timer) {
+            window.clearTimeout(timer)
+            exitingTimersRef.current.delete(id)
+          }
+        }
+      }
+      return changed ? next : prev
+    })
+  }, [selected])
+
+  // Derive displayed chips in stable visual order, keeping exiting chips in place
+  const displayedChips = useMemo(() => {
+    const selectedMap = new Map(selected.map((s) => [s.skill_id, s]))
+    const currentOrder = [...orderRef.current]
+
+    for (const s of selected) {
+      if (!currentOrder.includes(s.skill_id)) {
+        currentOrder.push(s.skill_id)
+      }
+    }
+    orderRef.current = currentOrder
+
+    const chips: {
+      skill: SelectedSkill
+      isExiting: boolean
+      initialWidth?: number
+    }[] = []
+
+    for (const id of currentOrder) {
+      if (selectedMap.has(id)) {
+        chips.push({
+          skill: selectedMap.get(id)!,
+          isExiting: false,
+        })
+      } else if (exitingMap.has(id)) {
+        const exiting = exitingMap.get(id)!
+        chips.push({
+          skill: exiting.skill,
+          isExiting: true,
+          initialWidth: exiting.initialWidth,
+        })
+      }
+    }
+
+    return chips
+  }, [selected, exitingMap])
+
+  function recordChipPositions() {
+    const container = chipsContainerRef.current
+    if (!container) return
+    prevContainerHeightRef.current = container.offsetHeight
+    const chipButtons = Array.from(
+      container.querySelectorAll<HTMLButtonElement>("[data-chip-id]"),
+    )
+    const map = new Map<string, { left: number; top: number }>()
+    chipButtons.forEach((btn) => {
+      const id = btn.getAttribute("data-chip-id")
+      if (id) {
+        const rect = btn.getBoundingClientRect()
+        map.set(id, { left: rect.left, top: rect.top })
+      }
+    })
+    prevChipPositionsRef.current = map
+  }
+
+  function finishExit(skillId: string) {
+    const timer = exitingTimersRef.current.get(skillId)
+    if (timer) {
+      window.clearTimeout(timer)
+      exitingTimersRef.current.delete(skillId)
+    }
+
+    recordChipPositions()
+
+    setExitingMap((prev) => {
+      if (!prev.has(skillId)) return prev
+      const next = new Map(prev)
+      next.delete(skillId)
+      return next
+    })
+
+    orderRef.current = orderRef.current.filter((id) => id !== skillId)
+  }
+
   function removeSkill(skillId: string) {
-    if (removingIds.includes(skillId)) return
+    if (exitingMap.has(skillId)) return
+
+    const skill = selected.find((s) => s.skill_id === skillId)
+    if (!skill) return
+
+    recordChipPositions()
 
     const container = chipsContainerRef.current
     const btn = container?.querySelector<HTMLButtonElement>(
       `[data-chip-id="${skillId}"]`,
     )
-    if (btn) {
-      // Pin current pixel width so transition shrinks smoothly from its actual width from frame 0
-      const w = btn.offsetWidth
-      btn.style.width = `${w}px`
-      btn.style.minWidth = "0"
-      void btn.offsetWidth
-    }
+    const initialWidth = btn ? btn.getBoundingClientRect().width : undefined
 
-    setRemovingIds((prev) => [...prev, skillId])
+    // 1. Mark as exiting in separate animation state
+    setExitingMap((prev) => {
+      const next = new Map(prev)
+      next.set(skillId, { skill, initialWidth })
+      return next
+    })
 
+    // 2. Fallback safety timer
     const timer = window.setTimeout(() => {
-      removalTimersRef.current.delete(skillId)
-      onChange(selectedRef.current.filter((item) => item.skill_id !== skillId))
-      setRemovingIds((prev) => prev.filter((id) => id !== skillId))
-    }, 200)
+      finishExit(skillId)
+    }, 280)
+    exitingTimersRef.current.set(skillId, timer)
 
-    removalTimersRef.current.set(skillId, timer)
+    // 3. IMMEDIATELY update application data
+    onChange(selected.filter((item) => item.skill_id !== skillId))
   }
 
   function toggle(skill: CatalogSkill) {
     if (selectedIds.has(skill.skill_id)) {
       removeSkill(skill.skill_id)
     } else if (selected.length < 30) {
+      recordChipPositions()
       onChange([...selected, skill])
     }
   }
+
+  useLayoutEffect(() => {
+    const container = chipsContainerRef.current
+    if (!container) return
+
+    const prefersReduced =
+      typeof window !== "undefined" &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    if (prefersReduced) {
+      prevContainerHeightRef.current = container.offsetHeight
+      return
+    }
+
+    // Animate container height when rows collapse or expand
+    const currentHeight = container.offsetHeight
+    const prevHeight = prevContainerHeightRef.current
+    if (prevHeight !== null && Math.abs(prevHeight - currentHeight) > 3) {
+      container.style.height = `${prevHeight}px`
+      container.style.transition = "none"
+      void container.offsetHeight
+      container.style.transition = "height 0.22s cubic-bezier(0.16, 1, 0.3, 1)"
+      container.style.height = `${currentHeight}px`
+
+      const onHeightEnd = (e: TransitionEvent) => {
+        if (e.target === container && e.propertyName === "height") {
+          container.style.height = ""
+          container.style.transition = ""
+          container.removeEventListener("transitionend", onHeightEnd)
+        }
+      }
+      container.addEventListener("transitionend", onHeightEnd)
+    }
+    prevContainerHeightRef.current = currentHeight
+
+    // FLIP layout animation for remaining chips that moved across rows
+    const chipButtons = Array.from(
+      container.querySelectorAll<HTMLButtonElement>("[data-chip-id]"),
+    )
+    const prevPositions = prevChipPositionsRef.current
+    const currentPositions = new Map<string, { left: number; top: number }>()
+
+    chipButtons.forEach((btn) => {
+      const id = btn.getAttribute("data-chip-id")
+      if (id) {
+        const rect = btn.getBoundingClientRect()
+        currentPositions.set(id, { left: rect.left, top: rect.top })
+      }
+    })
+
+    if (prevPositions.size > 0) {
+      chipButtons.forEach((btn) => {
+        const id = btn.getAttribute("data-chip-id")
+        const isExiting = btn.getAttribute("data-exiting") === "true"
+        if (!id || isExiting) return
+
+        const prev = prevPositions.get(id)
+        const current = currentPositions.get(id)
+
+        if (prev && current) {
+          const deltaX = prev.left - current.left
+          const deltaY = prev.top - current.top
+
+          // If the chip moved across rows (wrapped) or had significant shift
+          if (Math.abs(deltaY) > 2 || Math.abs(deltaX) > 2) {
+            btn.style.transform = `translate3d(${deltaX}px, ${deltaY}px, 0)`
+            btn.style.transition = "none"
+
+            requestAnimationFrame(() => {
+              btn.style.transition =
+                "transform 0.22s cubic-bezier(0.16, 1, 0.3, 1)"
+              btn.style.transform = "translate3d(0, 0, 0)"
+
+              const onEnd = () => {
+                btn.style.transform = ""
+                btn.style.transition = ""
+                btn.removeEventListener("transitionend", onEnd)
+              }
+              btn.addEventListener("transitionend", onEnd)
+            })
+          }
+        }
+      })
+    }
+
+    prevChipPositionsRef.current = currentPositions
+  }, [displayedChips])
 
   return (
     <div className="skill-selector">
@@ -393,9 +585,7 @@ export default function SkillSelector({
                 aria-label="Available skills"
               >
                 {results.map((skill) => {
-                  const isSelected =
-                    selectedIds.has(skill.skill_id) &&
-                    !removingIds.includes(skill.skill_id)
+                  const isSelected = selectedIds.has(skill.skill_id)
                   return (
                     <button
                       key={skill.skill_id}
@@ -477,36 +667,52 @@ export default function SkillSelector({
         <p className="muted">
           Choose 1–30 skills. Your selection stays as you explore categories.
         </p>
-        {selected.length > 0 ? (
+        {displayedChips.length > 0 ? (
           <div className="selected-skill-chips" ref={chipsContainerRef}>
-            {selected.map((skill, index) => {
-              const name =
-                activeSkills.get(skill.skill_id)?.name ||
-                skill.name ||
-                `Saved skill ${index + 1}`
-              const inactive =
-                !catalogLoading &&
-                !catalogError &&
-                !activeSkills.has(skill.skill_id)
-              const isPoppingOut = removingIds.includes(skill.skill_id)
-              return (
-                <button
-                  type="button"
-                  key={skill.skill_id}
-                  data-chip-id={skill.skill_id}
-                  className={`${inactive ? "unavailable" : ""} ${
-                    isPoppingOut ? "chip-retracting chip-popping-out" : ""
-                  }`.trim()}
-                  aria-label={`Remove ${name}`}
-                  onClick={() => removeSkill(skill.skill_id)}
-                >
-                  <SkillIcon name={name} size={13} />
-                  {name}
-                  {inactive && " (unavailable)"}
-                  <X size={12} className="chip-remove-icon" />
-                </button>
-              )
-            })}
+            {displayedChips.map(
+              ({ skill, isExiting, initialWidth }, index) => {
+                const name =
+                  activeSkills.get(skill.skill_id)?.name ||
+                  skill.name ||
+                  `Saved skill ${index + 1}`
+                const inactive =
+                  !catalogLoading &&
+                  !catalogError &&
+                  !activeSkills.has(skill.skill_id)
+                return (
+                  <button
+                    type="button"
+                    key={skill.skill_id}
+                    data-chip-id={skill.skill_id}
+                    data-exiting={isExiting ? "true" : undefined}
+                    className={`${inactive ? "unavailable" : ""} ${
+                      isExiting ? "chip-retracting chip-popping-out" : ""
+                    }`.trim()}
+                    style={
+                      isExiting && initialWidth
+                        ? ({
+                            ["--chip-start-width"]: `${initialWidth}px`,
+                          } as React.CSSProperties)
+                        : undefined
+                    }
+                    aria-label={isExiting ? undefined : `Remove ${name}`}
+                    aria-hidden={isExiting ? true : undefined}
+                    tabIndex={isExiting ? -1 : undefined}
+                    onClick={
+                      isExiting ? undefined : () => removeSkill(skill.skill_id)
+                    }
+                    onAnimationEnd={
+                      isExiting ? () => finishExit(skill.skill_id) : undefined
+                    }
+                  >
+                    <SkillIcon name={name} size={13} />
+                    {name}
+                    {inactive && " (unavailable)"}
+                    <X size={12} className="chip-remove-icon" />
+                  </button>
+                )
+              },
+            )}
           </div>
         ) : (
           <p className="catalog-selection-hint">
