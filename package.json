@@ -7,6 +7,7 @@
     "dev": "vite",
     "build": "vite build",
     "test:onboarding": "node tests/onboarding.browser.mjs",
+    "test:auth": "node tests/auth.browser.mjs",
     "preview": "vite preview",
     "format": "oxfmt"
   },

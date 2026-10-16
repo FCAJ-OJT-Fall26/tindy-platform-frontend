@@ -27,8 +27,8 @@ export interface ApiProblemDetails {
 export interface AuthUser {
   user_id: string
   display_name: string
-  university: string
-  email: string
+  university: string | null
+  email: string | null
   username: string | null
   status: 'active' | 'suspended' | string
   roles: string[]
@@ -50,6 +50,24 @@ export interface AuthSessionData {
   expires_in: number
   user: AuthUser
   redirect_to: string
+}
+
+export type OAuthProvider = 'google' | 'github'
+
+export interface ConnectedProvider {
+  provider: 'Google' | 'GitHub'
+  provider_username: string | null
+  linked_at: string
+}
+
+export interface AccountConnections {
+  has_local_password: boolean
+  providers: ConnectedProvider[]
+}
+
+export interface LinkConfirmation {
+  linked: boolean
+  created: boolean
 }
 
 // Login

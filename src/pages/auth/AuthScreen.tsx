@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Link, useLocation, useNavigate } from "react-router"
 import {
   ArrowLeft,
@@ -12,7 +12,8 @@ import {
 } from "lucide-react"
 import { Avatar, Badge } from "../../components/ui"
 import { useTindy } from "../../store"
-import { registerApi, loginApi, ApiError } from "../../services"
+import { registerApi, loginApi, ApiError, startOAuthLogin, authErrorMessage } from "../../services"
+import type { OAuthProvider } from "../../types/auth"
 
 function GoogleIcon() {
   return (
@@ -52,7 +53,8 @@ function GithubIcon() {
 export function AuthScreen() {
   const location = useLocation()
   const navigate = useNavigate()
-  const { setProfile, profile, setAuthUser, notify } = useTindy()
+  const { setAuthUser, authUser, authLoading, sessionError } = useTindy()
+  const authPending = useRef(false)
 
   // Track active mode: login vs register vs forgot with horizontal slide transition
   const [displayRegister, setDisplayRegister] = useState(
@@ -72,6 +74,30 @@ export function AuthScreen() {
   const [confirmPassword, setConfirmPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+
+  useEffect(() => {
+    const restored = (event: PageTransitionEvent) => {
+      if (event.persisted) { authPending.current = false; setLoading(false) }
+    }
+    window.addEventListener('pageshow', restored)
+    return () => window.removeEventListener('pageshow', restored)
+  }, [])
+
+  useEffect(() => {
+    if (!authLoading && authUser) navigate(authUser.is_onboarding_completed ? "/discover" : "/onboarding", { replace: true })
+  }, [authLoading, authUser, navigate])
+
+  const handleOAuth = (provider: OAuthProvider) => {
+    if (authPending.current) return
+    authPending.current = true
+    setLoading(true)
+    try { startOAuthLogin(provider) }
+    catch (error: unknown) {
+      authPending.current = false
+      setLoading(false)
+      setNotice(authErrorMessage(error))
+    }
+  }
 
   // Keep state synchronized with URL (e.g. browser back/forward)
   useEffect(() => {
@@ -264,7 +290,7 @@ export function AuthScreen() {
       {/* Right Form Area */}
       <div className="auth-form-area">
         <Link className="auth-back auth-back-link" to="/">
-          Explore the demo <ArrowUpRight size={14} />
+          Back to Tindy <ArrowUpRight size={14} />
         </Link>
 
         <section className={`auth-form auth-form-card ${transitionClass}`}>
@@ -289,6 +315,7 @@ export function AuthScreen() {
           <form
             onSubmit={async (event) => {
               event.preventDefault()
+              if (authPending.current) return
               setNotice("")
               setFieldErrors({})
 
@@ -303,6 +330,7 @@ export function AuthScreen() {
               }
 
               const formData = new FormData(event.currentTarget)
+              authPending.current = true
               setLoading(true)
 
               try {
@@ -321,14 +349,7 @@ export function AuthScreen() {
                   })
 
                   setAuthUser(session.user)
-                  setProfile({
-                    ...profile,
-                    name: session.user.display_name || displayName,
-                    email: session.user.email || email,
-                    university: session.user.university || university,
-                  })
-
-                  navigate(session.redirect_to || "/onboarding")
+                  navigate(session.redirect_to, { replace: true })
                 } else {
                   const identifier = String(formData.get("identifier") || "").trim()
 
@@ -338,16 +359,9 @@ export function AuthScreen() {
                   })
 
                   setAuthUser(session.user)
-                  setProfile({
-                    ...profile,
-                    name: session.user.display_name || profile.name,
-                    email: session.user.email || profile.email,
-                    university: session.user.university || profile.university,
-                  })
-
-                  navigate(session.redirect_to || (session.user.is_onboarding_completed ? "/discover" : "/onboarding"))
+                  navigate(session.redirect_to, { replace: true })
                 }
-              } catch (err: any) {
+              } catch (err: unknown) {
                 if (err instanceof ApiError) {
                   if (err.errorCode === "AUTH_INVALID_CREDENTIALS") {
                     setNotice("Invalid email/username or password. Please verify your credentials.")
@@ -360,12 +374,13 @@ export function AuthScreen() {
                     const firstMsg = Object.values(err.validationErrors)[0]?.[0]
                     setNotice(firstMsg || "Input data is invalid. Please check fields.")
                   } else {
-                    setNotice(err.message || "An authentication error occurred.")
+                    setNotice(authErrorMessage(err))
                   }
                 } else {
-                  setNotice(err.message || "Network error. Failed to connect to server.")
+                  setNotice(authErrorMessage(err))
                 }
               } finally {
+                authPending.current = false
                 setLoading(false)
               }
             }}
@@ -527,7 +542,8 @@ export function AuthScreen() {
                 <button
                   type="button"
                   className="auth-social-btn"
-                  onClick={() => notify("Đăng nhập bằng Google đang được kết nối...")}
+                  disabled={loading}
+                  onClick={() => handleOAuth('google')}
                 >
                   <GoogleIcon />
                   <span>Google</span>
@@ -535,7 +551,8 @@ export function AuthScreen() {
                 <button
                   type="button"
                   className="auth-social-btn"
-                  onClick={() => notify("Đăng nhập bằng GitHub đang được kết nối...")}
+                  disabled={loading}
+                  onClick={() => handleOAuth('github')}
                 >
                   <GithubIcon />
                   <span>GitHub</span>
@@ -544,7 +561,7 @@ export function AuthScreen() {
             </div>
           )}
 
-          {notice && <div className="info-banner" style={{ color: "#e11d48", borderColor: "#fecdd3", background: "#fff1f2" }}>{notice}</div>}
+          {(notice || sessionError) && <div className="info-banner" role="alert" style={{ color: "#e11d48", borderColor: "#fecdd3", background: "#fff1f2" }}>{notice || sessionError}</div>}
 
           <div className="stagger-8">
             {forgot ? (

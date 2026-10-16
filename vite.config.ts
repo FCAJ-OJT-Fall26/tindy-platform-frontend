@@ -41,7 +41,7 @@ react(),
       },
       proxy: {
         '/api': {
-          target: 'http://localhost:5217',
+          target: 'https://localhost:7190',
           changeOrigin: true,
           secure: false,
         },

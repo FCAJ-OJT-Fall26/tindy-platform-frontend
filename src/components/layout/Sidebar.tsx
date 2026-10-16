@@ -35,7 +35,7 @@ interface SidebarProps {
 }
 
 export default function Sidebar({ mobile, onClose }: SidebarProps) {
-  const { profile, read, logout } = useTindy()
+  const { profile, read, logout, loggingOut } = useTindy()
   const location = useLocation()
   const navigate = useNavigate()
 
@@ -188,15 +188,16 @@ export default function Sidebar({ mobile, onClose }: SidebarProps) {
         </NavLink>
         <button
           type="button"
+          disabled={loggingOut}
           onClick={async () => {
             await logout()
-            navigate("/login")
+            navigate("/login", { replace: true })
           }}
           className="nav-item cursor-pointer text-left w-full hover:text-rose-600 transition-colors"
           style={{ background: "transparent", border: "none" }}
         >
           <LogOut size={17} />
-          <span>Sign Out</span>
+          <span>{loggingOut ? 'Signing out…' : 'Sign Out'}</span>
         </button>
         <Link to="/profile" className="sidebar-user">
           <Avatar name={profile.name} color="neutral" />
