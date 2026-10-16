@@ -324,6 +324,7 @@ export function OnboardingScreen() {
         }
 
         if (data.is_onboarding_completed) {
+          setAuthUser(user => user ? { ...user, is_onboarding_completed: true } : null)
           navigate("/discover", { replace: true })
         } else if (data.current_step) {
           setStep(Math.max(0, Math.min(7, data.current_step - 1)))

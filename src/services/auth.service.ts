@@ -1,4 +1,5 @@
-import { apiRequest, setStoredToken, clearStoredToken } from './apiClient'
+import { apiRequest, setStoredToken, clearStoredToken, getStoredToken } from './apiClient'
+import { readAuthSession, readAuthUser } from './authValidation'
 import type {
   RegisterRequest,
   AuthSessionData,
@@ -35,10 +36,9 @@ export async function registerApi(data: RegisterRequest) {
     requiresAuth: false,
     body: JSON.stringify(data),
   })
-  if (res.data?.access_token) {
-    setStoredToken(res.data.access_token)
-  }
-  return res.data
+  const session = readAuthSession(res.data)
+  setStoredToken(session.access_token)
+  return session
 }
 
 /**
@@ -52,10 +52,9 @@ export async function loginApi(data: LoginRequest) {
     requiresAuth: false,
     body: JSON.stringify(data),
   })
-  if (res.data?.access_token) {
-    setStoredToken(res.data.access_token)
-  }
-  return res.data
+  const session = readAuthSession(res.data)
+  setStoredToken(session.access_token)
+  return session
 }
 
 /**
@@ -64,7 +63,7 @@ export async function loginApi(data: LoginRequest) {
  */
 export async function logoutApi() {
   try {
-    await apiRequest<null>('/api/auth/logout', {
+    if (getStoredToken()) await apiRequest<null>('/api/auth/logout', {
       method: 'POST',
       requiresAuth: true,
     })
@@ -77,12 +76,13 @@ export async function logoutApi() {
  * GET /api/me
  * Retrieve current user session and account information.
  */
-export async function getMeApi() {
+export async function getMeApi(signal?: AbortSignal) {
   const res = await apiRequest<AuthUser>('/api/me', {
     method: 'GET',
     requiresAuth: true,
+    signal,
   })
-  return res.data
+  return readAuthUser(res.data)
 }
 
 // ================= ONBOARDING APIs =================

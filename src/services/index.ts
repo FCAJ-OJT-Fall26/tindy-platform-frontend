@@ -1,3 +1,5 @@
 export * from './apiClient'
 export * from './auth.service'
 export * from './catalog.service'
+export * from './oauth.service'
+export * from './authValidation'

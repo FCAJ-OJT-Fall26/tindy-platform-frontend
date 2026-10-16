@@ -9,6 +9,7 @@ import assert from "node:assert/strict"
 
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
 const server = await createServer({
+  define: { 'import.meta.env.VITE_API_BASE_URL': JSON.stringify('') },
   server: { port: 0, host: "127.0.0.1", strictPort: false },
 })
 await server.listen()
@@ -356,7 +357,7 @@ try {
     mobile: false,
   })
   await send("Page.addScriptToEvaluateOnNewDocument", {
-    source: `localStorage.setItem('tindy_access_token', 'mock-token')`,
+    source: `if (['/login', '/register'].includes(location.pathname)) localStorage.removeItem('tindy_access_token'); else localStorage.setItem('tindy_access_token', 'mock-token')`,
   })
   await go()
   await readySkills()
@@ -568,10 +569,10 @@ try {
   )
   saveFailure = { status: 401, detail: "Expired" }
   await clickText("Continue")
-  await waitFor(hasText("Your session has expired."), "expired token")
+  await waitFor('location.pathname === "/login"', "expired token redirects to login")
   await check(
-    'localStorage.getItem("tindy_access_token") === null && Boolean([...document.querySelectorAll("a")].find(a => a.textContent === "Sign in again"))',
-    "HTTP 401 clears the token and offers sign-in",
+    'localStorage.getItem("tindy_access_token") === null && Boolean(document.querySelector("input[name=identifier]"))',
+    "HTTP 401 clears the token/auth state and redirects to sign-in",
   )
   saveFailure = null
 
@@ -658,6 +659,7 @@ try {
   await clickText("Retry skills")
   await clickText("Retry categories")
   await readySkills()
+  await waitFor(hasText("Frontend Development"), "category retry completes independently")
   await check(
     hasText("Frontend Development"),
     "Skill and category failures support independent retry",
@@ -821,7 +823,11 @@ try {
   chrome.kill()
   await server.close()
   await delay(500)
-  await rm(profileDir, {
+  const cleanupProfile = path.resolve(profileDir)
+  if (path.dirname(cleanupProfile) !== path.resolve(tmpdir()) || !path.basename(cleanupProfile).startsWith('tindy-browser-')) {
+    throw new Error('Refusing to remove an unexpected browser profile path')
+  }
+  await rm(cleanupProfile, {
     recursive: true,
     force: true,
     maxRetries: 5,

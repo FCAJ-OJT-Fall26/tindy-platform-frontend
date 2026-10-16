@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react"
-import { Link } from "react-router"
+import { useNavigate } from "react-router"
 import {
   GraduationCap,
   Bell,
@@ -11,9 +11,11 @@ import {
 } from "lucide-react"
 import { useTindy } from "../../store"
 import { PageHeader, Button } from "../../components/ui"
+import ConnectedAccounts from "../../components/auth/ConnectedAccounts"
 
 export function SettingsScreen() {
-  const { profile, setProfile, notify } = useTindy()
+  const { profile, setProfile, notify, logout, loggingOut } = useTindy()
+  const navigate = useNavigate()
   const [preferences, setPreferences] = useState<Record<string, boolean>>(
     () => {
       try {
@@ -196,16 +198,19 @@ export function SettingsScreen() {
             <div className="trust-note">
               <ShieldCheck size={17} />
               <span>
-                This is an interactive frontend prototype. Cognito
-                authentication, storage, AI services, and real-time
-                communication are not connected.
+                Signing out clears your Tindy session in this browser. It does not
+                sign you out of Google or GitHub.
               </span>
             </div>
+            <ConnectedAccounts />
             <div style={{ marginTop: '20px', marginBottom: '20px', display: 'flex', gap: '10px' }}>
-              <Link to="/login" className="btn btn-secondary">
+              <button type="button" className="btn btn-secondary" disabled={loggingOut} onClick={async () => {
+                await logout()
+                navigate('/login', { replace: true })
+              }}>
                 <LogOut size={15} />
-                Sign out of demo
-              </Link>
+                {loggingOut ? 'Signing out…' : 'Sign out'}
+              </button>
             </div>
             <div style={{ paddingTop: '16px', borderTop: '1px solid var(--border)', fontSize: '11px', color: 'var(--muted)' }}>
               <div style={{ fontWeight: 600, color: 'var(--ink)', marginBottom: '4px' }}>Community Support Coordinator</div>

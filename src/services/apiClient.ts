@@ -1,6 +1,9 @@
 import type { ApiProblemDetails, ApiResponse } from '../types/auth'
+import { apiUrl } from './apiConfig'
 
 const TOKEN_KEY = 'tindy_access_token'
+export const SESSION_EXPIRED_EVENT = 'tindy:session-expired'
+export const ONBOARDING_REQUIRED_EVENT = 'tindy:onboarding-required'
 
 export class ApiError extends Error {
   status: number
@@ -49,8 +52,6 @@ export function clearStoredToken(): void {
     localStorage.removeItem(TOKEN_KEY)
   } catch {}
 }
-
-const BASE_URL = import.meta.env.VITE_API_BASE_URL || ''
 
 interface RequestOptions extends RequestInit {
   requiresAuth?: boolean
@@ -105,18 +106,21 @@ export async function apiRequest<T>(
     headers.set('Content-Type', 'application/json')
   }
 
+  const requestToken = requiresAuth ? getStoredToken() : null
   if (requiresAuth) {
-    const token = getStoredToken()
-    if (token) {
-      headers.set('Authorization', `Bearer ${token}`)
+    if (requestToken) {
+      headers.set('Authorization', `Bearer ${requestToken}`)
     }
   }
 
-  const url = `${BASE_URL}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`
-
-  const response = await fetch(url, {
+  const timeout = AbortSignal.timeout(15_000)
+  const response = await fetch(apiUrl(endpoint), {
+    credentials: 'omit',
+    cache: 'no-store',
+    referrerPolicy: 'no-referrer',
     ...rest,
     headers,
+    signal: rest.signal ? AbortSignal.any([rest.signal, timeout]) : timeout,
   })
 
   // Handle empty or 204 response
@@ -142,9 +146,17 @@ export async function apiRequest<T>(
     // Backend returns ProblemDetails
     const problem = parseProblem(responseData, response.status, response.statusText)
 
-    // Auto-clean token on 401 AUTH_UNAUTHORIZED
-    if (response.status === 401 && requiresAuth) {
+    // An invalid link ticket is not an invalid JWT. Do not end a valid session.
+    // A stale request must also never clear a newer account's token.
+    if (requiresAuth && requestToken && getStoredToken() === requestToken &&
+        ((response.status === 401 && problem.error_code !== 'AUTH_INVALID_CREDENTIALS') ||
+         (response.status === 403 && problem.error_code === 'AUTH_FORBIDDEN'))) {
       clearStoredToken()
+      window.dispatchEvent(new Event(SESSION_EXPIRED_EVENT))
+    }
+    if (requiresAuth && response.status === 403 && problem.error_code === 'ONBOARDING_REQUIRED' &&
+        getStoredToken() === requestToken) {
+      window.dispatchEvent(new Event(ONBOARDING_REQUIRED_EVENT))
     }
 
     throw new ApiError(response.status, problem)
