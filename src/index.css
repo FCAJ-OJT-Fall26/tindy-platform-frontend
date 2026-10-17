@@ -7583,7 +7583,7 @@ main {
   transform: scale(0.92) !important;
 }
 
-.icon-button.is-saved svg {
+.icon-button.is-saved svg:not(.save-bookmark-icon) {
   animation: bookmarkPop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
@@ -7598,6 +7598,476 @@ main {
 
   100% {
     transform: scale(1);
+  }
+}
+
+/* Micro-interaction: Icon Pop + Star Burst for Tindy Save Buttons */
+.project-save-btn {
+  position: relative;
+  overflow: visible !important;
+  transition: transform 0.18s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.18s ease, border-color 0.18s ease, color 0.18s ease, box-shadow 0.18s ease !important;
+}
+
+.project-save-btn.is-saved {
+  color: var(--ink);
+  background: #ffffff;
+  border-color: #cbd5e1;
+}
+
+.project-save-btn.is-saved:hover {
+  background: #f8fafc;
+  border-color: #94a3b8;
+}
+
+.project-save-btn-label {
+  display: inline-block;
+  line-height: 1;
+}
+
+.project-save-icon-btn {
+  position: relative;
+  overflow: visible !important;
+}
+
+.project-save-icon-wrapper {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 0;
+  width: max-content;
+  height: max-content;
+  pointer-events: none;
+}
+
+.save-bookmark-icon {
+  display: inline-block;
+  vertical-align: middle;
+  transform-origin: center center;
+  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), color 0.18s ease, fill 0.18s ease;
+  will-change: transform;
+}
+
+.save-bookmark-icon.save-bookmark-pop {
+  animation: bookmarkPopElastic 0.48s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+@keyframes bookmarkPopElastic {
+  0% {
+    transform: scale(1);
+  }
+  30% {
+    transform: scale(1.42);
+  }
+  55% {
+    transform: scale(0.92);
+  }
+  75% {
+    transform: scale(1.08);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.save-burst-container {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+  overflow: visible;
+  z-index: 20;
+}
+
+.save-burst-particle {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  will-change: transform, opacity;
+  animation: starBurstFlight 0.52s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes starBurstFlight {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) translate(0, 0) scale(0) rotate(0deg);
+  }
+  20% {
+    opacity: 1;
+    transform: translate(-50%, -50%) translate(calc(var(--star-dx) * 0.42), calc(var(--star-dy) * 0.42)) scale(1.2) rotate(calc(var(--star-rot) * 0.35));
+  }
+  65% {
+    opacity: 0.95;
+    transform: translate(-50%, -50%) translate(calc(var(--star-dx) * 0.85), calc(var(--star-dy) * 0.85)) scale(0.9) rotate(calc(var(--star-rot) * 0.8));
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) translate(var(--star-dx), var(--star-dy)) scale(0) rotate(var(--star-rot));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .save-bookmark-icon.save-bookmark-pop {
+    animation: none !important;
+  }
+  .save-burst-container {
+    display: none !important;
+  }
+}
+
+/* Micro-interactions: Skip, Star, and Interested Buttons for Tindy Discovery */
+
+/* 1. Skip Micro-Interaction */
+.skip-micro-btn {
+  position: relative;
+  overflow: visible !important;
+  transition: transform 0.15s cubic-bezier(0.25, 1, 0.5, 1), background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease !important;
+}
+
+.skip-micro-btn.is-active {
+  animation: skipButtonPress 0.22s cubic-bezier(0.25, 1, 0.5, 1);
+}
+
+@keyframes skipButtonPress {
+  0% {
+    transform: scale(1);
+  }
+  35% {
+    transform: scale(0.96);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.skip-micro-icon {
+  display: inline-block;
+  vertical-align: middle;
+  transform-origin: center center;
+  transition: transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.18s ease;
+  will-change: transform, opacity;
+}
+
+.skip-micro-icon.is-active {
+  animation: skipIconFeedback 0.22s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+@keyframes skipIconFeedback {
+  0% {
+    transform: scale(1) rotate(0deg);
+    opacity: 1;
+  }
+  35% {
+    transform: scale(0.86) rotate(-7deg);
+    opacity: 0.75;
+  }
+  70% {
+    transform: scale(1.03) rotate(2deg);
+    opacity: 0.95;
+  }
+  100% {
+    transform: scale(1) rotate(0deg);
+    opacity: 1;
+  }
+}
+
+/* 2. Star Micro-Interaction */
+.star-micro-btn {
+  position: relative;
+  overflow: visible !important;
+  transition: transform 0.18s cubic-bezier(0.25, 1, 0.5, 1), background-color 0.18s ease, border-color 0.18s ease, color 0.18s ease, box-shadow 0.18s ease !important;
+}
+
+.star-micro-btn.is-active {
+  animation: starButtonPress 0.24s cubic-bezier(0.25, 1, 0.5, 1);
+}
+
+@keyframes starButtonPress {
+  0% {
+    transform: scale(1);
+  }
+  35% {
+    transform: scale(0.95);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.star-micro-icon-wrapper {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 0;
+  width: max-content;
+  height: max-content;
+  pointer-events: none;
+}
+
+.star-micro-icon {
+  display: inline-block;
+  vertical-align: middle;
+  transform-origin: center center;
+  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), color 0.18s ease, fill 0.18s ease;
+  will-change: transform;
+}
+
+.star-micro-icon.is-popping {
+  animation: starIconPop 0.26s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+.star-micro-icon.is-unselecting {
+  animation: starIconUnselect 0.2s cubic-bezier(0.25, 1, 0.5, 1) both;
+}
+
+@keyframes starIconPop {
+  0% {
+    transform: scale(1);
+  }
+  35% {
+    transform: scale(1.28);
+  }
+  65% {
+    transform: scale(0.95);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes starIconUnselect {
+  0% {
+    transform: scale(1);
+  }
+  40% {
+    transform: scale(0.88);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.star-micro-aura {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 22px;
+  height: 22px;
+  border-radius: 9999px;
+  border: 1.5px solid #38bdf8;
+  background: rgba(56, 189, 248, 0.12);
+  pointer-events: none;
+  animation: starAuraRing 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes starAuraRing {
+  0% {
+    transform: translate(-50%, -50%) scale(0.5);
+    opacity: 0.75;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(1.4);
+    opacity: 0;
+  }
+}
+
+.star-micro-sparkles-container {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+  overflow: visible;
+  z-index: 20;
+}
+
+.star-micro-sparkle {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  will-change: transform, opacity;
+  animation: starSparkleFlight 0.32s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes starSparkleFlight {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) translate(0, 0) scale(0);
+  }
+  30% {
+    opacity: 1;
+    transform: translate(-50%, -50%) translate(calc(var(--sp-dx) * 0.5), calc(var(--sp-dy) * 0.5)) scale(1.15);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) translate(var(--sp-dx), var(--sp-dy)) scale(0);
+  }
+}
+
+/* 3. Interested Micro-Interaction */
+.interested-micro-btn {
+  position: relative;
+  overflow: visible !important;
+  transition: transform 0.18s cubic-bezier(0.25, 1, 0.5, 1), background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease !important;
+}
+
+.interested-micro-btn.is-active {
+  animation: heartButtonPress 0.24s cubic-bezier(0.25, 1, 0.5, 1);
+}
+
+.interested-micro-btn.is-glow {
+  animation: interestedButtonGlow 0.35s ease-out;
+}
+
+@keyframes heartButtonPress {
+  0% {
+    transform: scale(1);
+  }
+  35% {
+    transform: scale(0.96);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes interestedButtonGlow {
+  0% {
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.45);
+  }
+  40% {
+    box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.18);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+  }
+}
+
+.heart-micro-icon-wrapper {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 0;
+  width: max-content;
+  height: max-content;
+  pointer-events: none;
+}
+
+.heart-micro-icon {
+  display: inline-block;
+  vertical-align: middle;
+  transform-origin: center center;
+  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), color 0.18s ease, fill 0.18s ease;
+  will-change: transform;
+}
+
+.heart-micro-icon.is-popping {
+  animation: heartIconPopSpring 0.28s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+@keyframes heartIconPopSpring {
+  0% {
+    transform: scale(1);
+  }
+  30% {
+    transform: scale(1.22);
+  }
+  55% {
+    transform: scale(0.96);
+  }
+  75% {
+    transform: scale(1.04);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.heart-micro-aura {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 22px;
+  height: 22px;
+  border-radius: 9999px;
+  border: 1.5px solid #10b981;
+  background: rgba(16, 185, 129, 0.12);
+  pointer-events: none;
+  animation: heartPulseAura 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes heartPulseAura {
+  0% {
+    transform: translate(-50%, -50%) scale(0.65);
+    opacity: 0.75;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(1.4);
+    opacity: 0;
+  }
+}
+
+.heart-micro-particles-container {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+  overflow: visible;
+  z-index: 20;
+}
+
+.heart-micro-particle {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  will-change: transform, opacity;
+  animation: heartParticleBurst 0.32s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes heartParticleBurst {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) translate(0, 0) scale(0);
+  }
+  30% {
+    opacity: 0.9;
+    transform: translate(-50%, -50%) translate(calc(var(--hp-dx) * 0.5), calc(var(--hp-dy) * 0.5)) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) translate(var(--hp-dx), var(--hp-dy)) scale(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skip-micro-btn.is-active,
+  .skip-micro-icon.is-active,
+  .star-micro-btn.is-active,
+  .star-micro-icon.is-popping,
+  .star-micro-icon.is-unselecting,
+  .interested-micro-btn.is-active,
+  .interested-micro-btn.is-glow,
+  .heart-micro-icon.is-popping {
+    animation: none !important;
+  }
+  .star-micro-aura,
+  .star-micro-sparkles-container,
+  .heart-micro-aura,
+  .heart-micro-particles-container {
+    display: none !important;
   }
 }
 

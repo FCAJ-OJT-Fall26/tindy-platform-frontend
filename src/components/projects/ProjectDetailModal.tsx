@@ -4,6 +4,7 @@ import { DiscoveryProject } from '../../types/discovery';
 import AiMatchBadge from '../common/AiMatchBadge';
 import FunnelStatusTracker from '../common/FunnelStatusTracker';
 import SkillIcon from '../onboarding/SkillIcon';
+import { StarActionButton, InterestedActionButton } from '../common/DiscoveryActionButtons';
 
 interface ProjectDetailModalProps {
   project: DiscoveryProject | null;
@@ -60,17 +61,18 @@ export default function ProjectDetailModal({
             <span>Back to Discovery Deck</span>
           </button>
           <div className="flex items-center gap-2">
-            <button
-              onClick={() => onToggleSave(project.id)}
+            <StarActionButton
+              starred={isSaved}
+              onToggle={() => onToggleSave(project.id)}
               className={`py-1.5 px-3 rounded-lg border text-xs font-semibold flex items-center gap-1.5 transition-colors ${
                 isSaved
                   ? 'bg-sky-50 text-sky-700 border-sky-300'
                   : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
               }`}
+              iconSize={13}
             >
-              <Star size={13} className={isSaved ? 'text-sky-500 fill-sky-500' : 'text-slate-400'} />
               <span>{isSaved ? 'Saved' : 'Save'}</span>
-            </button>
+            </StarActionButton>
             <button
               onClick={handleClose}
               className="p-1.5 rounded-lg text-slate-400 hover:text-slate-800 hover:bg-slate-200 transition-colors"
@@ -225,18 +227,20 @@ export default function ProjectDetailModal({
             Back to Deck
           </button>
           <div className="flex items-center gap-2">
-            <button
-              onClick={() => onToggleSave(project.id)}
+            <StarActionButton
+              starred={isSaved}
+              onToggle={() => onToggleSave(project.id)}
               className={`text-xs py-2 px-3.5 rounded-lg border font-semibold flex items-center gap-1.5 transition-colors cursor-pointer ${
                 isSaved
                   ? 'border-sky-300 bg-sky-50 text-sky-700 shadow-2xs'
                   : 'border-slate-300 bg-white text-slate-800 hover:bg-slate-50'
               }`}
+              iconSize={14}
             >
-              <Star size={14} className={isSaved ? 'text-sky-500 fill-sky-500' : 'text-slate-500'} />
               <span>{isSaved ? 'Saved' : 'Save for Later'}</span>
-            </button>
-            <button
+            </StarActionButton>
+            <InterestedActionButton
+              interested={isInterested}
               onClick={() => {
                 onMarkInterested(project.id);
               }}
@@ -245,10 +249,10 @@ export default function ProjectDetailModal({
                   ? 'border-emerald-500 bg-emerald-600 text-white'
                   : 'border-emerald-400 bg-emerald-50 hover:bg-emerald-100 text-emerald-800'
               }`}
+              iconSize={14}
             >
-              <Heart size={14} className={isInterested ? 'text-white fill-white' : 'text-emerald-600 fill-emerald-600'} />
               <span>{isInterested ? 'Interest Confirmed' : 'Confirm Interest'}</span>
-            </button>
+            </InterestedActionButton>
           </div>
         </div>
       </div>

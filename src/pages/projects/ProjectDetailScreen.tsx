@@ -11,7 +11,7 @@ import {
   Sparkles,
   Users,
 } from "lucide-react"
-import { Avatar, Badge, Button, Chips, Modal, Score } from "../../components/ui"
+import { Avatar, Badge, Button, Chips, Modal, Score, ProjectSaveButton, SkipActionButton } from "../../components/ui"
 import { useTindy } from "../../store"
 import { useExplanation } from "../../utils/useExplanation"
 import NotFoundPage from "../NotFoundPage"
@@ -92,13 +92,13 @@ export function ProjectDetailScreen() {
                 </>
               )}
             </Button>
-            <Button variant="secondary" onClick={() => toggleSave(project.id)}>
-              <Bookmark
-                size={16}
-                fill={saved.includes(project.id) ? "currentColor" : "none"}
-              />
-              {saved.includes(project.id) ? "Saved" : "Save"}
-            </Button>
+            <ProjectSaveButton
+              saved={saved.includes(project.id)}
+              onToggle={() => toggleSave(project.id)}
+              variant="button"
+              size={16}
+              projectName={project.name}
+            />
           </div>
           <div className="detail-sub-actions">
             {sent && (
@@ -107,17 +107,19 @@ export function ProjectDetailScreen() {
                 Waiting for project leader
               </span>
             )}
-            <button
-              type="button"
-              className="detail-skip-btn"
+            <SkipActionButton
               onClick={() => {
                 setSkipped((old) => [...old, project.id])
                 notify("Project skipped — removed from recommendations")
                 window.history.back()
               }}
+              className="detail-skip-btn"
+              title="Skip recommendation"
+              ariaLabel="Skip for now"
+              showIcon={false}
             >
               Skip for now
-            </button>
+            </SkipActionButton>
           </div>
         </div>
       </div>

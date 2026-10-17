@@ -11,6 +11,7 @@ import {
   Plus
 } from 'lucide-react';
 import { projects, ProjectItem } from '../../data/projectsData';
+import ProjectSaveButton from '../../components/common/ProjectSaveButton';
 
 interface WorkspaceProjectsScreenProps {
   mode: 'projects' | 'saved';
@@ -56,13 +57,14 @@ export default function WorkspaceProjectsScreen({
           </span>
         )}
         {mode === 'saved' && (
-          <button
-            className={`icon-button save ${saved.includes(project.id) ? 'text-slate-900' : 'text-slate-400'}`}
-            aria-label={saved.includes(project.id) ? 'Remove saved project' : 'Save project'}
-            onClick={() => onToggleSave(project.id)}
-          >
-            <Bookmark size={17} fill={saved.includes(project.id) ? 'currentColor' : 'none'} />
-          </button>
+          <ProjectSaveButton
+            saved={saved.includes(project.id)}
+            onToggle={() => onToggleSave(project.id)}
+            variant="icon"
+            size={17}
+            className={`save ${saved.includes(project.id) ? 'text-slate-900' : 'text-slate-400'}`}
+            projectName={project.name}
+          />
         )}
       </div>
       <div className="project-category">{project.type}</div>

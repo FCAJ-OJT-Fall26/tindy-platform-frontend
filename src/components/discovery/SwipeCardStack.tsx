@@ -3,6 +3,7 @@ import { X, Bookmark, RotateCcw, ChevronLeft, ChevronRight, Heart, Star } from '
 import { DiscoveryProject, DiscoveryCandidate, DiscoveryMode, SwipeDirection } from '../../types/discovery';
 import ProjectCardContent from '../projects/ProjectCardContent';
 import CandidateCardContent from '../candidates/CandidateCardContent';
+import { SkipActionButton, StarActionButton, InterestedActionButton } from '../common/DiscoveryActionButtons';
 
 interface SwipeCardStackProps {
   items: (DiscoveryProject | DiscoveryCandidate)[];
@@ -298,37 +299,36 @@ export default function SwipeCardStack({
           <RotateCcw size={15} />
         </button>
 
-        <button
-          type="button"
+        <SkipActionButton
           onClick={() => executeSwipe('left')}
           className="flex-1 max-w-[120px] py-2.5 rounded-lg border border-rose-300 bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold text-xs flex items-center justify-center gap-1.5 transition-colors shadow-2xs"
           title="Skip recommendation"
-          aria-label="Skip"
+          ariaLabel="Skip"
+          iconSize={15}
+          strokeWidth={2.5}
         >
-          <X size={15} strokeWidth={2.5} className="text-rose-600" />
           <span>Skip</span>
-        </button>
+        </SkipActionButton>
 
-        <button
-          type="button"
-          onClick={() => executeSwipe('up')}
+        <StarActionButton
+          isActionTrigger
+          onToggle={() => executeSwipe('up')}
           className="w-10 h-10 rounded-lg border border-sky-300 bg-sky-50 hover:bg-sky-100 text-sky-700 flex items-center justify-center transition-colors shadow-2xs"
           title="Save for later"
-          aria-label="Save for later"
-        >
-          <Star size={16} className="text-sky-500 fill-sky-500" />
-        </button>
+          ariaLabel="Save for later"
+          iconSize={16}
+        />
 
-        <button
-          type="button"
+        <InterestedActionButton
+          isActionTrigger
           onClick={() => executeSwipe('right')}
           className="flex-1 max-w-[140px] py-2.5 rounded-lg border border-emerald-400 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-bold text-xs flex items-center justify-center gap-1.5 transition-colors shadow-2xs"
           title={mode === 'student' ? 'Mark Interested' : 'Shortlist Candidate'}
-          aria-label={mode === 'student' ? 'Interested' : 'Shortlist'}
+          ariaLabel={mode === 'student' ? 'Interested' : 'Shortlist'}
+          iconSize={15}
         >
-          <Heart size={15} className="text-emerald-600 fill-emerald-600" />
           <span>{mode === 'student' ? 'Interested' : 'Shortlist'}</span>
-        </button>
+        </InterestedActionButton>
       </div>
 
       {/* Keyboard Controls Note */}

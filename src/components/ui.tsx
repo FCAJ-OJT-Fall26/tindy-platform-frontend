@@ -17,8 +17,21 @@ import {
 import { factors, score, type Profile, type Project } from "../data"
 import { useTindy } from "../store"
 import SkillIcon from "./onboarding/SkillIcon"
+import ProjectSaveButton, { BookmarkBurst } from "./common/ProjectSaveButton"
+import {
+  SkipActionButton,
+  StarActionButton,
+  InterestedActionButton,
+} from "./common/DiscoveryActionButtons"
 
-export { SkillIcon }
+export {
+  SkillIcon,
+  ProjectSaveButton,
+  BookmarkBurst,
+  SkipActionButton,
+  StarActionButton,
+  InterestedActionButton,
+}
 
 export function Button({
   children,
@@ -231,14 +244,13 @@ export function ProjectCard({
             Recruiting
           </span>
         </div>
-        <button
-          className={`icon-button ${saved ? "is-saved" : ""}`}
-          onClick={onSave}
-          aria-label={saved ? "Unsave project" : "Save project"}
-          title={saved ? "Unsave project" : "Save project"}
-        >
-          <Bookmark size={19} fill={saved ? "currentColor" : "none"} />
-        </button>
+        <ProjectSaveButton
+          saved={saved}
+          onToggle={onSave}
+          variant="icon"
+          size={19}
+          projectName={project.name}
+        />
       </div>
       <Link className="project-title" to={`/project/${project.id}`}>
         {project.name}
