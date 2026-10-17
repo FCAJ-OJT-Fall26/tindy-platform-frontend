@@ -179,8 +179,8 @@ export default function SwipeCardStack({
   const visibleItems = items.slice(currentIndex, currentIndex + 2);
 
   return (
-    <div className="w-full max-w-md mx-auto flex flex-col items-center select-none">
-      <div className="relative w-full aspect-3/4 min-h-[500px]">
+    <div className="w-full max-w-[460px] sm:max-w-[480px] mx-auto flex flex-col items-center select-none">
+      <div className="relative w-full h-[540px] sm:h-[570px] min-h-[520px]">
         {visibleItems.map((item, index) => {
           const isTop = index === 0;
           const offsetStyle = {

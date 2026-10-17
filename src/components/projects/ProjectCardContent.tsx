@@ -20,47 +20,52 @@ export default function ProjectCardContent({
   return (
     <div className="flex flex-col h-full bg-white select-none">
       {/* Top Banner / Category */}
-      <div className="p-5 pb-3 border-b border-slate-200 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <span className="text-[11px] font-bold uppercase tracking-wider text-slate-900 bg-slate-100 px-2.5 py-1 rounded border border-slate-200">
+      <div className="px-4 py-2.5 sm:px-5 sm:py-3 border-b border-slate-200 flex items-center justify-between gap-2">
+        <div className="flex items-center gap-1.5 min-w-0 flex-1 overflow-hidden">
+          <span
+            className="text-[10px] font-bold uppercase tracking-wider text-slate-800 bg-slate-100 px-2 py-0.5 rounded border border-slate-200 whitespace-nowrap truncate max-w-[150px] sm:max-w-none"
+            title={project.category}
+          >
             {project.category}
           </span>
           {project.badge && (
-            <span className={`text-[10px] font-bold px-2 py-0.5 rounded border flex items-center gap-1 ${
-              match.overall < 35
-                ? 'bg-rose-50 text-rose-700 border-rose-200'
-                : match.overall <= 65
-                ? 'bg-amber-50 text-amber-800 border-amber-200'
-                : 'bg-slate-50 text-slate-600 border-slate-200'
-            }`}>
-              {match.overall < 35 ? 'LOW MATCH (WARNING)' : match.overall <= 65 ? 'MODERATE MATCH' : project.badge}
+            <span
+              className={`text-[10px] font-bold px-2 py-0.5 rounded border whitespace-nowrap truncate max-w-[140px] sm:max-w-none flex items-center gap-1 ${
+                match.overall < 35
+                  ? 'bg-rose-50 text-rose-700 border-rose-200'
+                  : match.overall <= 65
+                  ? 'bg-amber-50 text-amber-800 border-amber-200'
+                  : 'bg-slate-50 text-slate-600 border-slate-200'
+              }`}
+            >
+              {match.overall < 35 ? 'LOW MATCH' : match.overall <= 65 ? 'MODERATE' : project.badge}
             </span>
           )}
         </div>
-        <div className="flex items-center gap-1.5 text-xs text-slate-600">
-          <Users size={13} />
-          <span className="font-semibold text-slate-900">{project.teamSize} / {project.maxTeamSize}</span>
-          <span className="text-[10px]">members</span>
+        <div className="flex items-center gap-1 text-xs text-slate-600 whitespace-nowrap flex-shrink-0">
+          <Users size={13} className="text-slate-500" />
+          <span className="font-semibold text-slate-900">{project.teamSize}/{project.maxTeamSize}</span>
+          <span className="text-[10px] text-slate-500 hidden sm:inline">members</span>
         </div>
       </div>
 
       {/* Main Card Body */}
-      <div className="p-6 flex-1 flex flex-col justify-between space-y-4">
+      <div className="p-4 sm:p-5 flex-1 flex flex-col justify-between space-y-3 sm:space-y-3.5 min-h-0 overflow-y-auto">
         {/* Title & Tagline */}
         <div>
-          <h3 className="font-bold text-2xl text-slate-900 tracking-tight leading-tight">
+          <h3 className="font-bold text-xl sm:text-2xl text-slate-900 tracking-tight leading-tight line-clamp-1">
             {project.name}
           </h3>
-          <p className="text-xs font-semibold text-slate-700 mt-1">
+          <p className="text-xs font-medium text-slate-700 mt-0.5 line-clamp-1">
             {project.tagline}
           </p>
-          <p className="text-xs text-slate-600 mt-2 line-clamp-3 leading-relaxed">
+          <p className="text-xs text-slate-600 mt-1 line-clamp-2 leading-relaxed">
             {project.desc}
           </p>
         </div>
 
         {/* AI Match Score Highlight Block */}
-        <div className={`p-3.5 rounded-xl border flex items-center justify-between transition-colors ${
+        <div className={`px-3.5 py-2 sm:py-2.5 rounded-xl border flex items-center justify-between transition-colors ${
           match.overall < 35
             ? 'bg-rose-50/70 border-rose-200'
             : match.overall <= 65
@@ -72,7 +77,7 @@ export default function ProjectCardContent({
           <button
             type="button"
             onClick={onWhyMatchesClick}
-            className={`text-xs font-semibold hover:underline flex items-center gap-1 bg-white border px-2.5 py-1.5 rounded-lg shadow-2xs transition-colors ${
+            className={`text-xs font-semibold hover:underline flex items-center gap-1 bg-white border px-2.5 py-1 rounded-lg shadow-2xs transition-colors ${
               match.overall < 35
                 ? 'border-rose-300 text-rose-700'
                 : match.overall <= 65
@@ -86,21 +91,21 @@ export default function ProjectCardContent({
         </div>
 
         {/* Roles & Key Tech Stack */}
-        <div className="space-y-3 pt-1">
-          <div>
-            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
-              Looking for Role
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 whitespace-nowrap">
+              Role:
             </span>
-            <div className="inline-block text-xs font-bold text-slate-900 bg-slate-100 px-2.5 py-1 rounded border border-slate-200">
+            <div className="inline-block text-xs font-bold text-slate-900 bg-slate-100 px-2 py-0.5 rounded border border-slate-200 truncate">
               {project.role}
             </div>
           </div>
 
           <div>
-            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1.5">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
               Required Stack
             </span>
-            <div className="flex flex-wrap gap-1.5">
+            <div className="flex flex-wrap gap-1.5 max-h-[58px] overflow-hidden">
               {(project.skills || []).map((skill) => {
                 const strongList = match?.strongMatches || match?.strengths || [];
                 const isMatched = strongList.some((s) =>
@@ -125,7 +130,7 @@ export default function ProjectCardContent({
         </div>
 
         {/* Commitment, Duration & Meta */}
-        <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+        <div className="pt-2.5 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
           <div className="flex items-center gap-1.5">
             <Clock size={13} className="text-slate-500" />
             <span className="font-semibold text-slate-800">{project.hours || project.commitment || '8-10 hrs/week'}</span>
@@ -141,7 +146,7 @@ export default function ProjectCardContent({
       {/* Card Footer / Tap action note */}
       <div
         onClick={onViewDetailsClick}
-        className="px-6 py-3 bg-slate-50 border-t border-slate-200 flex items-center justify-between text-xs font-semibold text-slate-800 hover:bg-slate-100 cursor-pointer transition-colors"
+        className="px-4 py-2.5 sm:px-5 sm:py-3 bg-slate-50 border-t border-slate-200 flex items-center justify-between text-xs font-semibold text-slate-800 hover:bg-slate-100 cursor-pointer transition-colors flex-shrink-0"
       >
         <span className="text-[11px] text-slate-600">Tap card to inspect full details</span>
         <span className="flex items-center gap-1 text-slate-900 font-bold">
