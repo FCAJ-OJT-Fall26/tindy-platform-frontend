@@ -20,6 +20,7 @@ import {
   saveOnboardingStep6Api,
   saveOnboardingStep7Api,
   completeOnboardingApi,
+  prefetchOnboardingCatalog,
   ApiError,
 } from "../../services"
 import type { SelectedSkill } from "../../types/catalog"
@@ -44,6 +45,12 @@ export function OnboardingScreen() {
   const contentRef = useRef<HTMLDivElement>(null)
   const prevRectRef = useRef<{ width: number; height: number; step: number } | null>(null)
   const morphTimerRef = useRef<number | null>(null)
+  const isMorphingRef = useRef(false)
+
+  // Early prefetch of catalog data (skills, categories, roles) for smooth step transitions
+  useEffect(() => {
+    prefetchOnboardingCatalog()
+  }, [])
 
   // Fluid PowerPoint Morph transition separating container sizing from inner content
   useLayoutEffect(() => {
@@ -83,6 +90,7 @@ export function OnboardingScreen() {
       panel.style.height = ""
       panel.style.transition = ""
       content.style.width = ""
+      isMorphingRef.current = false
       prevRectRef.current = {
         width: panel.offsetWidth,
         height: panel.offsetHeight,
@@ -129,6 +137,8 @@ export function OnboardingScreen() {
 
     if (widthDiff > 2 || heightDiff > 2) {
       panel.classList.add("is-morphing")
+      isMorphingRef.current = true
+
       // Start container from previous dimensions, keeping content locked to destination width
       panel.style.width = `${prevWidth}px`
       panel.style.height = `${prevHeight}px`
@@ -143,6 +153,7 @@ export function OnboardingScreen() {
       panel.style.height = `${targetHeight}px`
 
       const cleanup = () => {
+        isMorphingRef.current = false
         panel.classList.remove("is-morphing")
         panel.style.width = ""
         panel.style.height = ""
@@ -166,7 +177,7 @@ export function OnboardingScreen() {
         }
       }
       panel.addEventListener("transitionend", onEnd)
-      morphTimerRef.current = window.setTimeout(cleanup, 520)
+      morphTimerRef.current = window.setTimeout(cleanup, 540)
     } else {
       panel.style.width = ""
       panel.style.height = ""
@@ -178,6 +189,71 @@ export function OnboardingScreen() {
       height: targetHeight,
       step,
     }
+  }, [step])
+
+  // Observe in-step dynamic content resizes (e.g., chips wrapping to new row, row removal, late data load)
+  useEffect(() => {
+    const content = contentRef.current
+    const panel = panelRef.current
+    if (!content || !panel) return
+
+    let lastContentHeight = content.offsetHeight
+
+    const observer = new ResizeObserver(() => {
+      const newHeight = content.offsetHeight
+      const diff = Math.abs(newHeight - lastContentHeight)
+      if (diff <= 3) return
+      lastContentHeight = newHeight
+
+      const prefersReduced =
+        typeof window !== "undefined" &&
+        window.matchMedia("(prefers-reduced-motion: reduce)").matches
+      if (prefersReduced) return
+
+      // If currently morphing a step transition, dynamically adjust the running height destination
+      if (isMorphingRef.current) {
+        const currentStyleHeight = panel.style.height
+        const currentStyleTransition = panel.style.transition
+        panel.style.height = ""
+        panel.style.transition = "none"
+        const newTargetHeight = panel.offsetHeight
+        panel.style.height = currentStyleHeight
+        panel.style.transition = currentStyleTransition
+
+        if (Math.abs(parseFloat(currentStyleHeight) - newTargetHeight) > 2) {
+          panel.style.height = `${newTargetHeight}px`
+        }
+        return
+      }
+
+      // If settled and content height changed (e.g. chips wrapped or collapsed)
+      const fromHeight = panel.getBoundingClientRect().height
+      panel.style.height = ""
+      panel.style.transition = "none"
+      const toHeight = panel.offsetHeight
+
+      if (Math.abs(fromHeight - toHeight) > 2) {
+        panel.style.height = `${fromHeight}px`
+        void panel.offsetHeight
+        panel.style.transition = "height 260ms cubic-bezier(0.16, 1, 0.3, 1)"
+        panel.style.height = `${toHeight}px`
+
+        const onEnd = (e: TransitionEvent) => {
+          if (e.target === panel && e.propertyName === "height") {
+            panel.removeEventListener("transitionend", onEnd)
+            panel.style.height = ""
+            panel.style.transition = ""
+          }
+        }
+        panel.addEventListener("transitionend", onEnd)
+      } else {
+        panel.style.height = ""
+        panel.style.transition = ""
+      }
+    })
+
+    observer.observe(content)
+    return () => observer.disconnect()
   }, [step])
 
   useEffect(() => {

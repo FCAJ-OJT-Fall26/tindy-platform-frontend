@@ -276,6 +276,21 @@
   font-weight: 600;
 }
 
+.selected-skills-chips-wrapper {
+  min-height: 44px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+}
+
+.selected-skills-chips-wrapper .selected-skill-chips {
+  margin-top: 12px;
+}
+
+.selected-skills-chips-wrapper .catalog-selection-hint {
+  margin-top: 12px;
+}
+
 .selected-skill-chips {
   display: flex;
   flex-wrap: wrap;
@@ -288,7 +303,8 @@
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  border: 1px solid #4d6edb;
+  border: none;
+  box-shadow: inset 0 0 0 1px #4d6edb;
   border-radius: 6px;
   background: #f1f5fe;
   color: #1e3a8a;
@@ -301,7 +317,7 @@
   cursor: pointer;
   outline: none;
   animation: chipPushOut 0.22s cubic-bezier(0.16, 1, 0.3, 1) both;
-  transition: background-color 0.15s ease, border-color 0.15s ease;
+  transition: background-color 0.15s ease, box-shadow 0.15s ease;
 }
 
 /* Push out entrance animation when a skill is added ("đẩy item ra") */
@@ -327,7 +343,7 @@
 
 .selected-skill-chips button:hover:not(.chip-retracting):not(.chip-popping-out) {
   background: #e6edfc;
-  border-color: #3b61d1;
+  box-shadow: inset 0 0 0 1px #3b61d1;
 }
 
 .selected-skill-chips button:active:not(.chip-retracting):not(.chip-popping-out) {
@@ -339,6 +355,7 @@
 .selected-skill-chips button.chip-popping-out {
   pointer-events: none !important;
   overflow: hidden !important;
+  min-width: 0 !important;
   animation: chipRetractIn 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
   z-index: 1;
 }
@@ -351,7 +368,7 @@
     padding-right: 11px;
     margin-right: 0;
     transform: translateX(0) scale(1);
-    border-color: #4d6edb;
+    box-shadow: inset 0 0 0 1px #4d6edb;
   }
 
   35% {
@@ -366,7 +383,7 @@
     padding-right: 0;
     margin-right: -8px;
     transform: translateX(-8px) scale(0.9);
-    border-color: transparent;
+    box-shadow: inset 0 0 0 1px transparent;
   }
 }
 
@@ -385,7 +402,7 @@
 .selected-skill-chips button.unavailable {
   background: #fff7ed;
   color: #a96d17;
-  border-color: #f6dfba;
+  box-shadow: inset 0 0 0 1px #f6dfba;
 }
 
 .catalog-selection-hint {
@@ -3731,7 +3748,7 @@ input[type=checkbox] {
   padding: 30px 35px;
   border: 1px solid var(--border);
   border-radius: 9px;
-  min-height: 550px;
+  min-height: 0;
   align-self: start
 }
 
@@ -3755,7 +3772,7 @@ input[type=checkbox] {
 }
 
 .onboarding-fields {
-  min-height: 285px;
+  min-height: 0;
   margin-top: 26px
 }
 

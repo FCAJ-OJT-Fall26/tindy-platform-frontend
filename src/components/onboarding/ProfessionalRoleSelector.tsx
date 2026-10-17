@@ -93,7 +93,7 @@ function getRoleIcon(name: string) {
   if (lower.includes("game")) return Gamepad2
   return Code2
 }
-import { getProfessionalRolesApi } from "../../services"
+import { getProfessionalRolesApi, getCachedRoles } from "../../services"
 import type { ProfessionalRole } from "../../types/catalog"
 import { requestErrorMessage } from "./catalogFeedback"
 
@@ -112,16 +112,22 @@ export default function ProfessionalRoleSelector({
   onNameResolved,
   onValidityChange,
 }: Props) {
-  const [roles, setRoles] = useState<ProfessionalRole[]>([])
-  const [loading, setLoading] = useState(true)
+  const cachedRoles = getCachedRoles()
+  const [roles, setRoles] = useState<ProfessionalRole[]>(() =>
+    cachedRoles
+      ? [...cachedRoles].sort((a, b) => a.display_order - b.display_order)
+      : [],
+  )
+  const [loading, setLoading] = useState(() => !cachedRoles)
   const [error, setError] = useState("")
   const [retry, setRetry] = useState(0)
 
   useEffect(() => {
+    if (roles.length > 0 && retry === 0) return
     const controller = new AbortController()
     setLoading(true)
     setError("")
-    getProfessionalRolesApi(undefined, controller.signal)
+    getProfessionalRolesApi(undefined, controller.signal, retry > 0)
       .then((data) => {
         if (!controller.signal.aborted)
           setRoles([...data].sort((a, b) => a.display_order - b.display_order))

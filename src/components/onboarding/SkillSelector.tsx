@@ -1,6 +1,11 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
 import { Check, Plus, Search, X } from "lucide-react"
-import { getSkillCategoriesApi, getSkillsApi } from "../../services"
+import {
+  getSkillCategoriesApi,
+  getSkillsApi,
+  getCachedCategories,
+  getCachedSkills,
+} from "../../services"
 import type {
   CatalogSkill,
   SelectedSkill,
@@ -20,13 +25,34 @@ export default function SkillSelector({
   onChange,
   onValidityChange,
 }: Props) {
-  const [categories, setCategories] = useState<SkillCategory[]>([])
-  const [allSkills, setAllSkills] = useState<CatalogSkill[]>([])
-  const [results, setResults] = useState<CatalogSkill[]>([])
+  const cachedSkills = getCachedSkills()
+  const cachedCategories = getCachedCategories()
+
+  const [categories, setCategories] = useState<SkillCategory[]>(() =>
+    cachedCategories
+      ? [...cachedCategories].sort((a, b) => a.display_order - b.display_order)
+      : [],
+  )
+  const [allSkills, setAllSkills] = useState<CatalogSkill[]>(() =>
+    cachedSkills
+      ? [...cachedSkills].sort((a, b) =>
+          a.name.localeCompare(b.name, undefined, { sensitivity: "base" }),
+        )
+      : [],
+  )
+  const [results, setResults] = useState<CatalogSkill[]>(() =>
+    cachedSkills
+      ? [...cachedSkills].sort((a, b) =>
+          a.name.localeCompare(b.name, undefined, { sensitivity: "base" }),
+        )
+      : [],
+  )
   const [categoryId, setCategoryId] = useState("")
   const [search, setSearch] = useState("")
-  const [catalogLoading, setCatalogLoading] = useState(true)
-  const [categoriesLoading, setCategoriesLoading] = useState(true)
+  const [catalogLoading, setCatalogLoading] = useState(() => !cachedSkills)
+  const [categoriesLoading, setCategoriesLoading] = useState(
+    () => !cachedCategories,
+  )
   const [resultsLoading, setResultsLoading] = useState(false)
   const [catalogError, setCatalogError] = useState("")
   const [categoriesError, setCategoriesError] = useState("")
@@ -107,10 +133,11 @@ export default function SkillSelector({
   }, [results])
 
   useEffect(() => {
+    if (categories.length > 0 && categoriesRetry === 0) return
     const controller = new AbortController()
     setCategoriesLoading(true)
     setCategoriesError("")
-    getSkillCategoriesApi(controller.signal)
+    getSkillCategoriesApi(controller.signal, categoriesRetry > 0)
       .then((data) => {
         if (!controller.signal.aborted)
           setCategories(
@@ -129,10 +156,11 @@ export default function SkillSelector({
 
   // Initial catalog load: sort skills alphabetically
   useEffect(() => {
+    if (allSkills.length > 0 && catalogRetry === 0) return
     const controller = new AbortController()
     setCatalogLoading(true)
     setCatalogError("")
-    getSkillsApi(undefined, undefined, controller.signal)
+    getSkillsApi(undefined, undefined, controller.signal, catalogRetry > 0)
       .then((data) => {
         if (!controller.signal.aborted) {
           const sorted = [...data].sort((a, b) =>
@@ -381,7 +409,9 @@ export default function SkillSelector({
       exitingTimersRef.current.delete(skillId)
     }
 
-    recordChipPositions()
+    // The exiting chip has already collapsed to 0 footprint via CSS animation.
+    // Clear previous positions so unmounting the 0px node doesn't trigger a redundant FLIP restart.
+    prevChipPositionsRef.current = new Map()
 
     setExitingMap((prev) => {
       if (!prev.has(skillId)) return prev
@@ -494,8 +524,13 @@ export default function SkillSelector({
           const deltaX = prev.left - current.left
           const deltaY = prev.top - current.top
 
-          // If the chip moved across rows (wrapped) or had significant shift
-          if (Math.abs(deltaY) > 2 || Math.abs(deltaX) > 2) {
+          // Disambiguate cross-row wrap from same-row shift:
+          // - Cross-row wrap (Math.abs(deltaY) > 3): animate both deltaX and deltaY smoothly.
+          // - Same-row movement: Flexbox width animations (chipPushOut/chipRetractIn) already provide
+          //   fluid horizontal motion; only use FLIP if there was an instant multi-item leap (> 25px).
+          const isCrossRow = Math.abs(deltaY) > 3
+          const isLargeShift = Math.abs(deltaX) > 25
+          if (isCrossRow || isLargeShift) {
             btn.style.transform = `translate3d(${deltaX}px, ${deltaY}px, 0)`
             btn.style.transition = "none"
 
@@ -667,58 +702,60 @@ export default function SkillSelector({
         <p className="muted">
           Choose 1–30 skills. Your selection stays as you explore categories.
         </p>
-        {displayedChips.length > 0 ? (
-          <div className="selected-skill-chips" ref={chipsContainerRef}>
-            {displayedChips.map(
-              ({ skill, isExiting, initialWidth }, index) => {
-                const name =
-                  activeSkills.get(skill.skill_id)?.name ||
-                  skill.name ||
-                  `Saved skill ${index + 1}`
-                const inactive =
-                  !catalogLoading &&
-                  !catalogError &&
-                  !activeSkills.has(skill.skill_id)
-                return (
-                  <button
-                    type="button"
-                    key={skill.skill_id}
-                    data-chip-id={skill.skill_id}
-                    data-exiting={isExiting ? "true" : undefined}
-                    className={`${inactive ? "unavailable" : ""} ${
-                      isExiting ? "chip-retracting chip-popping-out" : ""
-                    }`.trim()}
-                    style={
-                      isExiting && initialWidth
-                        ? ({
-                            ["--chip-start-width"]: `${initialWidth}px`,
-                          } as React.CSSProperties)
-                        : undefined
-                    }
-                    aria-label={isExiting ? undefined : `Remove ${name}`}
-                    aria-hidden={isExiting ? true : undefined}
-                    tabIndex={isExiting ? -1 : undefined}
-                    onClick={
-                      isExiting ? undefined : () => removeSkill(skill.skill_id)
-                    }
-                    onAnimationEnd={
-                      isExiting ? () => finishExit(skill.skill_id) : undefined
-                    }
-                  >
-                    <SkillIcon name={name} size={13} />
-                    {name}
-                    {inactive && " (unavailable)"}
-                    <X size={12} className="chip-remove-icon" />
-                  </button>
-                )
-              },
-            )}
-          </div>
-        ) : (
-          <p className="catalog-selection-hint">
-            Select a skill above to get started.
-          </p>
-        )}
+        <div className="selected-skills-chips-wrapper">
+          {displayedChips.length > 0 ? (
+            <div className="selected-skill-chips" ref={chipsContainerRef}>
+              {displayedChips.map(
+                ({ skill, isExiting, initialWidth }, index) => {
+                  const name =
+                    activeSkills.get(skill.skill_id)?.name ||
+                    skill.name ||
+                    `Saved skill ${index + 1}`
+                  const inactive =
+                    !catalogLoading &&
+                    !catalogError &&
+                    !activeSkills.has(skill.skill_id)
+                  return (
+                    <button
+                      type="button"
+                      key={skill.skill_id}
+                      data-chip-id={skill.skill_id}
+                      data-exiting={isExiting ? "true" : undefined}
+                      className={`${inactive ? "unavailable" : ""} ${
+                        isExiting ? "chip-retracting chip-popping-out" : ""
+                      }`.trim()}
+                      style={
+                        isExiting && initialWidth
+                          ? ({
+                              ["--chip-start-width"]: `${initialWidth}px`,
+                            } as React.CSSProperties)
+                          : undefined
+                      }
+                      aria-label={isExiting ? undefined : `Remove ${name}`}
+                      aria-hidden={isExiting ? true : undefined}
+                      tabIndex={isExiting ? -1 : undefined}
+                      onClick={
+                        isExiting ? undefined : () => removeSkill(skill.skill_id)
+                      }
+                      onAnimationEnd={
+                        isExiting ? () => finishExit(skill.skill_id) : undefined
+                      }
+                    >
+                      <SkillIcon name={name} size={13} />
+                      {name}
+                      {inactive && " (unavailable)"}
+                      <X size={12} className="chip-remove-icon" />
+                    </button>
+                  )
+                },
+              )}
+            </div>
+          ) : (
+            <p className="catalog-selection-hint">
+              Select a skill above to get started.
+            </p>
+          )}
+        </div>
         {selected.length >= 30 && (
           <p role="status" className="catalog-selection-hint">
             You have reached the 30-skill limit. Remove a skill to select
