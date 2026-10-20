@@ -19,6 +19,9 @@ import { ApiError, getStoredToken, clearStoredToken, SESSION_EXPIRED_EVENT, ONBO
 import { getMeApi, logoutApi } from "./services/auth.service"
 import { clearLinkUser } from "./services/oauth.service"
 import { authErrorMessage } from "./services/authValidation"
+import { getMyProfile, patchMyProfile } from "./services/profile.service"
+import type { ProfilePatch } from "./types/profile"
+import useRemoteResource from "./hooks/useRemoteResource"
 
 const emptySessionProfile: Profile = { name: 'Tindy member', university: '', email: '', role: '',
   hours: '', interests: '', skills: [], experience: '', github: '', portfolio: '', goals: '',
@@ -46,16 +49,24 @@ function useStored<T>(key: string, initial: T) {
 }
 
 function useAppState() {
-  const [profile, setProfile] = useStored<Profile>("profile", initialProfile)
+  // Onboarding can mirror its saved steps in memory. Completed profiles come only from the API.
+  const [profile, setProfile] = useState<Profile>(emptySessionProfile)
   const [authUser, setAuthUser] = useState<AuthUser | null>(null)
   const [authLoading, setAuthLoading] = useState<boolean>(true)
   const [loggingOut, setLoggingOut] = useState(false)
   const [sessionError, setSessionError] = useState('')
   const logoutRequest = useRef<Promise<void> | null>(null)
   const sessionGeneration = useRef(0)
-  const profileOwner = useRef<string | null>((() => {
-    try { return localStorage.getItem("tindy-v2-profile-owner") } catch { return null }
-  })())
+  const profileOwner = useRef<string | null>(null)
+  const profileKey = authUser?.is_onboarding_completed ? `${authUser.user_id}:${getStoredToken()}` : null
+  const ownerProfile = useRemoteResource(profileKey, getMyProfile)
+  const saveOwnerProfile = async (patch: ProfilePatch) => {
+    const token = getStoredToken()
+    const generation = sessionGeneration.current
+    const updated = await patchMyProfile(patch)
+    if (generation !== sessionGeneration.current || token !== getStoredToken()) return
+    ownerProfile.replace(updated)
+  }
 
   const [projects, setProjects] = useStored<Project[]>(
     "projects",
@@ -138,7 +149,6 @@ function useAppState() {
     setSessionError('')
     const sameOwner = profileOwner.current === authUser.user_id
     profileOwner.current = authUser.user_id
-    try { localStorage.setItem("tindy-v2-profile-owner", authUser.user_id) } catch {}
     setProfile(prev => ({ ...(sameOwner ? prev : emptySessionProfile),
       name: authUser.display_name, email: authUser.email ?? "", university: authUser.university ?? "" }))
   }, [authUser, setProfile])
@@ -148,7 +158,6 @@ function useAppState() {
     clearStoredToken()
     clearLinkUser()
     profileOwner.current = null
-    try { localStorage.removeItem("tindy-v2-profile-owner") } catch {}
     setProfile(emptySessionProfile)
     setToast('')
     setAuthUser(null)
@@ -198,8 +207,24 @@ function useAppState() {
       old.includes(name) ? old.filter((item) => item !== name) : [...old, name],
     )
   return {
-    profile: authUser ? { ...(profileOwner.current === authUser.user_id ? profile : emptySessionProfile),
-      name: authUser.display_name, email: authUser.email ?? '', university: authUser.university ?? '' } : emptySessionProfile,
+    profile: authUser ? (ownerProfile.data ? {
+      name: ownerProfile.data.display_name,
+      university: ownerProfile.data.university ?? '',
+      email: authUser.email ?? '',
+      role: ownerProfile.data.preferred_role?.name ?? '',
+      hours: String(ownerProfile.data.available_hours_per_week ?? ''),
+      interests: ownerProfile.data.professional_interests ?? '',
+      skills: ownerProfile.data.skills.map(skill => skill.name),
+      experience: ownerProfile.data.previous_projects_and_contribution ?? '',
+      github: ownerProfile.data.github_url ?? '',
+      portfolio: ownerProfile.data.personal_website_url ?? '',
+      goals: ownerProfile.data.learning_goals ?? '',
+      technologies: ownerProfile.data.technologies_to_learn ?? '',
+      summary: ownerProfile.data.bio ?? '',
+    } : { ...(!authUser.is_onboarding_completed && profileOwner.current === authUser.user_id ? profile : emptySessionProfile),
+      name: authUser.display_name, email: authUser.email ?? '', university: authUser.university ?? '' }) : emptySessionProfile,
+    ownerProfile,
+    saveOwnerProfile,
     setProfile,
     authUser,
     setAuthUser,

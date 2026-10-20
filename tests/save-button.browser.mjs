@@ -4,6 +4,7 @@ import { mkdtemp, rm } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import path from "node:path"
 import assert from "node:assert/strict"
+import { makeProfileFixture, waitForBrowser } from "./profile-fixture.mjs"
 
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
 const server = await createServer({
@@ -116,6 +117,9 @@ try {
       if (url.pathname === "/api/me") {
         responseBody = { success: true, message: "OK", data: user }
       }
+      if (url.pathname === "/api/me/profile") {
+        responseBody = { success: true, message: "OK", data: makeProfileFixture(user) }
+      }
       if (responseBody !== null) {
         await send("Fetch.fulfillRequest", {
           requestId,
@@ -150,7 +154,7 @@ try {
 
   // Navigate to Project Details Screen
   await send("Page.navigate", { url: `${origin}/project/studywise` })
-  await delay(1200)
+  await waitForBrowser(evalInBrowser, "Boolean(document.querySelector('.project-save-btn'))")
 
   // Test 1: Project Details Screen - Initial Unsaved State
   const initialState = await evalInBrowser(`
@@ -295,7 +299,7 @@ try {
   // Test 6: ProjectCard Icon Variant (Overview / Dashboard / Interests)
   await delay(650)
   await send("Page.navigate", { url: `${origin}/interests` })
-  await delay(1200)
+  await waitForBrowser(evalInBrowser, "Boolean(document.querySelector('.project-save-icon-btn'))")
 
   const iconCardState = await evalInBrowser(`
     (() => {
@@ -341,12 +345,14 @@ try {
   console.log("\n=======================================================")
   console.log("ALL 7 SAVE BUTTON MICRO-INTERACTION TESTS PASSED!")
   console.log("=======================================================\n")
-  process.exit(0)
 } catch (err) {
   console.error("Test failed:", err)
-  process.exit(1)
+  process.exitCode = 1
 } finally {
+  ws?.close()
   try { chrome.kill() } catch {}
   try { await server.close() } catch {}
-  try { await rm(profileDir, { recursive: true, force: true }) } catch {}
+  const cleanupProfile = path.resolve(profileDir)
+  if (path.dirname(cleanupProfile) !== path.resolve(tmpdir()) || !path.basename(cleanupProfile).startsWith("tindy-save-test-")) throw new Error("Unexpected browser cleanup path")
+  try { await rm(cleanupProfile, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 }) } catch {}
 }

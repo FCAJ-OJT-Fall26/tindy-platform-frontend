@@ -1,10 +1,9 @@
 import { useState, useEffect } from "react"
-import { useNavigate } from "react-router"
+import { Link, useNavigate } from "react-router"
 import {
   GraduationCap,
   Bell,
   ShieldCheck,
-  Check,
   LogOut,
   Mail,
   Phone,
@@ -14,7 +13,7 @@ import { PageHeader, Button } from "../../components/ui"
 import ConnectedAccounts from "../../components/auth/ConnectedAccounts"
 
 export function SettingsScreen() {
-  const { profile, setProfile, notify, logout, loggingOut } = useTindy()
+  const { authUser, notify, logout, loggingOut } = useTindy()
   const navigate = useNavigate()
   const [preferences, setPreferences] = useState<Record<string, boolean>>(
     () => {
@@ -30,7 +29,6 @@ export function SettingsScreen() {
       }
     },
   )
-  const [email, setEmail] = useState(profile.email)
   const [activeSection, setActiveSection] = useState("account")
 
   // ScrollSpy to highlight the active section when the page enters its region
@@ -128,29 +126,22 @@ export function SettingsScreen() {
           </button>
         </aside>
         <div className="settings-content">
-          <form
+          <section
             id="account"
             className={`panel settings-panel ${activeSection === "account" ? "active-section" : ""}`}
-            onSubmit={(event) => {
-              event.preventDefault()
-              setProfile({ ...profile, email })
-              notify("Account preferences saved")
-            }}
           >
             <h2>Account</h2>
             <label className="field">
               Email address
               <input
-                required
                 type="email"
-                value={email}
-                onChange={(event) => setEmail(event.target.value)}
+                value={authUser?.email ?? ""}
+                readOnly
               />
             </label>
-            <Button>
-              Save changes <Check size={15} />
-            </Button>
-          </form>
+            <p className="helper-text">This is your sign-in email. Choose a separate public contact email in your profile.</p>
+            {authUser?.is_onboarding_completed && <Link className="btn btn-secondary" to="/profile">Manage profile & contact details</Link>}
+          </section>
           <section
             id="preferences"
             className={`panel settings-panel ${activeSection === "preferences" ? "active-section" : ""}`}
