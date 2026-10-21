@@ -17,13 +17,25 @@ import SkillIcon from "./SkillIcon"
 interface Props {
   selected: SelectedSkill[]
   onChange: (skills: SelectedSkill[]) => void
-  onValidityChange: (valid: boolean) => void
+  onValidityChange?: (valid: boolean) => void
+  min?: number
+  max?: number
+  savedSkills?: CatalogSkill[]
+  allowInactiveSaved?: boolean
+  selectedHeading?: string
+  subtitle?: string
 }
 
 export default function SkillSelector({
   selected,
   onChange,
   onValidityChange,
+  min = 1,
+  max = 30,
+  savedSkills,
+  allowInactiveSaved = false,
+  selectedHeading = "Selected skills",
+  subtitle,
 }: Props) {
   const cachedSkills = getCachedSkills()
   const cachedCategories = getCachedCategories()
@@ -255,6 +267,11 @@ export default function SkillSelector({
     resultsRetry,
   ])
 
+  const savedSkillsMap = useMemo(
+    () => new Map((savedSkills ?? []).map((s) => [s.skill_id, s])),
+    [savedSkills],
+  )
+
   const activeSkills = new Map(
     allSkills.map((skill) => [skill.skill_id, skill]),
   )
@@ -262,26 +279,30 @@ export default function SkillSelector({
   const unavailable =
     !catalogLoading &&
     !catalogError &&
-    selected.some((skill) => !activeSkills.has(skill.skill_id))
+    selected.some(
+      (skill) =>
+        !activeSkills.has(skill.skill_id) &&
+        (!allowInactiveSaved || !savedSkillsMap.has(skill.skill_id)),
+    )
   const valid =
     !catalogLoading &&
     !catalogError &&
-    !unavailable &&
-    selected.length >= 1 &&
-    selected.length <= 30
+    (allowInactiveSaved || !unavailable) &&
+    selected.length >= min &&
+    selected.length <= max
 
   useEffect(() => {
-    onValidityChange(valid)
+    onValidityChange?.(valid)
   }, [valid, onValidityChange])
 
   // Resolve names and IDs; preserve valid IDs while mapping existing profile skill names
   useEffect(() => {
     if (catalogLoading || catalogError || allSkills.length === 0) return
     const names = new Map(
-      allSkills.map((skill) => [skill.skill_id, skill.name]),
+      [...(savedSkills ?? []), ...allSkills].map((skill) => [skill.skill_id, skill.name]),
     )
     const byName = new Map(
-      allSkills.map((skill) => [skill.name.toLowerCase().trim(), skill]),
+      [...(savedSkills ?? []), ...allSkills].map((skill) => [skill.name.toLowerCase().trim(), skill]),
     )
 
     let changed = false
@@ -306,7 +327,7 @@ export default function SkillSelector({
     if (changed) {
       onChange(updated)
     }
-  }, [allSkills, catalogLoading, catalogError, selected, onChange])
+  }, [allSkills, catalogLoading, catalogError, selected, onChange, savedSkills])
 
   const [exitingMap, setExitingMap] = useState<
     Map<string, { skill: SelectedSkill; initialWidth?: number }>
@@ -457,7 +478,7 @@ export default function SkillSelector({
   function toggle(skill: CatalogSkill) {
     if (selectedIds.has(skill.skill_id)) {
       removeSkill(skill.skill_id)
-    } else if (selected.length < 30) {
+    } else if (selected.length < max) {
       recordChipPositions()
       onChange([...selected, skill])
     }
@@ -616,7 +637,7 @@ export default function SkillSelector({
             ) : (
               <div
                 ref={containerRef}
-                className="catalog-skill-options"
+                className="catalog-skill-options profile-skill-options"
                 aria-label="Available skills"
               >
                 {results.map((skill) => {
@@ -630,7 +651,7 @@ export default function SkillSelector({
                       className={`catalog-skill-option ${
                         isSelected ? "selected" : ""
                       }`}
-                      disabled={!isSelected && selected.length >= 30}
+                      disabled={!isSelected && selected.length >= max}
                       onClick={() => toggle(skill)}
                     >
                       <span
@@ -696,11 +717,11 @@ export default function SkillSelector({
       </div>
       <div className="selected-skills">
         <div className="selected-skills-heading">
-          <h3>Selected skills</h3>
-          <span aria-live="polite">{selected.length} / 30</span>
+          <h3>{selectedHeading}</h3>
+          <span aria-live="polite">{selected.length} / {max}</span>
         </div>
         <p className="muted">
-          Choose 1–30 skills. Your selection stays as you explore categories.
+          {subtitle ?? `Choose ${min}–${max} skills. Your selection stays as you explore categories.`}
         </p>
         <div className="selected-skills-chips-wrapper">
           {displayedChips.length > 0 ? (
@@ -709,6 +730,7 @@ export default function SkillSelector({
                 ({ skill, isExiting, initialWidth }, index) => {
                   const name =
                     activeSkills.get(skill.skill_id)?.name ||
+                    savedSkillsMap.get(skill.skill_id)?.name ||
                     skill.name ||
                     `Saved skill ${index + 1}`
                   const inactive =
@@ -756,13 +778,13 @@ export default function SkillSelector({
             </p>
           )}
         </div>
-        {selected.length >= 30 && (
+        {selected.length >= max && (
           <p role="status" className="catalog-selection-hint">
-            You have reached the 30-skill limit. Remove a skill to select
+            You have reached the {max}-skill limit. Remove a skill to select
             another.
           </p>
         )}
-        {unavailable && (
+        {!allowInactiveSaved && unavailable && (
           <p role="alert" className="catalog-validation">
             Some saved skills are no longer available. Remove them and choose
             from the current catalog to continue.

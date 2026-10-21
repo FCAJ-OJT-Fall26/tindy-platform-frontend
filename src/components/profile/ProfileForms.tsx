@@ -1,10 +1,12 @@
-import { useEffect, useId, useRef, useState, type FormEvent } from "react"
+import { useCallback, useEffect, useId, useMemo, useRef, useState, type FormEvent } from "react"
 import { Button } from "../ui"
 import { ApiError } from "../../services/apiClient"
 import {
+  getCachedSkills,
   getProfessionalRolesApi,
-  getSkillsApi,
+
 } from "../../services/catalog.service"
+import SkillSelector from "../onboarding/SkillSelector"
 import {
   buildProfilePatch,
   nullable,
@@ -15,7 +17,7 @@ import {
   UUID_PATTERN,
   type ProfileDraft,
 } from "../../services/profileValidation"
-import type { CatalogSkill } from "../../types/catalog"
+import type { CatalogSkill, SelectedSkill } from "../../types/catalog"
 import type {
   MyProfileResponse,
   ProfilePatch,
@@ -29,8 +31,8 @@ import useRemoteResource from "../../hooks/useRemoteResource"
 type Errors = Record<string, string>
 const validId = (value: string) =>
   UUID_PATTERN.test(value) && !/^0{8}-0{4}-0{4}-0{4}-0{12}$/.test(value)
-const loadSkills = (signal: AbortSignal) =>
-  getSkillsApi(undefined, undefined, signal)
+
+
 const loadRoles = (signal: AbortSignal) =>
   getProfessionalRolesApi(undefined, signal)
 
@@ -239,78 +241,67 @@ function SkillsPicker({
   max: number
   error?: string
 }) {
-  const catalog = useRemoteResource("profile-skill-catalog", loadSkills)
-  const [search, setSearch] = useState("")
-  const label = useId()
-  const names = new Map(
-    [...saved, ...(catalog.data ?? [])].map((skill) => [
-      skill.skill_id,
-      skill.name,
-    ]),
+  const nameCacheRef = useRef<Map<string, string>>(new Map())
+
+  useEffect(() => {
+    for (const s of saved) {
+      if (s.name && s.skill_id) {
+        nameCacheRef.current.set(s.skill_id, s.name)
+      }
+    }
+  }, [saved])
+
+  const selectedObjects = useMemo(() => {
+    const cached = getCachedSkills() ?? []
+    return selected.map((id) => {
+      let name = nameCacheRef.current.get(id)
+      if (!name) {
+        const foundSaved = saved.find((s) => s.skill_id === id)
+        if (foundSaved) name = foundSaved.name
+      }
+      if (!name) {
+        const foundCached = cached.find((s) => s.skill_id === id)
+        if (foundCached) name = foundCached.name
+      }
+      return {
+        skill_id: id,
+        name: name || id,
+      }
+    })
+  }, [selected, saved])
+
+  const handleSkillsChange = useCallback(
+    (newSkills: SelectedSkill[]) => {
+      for (const s of newSkills) {
+        if (s.name && s.name !== s.skill_id) {
+          nameCacheRef.current.set(s.skill_id, s.name)
+        }
+      }
+      onChange(newSkills.map((s) => s.skill_id))
+    },
+    [onChange],
   )
+
   return (
-    <div className="profile-skills-picker" role="group" aria-labelledby={label}>
-      <h3 id={label}>
-        Technical skills ({selected.length}/{max})
-      </h3>
-      <p className="helper-text">
-        Choose {min}–{max} skills. Previously saved skills can be kept even if
-        no longer in the active catalog.
-      </p>
-      <div className="profile-selected-skills">
-        {selected.map((id) => (
-          <button
-            type="button"
-            key={id}
-            onClick={() => onChange(selected.filter((value) => value !== id))}
-            aria-label={`Remove ${names.get(id) ?? "saved skill"}`}
-          >
-            {names.get(id) ?? "Saved skill"}
-            <span aria-hidden="true"> ×</span>
-          </button>
-        ))}
+    <div className="profile-skill-section" role="group" aria-label="Technical skills">
+      <div style={{ marginBottom: "14px" }}>
+        <h3>Technical skills ({selected.length}/{max})</h3>
+        <p className="helper-text" style={{ margin: 0 }}>
+          Choose {min}–{max} skills. Previously saved skills can be kept even if
+          no longer in the active catalog.
+        </p>
       </div>
-      <label className="field">
-        Search catalog skills
-        <input
-          type="search"
-          value={search}
-          onChange={(event) => setSearch(event.target.value)}
-        />
-      </label>
-      {catalog.loading && <p role="status">Loading skills…</p>}
-      <RequestFeedback error={catalog.error} />
-      {Boolean(catalog.error) && (
-        <Button type="button" variant="secondary" onClick={catalog.reload}>
-          Retry skills catalog
-        </Button>
-      )}
-      {catalog.data && (
-        <div className="profile-skill-options">
-          {catalog.data
-            .filter(
-              (skill) =>
-                !selected.includes(skill.skill_id) &&
-                skill.name.toLowerCase().includes(search.toLowerCase()),
-            )
-            .map((skill) => (
-              <button
-                key={skill.skill_id}
-                type="button"
-                disabled={selected.length >= max}
-                onClick={() => onChange([...selected, skill.skill_id])}
-              >
-                {skill.name}
-                <span aria-hidden="true"> +</span>
-              </button>
-            ))}
-        </div>
-      )}
-      {catalog.data?.length === 0 && (
-        <p className="helper-text">No skills are currently available.</p>
-      )}
+      <SkillSelector
+        selected={selectedObjects}
+        onChange={handleSkillsChange}
+        min={min}
+        max={max}
+        savedSkills={saved}
+        allowInactiveSaved={true}
+        subtitle={`Choose ${min}–${max} skills. Your selection stays as you explore categories.`}
+      />
       {error && (
-        <p className="profile-field-error" role="alert">
+        <p className="profile-field-error" role="alert" style={{ marginTop: "8px" }}>
           {error}
         </p>
       )}

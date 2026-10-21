@@ -16,7 +16,7 @@ import {
   LogOut,
 } from "lucide-react"
 import { useNavigate } from "react-router"
-import { Avatar, Brand } from "../ui"
+import { Brand } from "../ui"
 import { useTindy } from "../../store"
 
 export const navItems = [
@@ -35,7 +35,7 @@ interface SidebarProps {
 }
 
 export default function Sidebar({ mobile, onClose }: SidebarProps) {
-  const { profile, read, logout, loggingOut } = useTindy()
+  const { read, logout, loggingOut } = useTindy()
   const location = useLocation()
   const navigate = useNavigate()
 
@@ -199,14 +199,6 @@ export default function Sidebar({ mobile, onClose }: SidebarProps) {
           <LogOut size={17} />
           <span>{loggingOut ? 'Signing out…' : 'Sign Out'}</span>
         </button>
-        <Link to="/profile" className="sidebar-user">
-          <Avatar name={profile.name} color="neutral" />
-          <div>
-            <strong>{profile.name}</strong>
-            <small>{profile.university}</small>
-          </div>
-          <ChevronDown size={14} />
-        </Link>
       </div>
     </aside>
   )

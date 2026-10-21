@@ -1,4 +1,4 @@
-import { Menu, ChevronRight, Search, Bell } from "lucide-react"
+import { Menu, ChevronRight, Search, Bell, ChevronDown } from "lucide-react"
 import { Link, useLocation } from "react-router"
 import { Avatar } from "../ui"
 import { useTindy } from "../../store"
@@ -60,8 +60,13 @@ export default function Header({ title, onOpenMobileMenu }: HeaderProps) {
           <Bell size={19} />
           {read.length < 4 && <i />}
         </Link>
-        <Link to="/profile" aria-label="View user profile">
+        <Link to="/profile" className="topbar-user" aria-label="View user profile">
           <Avatar name={profile.name} color="neutral" />
+          <div className="topbar-user-info">
+            <strong>{profile.name}</strong>
+            <small>{profile.university}</small>
+          </div>
+          <ChevronDown size={14} />
         </Link>
       </div>
     </header>

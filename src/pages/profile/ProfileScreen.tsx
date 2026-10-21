@@ -430,7 +430,8 @@ function ProfileView({ userId }: { userId?: string }) {
           )}
         </>
       )}
-      <div className="profile-layout">
+      {profile && !editing && (
+        <div className="profile-layout">
         <div>
           {profile && <About profile={profile} />}
           <section className="panel" aria-label="Experiences">
@@ -570,6 +571,7 @@ function ProfileView({ userId }: { userId?: string }) {
           {profile && <ProfileDetails profile={profile} owner={owner} />}
         </aside>
       </div>
+      )}
       {owner && editor && (
         <Modal
           title={editor.item ? `Edit ${editor.kind}` : `Add ${editor.kind}`}
