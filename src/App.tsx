@@ -42,6 +42,7 @@ const router = createBrowserRouter([
           { path: "candidate/:id", Component: CandidateDetail },
           { path: "project/:id", Component: ProjectDetail },
           { path: "profile", Component: ProfileScreen },
+          { path: "users/:userId", Component: ProfileScreen },
           { path: "ai", Component: AIStudio },
           { path: "ai-studio", Component: AIStudio },
           { path: "leader", Component: LeaderDashboard },

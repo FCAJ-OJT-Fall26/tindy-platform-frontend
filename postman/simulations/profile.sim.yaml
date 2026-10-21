@@ -1,0 +1,5 @@
+simulation: tindy-profile-v1
+routing: header
+mocks:
+  - routeKey: tindy
+    path: ../mocks/profile/config.yaml

@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState, type ReactNode } from "react"
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react"
+import { createPortal } from "react-dom"
 import { Link } from "react-router"
 import {
   ArrowRight,
@@ -426,23 +427,32 @@ export function Modal({
   onClose,
   wide = false,
   drawer = false,
+  dismissible = true,
 }: {
   title: string
   children: ReactNode
   onClose: () => void
   wide?: boolean
   drawer?: boolean
+  dismissible?: boolean
 }) {
   const container = useRef<HTMLDivElement>(null)
   const [closing, setClosing] = useState(false)
+  const closingRef = useRef(false)
+  const canDismiss = useRef(dismissible)
+  const closeAction = useRef(onClose)
+  const closeTimer = useRef<number | undefined>(undefined)
+  canDismiss.current = dismissible
+  closeAction.current = onClose
 
-  const handleClose = () => {
-    if (closing) return
+  const handleClose = useCallback(() => {
+    if (closingRef.current || !canDismiss.current) return
+    closingRef.current = true
     setClosing(true)
-    window.setTimeout(() => {
-      onClose()
+    closeTimer.current = window.setTimeout(() => {
+      closeAction.current()
     }, 220)
-  }
+  }, [])
 
   useEffect(() => {
     const previous = document.activeElement as HTMLElement
@@ -453,7 +463,7 @@ export function Modal({
       if (event.key === "Escape") handleClose()
       if (event.key === "Tab") {
         const focusable = container.current?.querySelectorAll<HTMLElement>(
-          'button, a, input, select, textarea, [tabindex="0"]',
+          'button:not(:disabled), a[href], input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex="0"]',
         )
         if (!focusable?.length) return
         const first = focusable[0]
@@ -469,13 +479,14 @@ export function Modal({
     }
     document.addEventListener("keydown", handler)
     return () => {
+      window.clearTimeout(closeTimer.current)
       document.body.style.overflow = overflow
       document.removeEventListener("keydown", handler)
       previous?.focus()
     }
   }, [handleClose])
 
-  return (
+  return createPortal(
     <div
       className={`overlay ${drawer ? "drawer-overlay" : ""} ${closing ? "closing" : ""}`}
       onMouseDown={(event) => {
@@ -495,6 +506,7 @@ export function Modal({
           <button
             className="icon-button"
             aria-label="Close dialog"
+            disabled={!dismissible}
             onClick={handleClose}
           >
             <X size={21} />
@@ -502,7 +514,8 @@ export function Modal({
         </div>
         {children}
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }
 export function Skeleton() {

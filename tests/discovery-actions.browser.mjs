@@ -4,6 +4,7 @@ import { mkdtemp, rm } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import path from "node:path"
 import assert from "node:assert/strict"
+import { makeProfileFixture, waitForBrowser } from "./profile-fixture.mjs"
 
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
 const server = await createServer({
@@ -116,6 +117,9 @@ try {
       if (url.pathname === "/api/me") {
         responseBody = { success: true, message: "OK", data: user }
       }
+      if (url.pathname === "/api/me/profile") {
+        responseBody = { success: true, message: "OK", data: makeProfileFixture(user) }
+      }
       if (responseBody !== null) {
         await send("Fetch.fulfillRequest", {
           requestId,
@@ -150,7 +154,7 @@ try {
 
   // Navigate to Discover Screen
   await send("Page.navigate", { url: `${origin}/discover` })
-  await delay(1200)
+  await waitForBrowser(evalInBrowser, "Boolean(document.querySelector('.skip-micro-btn'))")
 
   // Test 1: Verify presence of all three micro-interaction action buttons in SwipeCardStack
   const actionButtonsState = await evalInBrowser(`
@@ -277,6 +281,7 @@ try {
   console.log("PASS 6: Interested button triggers soft spring pop, emerald glow, aura, and 3 micro-particles")
 
   await delay(450)
+  await waitForBrowser(evalInBrowser, "!document.querySelector('.interested-micro-btn .heart-micro-particle')")
   const heartCleanState = await evalInBrowser(`
     (() => {
       const heartBtn = document.querySelector(".interested-micro-btn");
@@ -386,7 +391,7 @@ try {
 
   // Test 8: ProjectDetailScreen Skip for now
   await send("Page.navigate", { url: `${origin}/project/studywise` })
-  await delay(1200)
+  await waitForBrowser(evalInBrowser, "Boolean(document.querySelector('.detail-skip-btn'))")
 
   const detailSkipState = await evalInBrowser(`
     (async () => {
@@ -415,12 +420,14 @@ try {
   console.log("\n===================================================================")
   console.log("ALL 12 DISCOVERY ACTION BUTTON MICRO-INTERACTION TESTS PASSED!")
   console.log("===================================================================\n")
-  process.exit(0)
 } catch (err) {
   console.error("Test failed:", err)
-  process.exit(1)
+  process.exitCode = 1
 } finally {
+  ws?.close()
   try { chrome.kill() } catch {}
   try { await server.close() } catch {}
-  try { await rm(profileDir, { recursive: true, force: true }) } catch {}
+  const cleanupProfile = path.resolve(profileDir)
+  if (path.dirname(cleanupProfile) !== path.resolve(tmpdir()) || !path.basename(cleanupProfile).startsWith("tindy-discovery-test-")) throw new Error("Unexpected browser cleanup path")
+  try { await rm(cleanupProfile, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 }) } catch {}
 }

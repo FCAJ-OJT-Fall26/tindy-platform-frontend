@@ -1,0 +1,10 @@
+version: 1
+name: tindy-profile
+slug: tindy-profile
+protocol: http
+port: 4951
+interceptRequests: true
+scenarios:
+  - name: default
+    path: ./default.js
+    default: true

@@ -13,6 +13,8 @@ function getBreadcrumbTitle(pathname: string): string {
   const matched = navItems.find((item) => item.to === pathname)
   if (matched) return matched.label
   if (pathname.includes("/candidate/")) return "Candidate Profile"
+  if (pathname.startsWith("/users/")) return "Member Profile"
+  if (pathname === "/profile") return "Your Profile"
   if (pathname.includes("/project/")) return "Project Details"
   if (pathname.includes("leader")) return "Leader Workspace"
   if (pathname.includes("ai")) return "AI Studio"

@@ -6,6 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "typecheck": "tsc --noEmit",
+    "test:profile": "node tests/profile.browser.mjs",
     "test:onboarding": "node tests/onboarding.browser.mjs",
     "test:auth": "node tests/auth.browser.mjs",
     "test:save-button": "node tests/save-button.browser.mjs",
