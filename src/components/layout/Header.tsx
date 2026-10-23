@@ -3,6 +3,7 @@ import { Link, useLocation } from "react-router"
 import { Avatar } from "../ui"
 import { useTindy } from "../../store"
 import { navItems } from "./Sidebar"
+import ProfileMediaImage from "../profile/ProfileMediaImage"
 
 interface HeaderProps {
   title?: string
@@ -26,7 +27,7 @@ function getBreadcrumbTitle(pathname: string): string {
 }
 
 export default function Header({ title, onOpenMobileMenu }: HeaderProps) {
-  const { profile, read } = useTindy()
+  const { profile, read, ownerProfile } = useTindy()
   const location = useLocation()
   const current = title || getBreadcrumbTitle(location.pathname)
 
@@ -61,7 +62,7 @@ export default function Header({ title, onOpenMobileMenu }: HeaderProps) {
           {read.length < 4 && <i />}
         </Link>
         <Link to="/profile" className="topbar-user" aria-label="View user profile">
-          <Avatar name={profile.name} color="neutral" />
+          {ownerProfile.data ? <ProfileMediaImage profile={ownerProfile.data} compact /> : <Avatar name={profile.name} color="neutral" />}
           <div className="topbar-user-info">
             <strong>{profile.name}</strong>
             <small>{profile.university}</small>

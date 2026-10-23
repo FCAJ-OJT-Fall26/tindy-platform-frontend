@@ -87,16 +87,16 @@ try {
           headers: { "x-mock-slug": "tindy" },
           configure(proxy) {
             proxy.on("proxyReq", (outgoing, incoming) => {
-              let raw = ""
+              const chunks = []
               incoming.on("data", (chunk) => {
-                raw += chunk
+                chunks.push(chunk)
               })
               incoming.on("end", () =>
                 calls.push({
                   path: incoming.url,
                   method: incoming.method,
                   authorization: incoming.headers.authorization,
-                  body: raw ? JSON.parse(raw) : null,
+                  body: chunks.length && incoming.headers["content-type"]?.includes("application/json") ? JSON.parse(Buffer.concat(chunks).toString()) : null,
                 }),
               )
             })
@@ -217,7 +217,7 @@ try {
   pass("Invalid availability and non-HTTP URLs are rejected before sending")
   await input("available_hours_per_week", "12")
   await input("github_url", "https://github.com/example")
-  await click("React +", ".profile-skill-options button")
+  await click("React", ".profile-skill-options button")
   await click("Save profile")
   await waitFor("!document.querySelector('.profile-edit')")
   assert.equal(last("PATCH").body.skill_ids.length, 2)
@@ -277,7 +277,7 @@ try {
     "Experience POST includes mandatory boolean and empty skill_ids; ongoing clears end_date (201)",
   )
   await clickLabel("Edit Profile API integration")
-  await click(".NET +", ".profile-skill-options button")
+  await click(".NET", ".profile-skill-options button")
   await input("role_title", "Lead Frontend Developer")
   await click("Save experience")
   await waitFor("!document.querySelector('[role=dialog]')")
@@ -291,32 +291,29 @@ try {
   await click("Add certificate")
   await input("title", "Cloud Foundations")
   await input("issuer", "Learning Institute")
-  await input("issued_at", "2026-10-20")
-  await input("expires_at", "2026-09-20")
+  await input("description", "x".repeat(2001))
   const beforeCertificateDate = mutations().length
   await click("Save certificate")
-  await waitFor(text("End date must be on or after the start date."))
+  await waitFor(text("Use at most 2000 characters."))
   assert.equal(mutations().length, beforeCertificateDate)
-  pass("Certificate expiry cannot precede its issue date")
-  await input("expires_at", "")
+  pass("Certificate description longer than 2000 characters is rejected before HTTP")
+  await input("description", "Foundational cloud knowledge.")
   await input("credential_url", "https://example.test/credential")
   await click("Save certificate")
   await waitFor("!document.querySelector('[role=dialog]')")
   assert.deepEqual(last("POST").body, {
     title: "Cloud Foundations",
     issuer: "Learning Institute",
-    credential_id: null,
+    description: "Foundational cloud knowledge.",
     credential_url: "https://example.test/credential",
-    issued_at: "2026-10-20",
-    expires_at: null,
   })
-  pass("Certificate POST uses YYYY-MM-DD and nullable credential fields (201)")
+  pass("Certificate POST sends only title, issuer, description and credential URL (201)")
   await clickLabel("Edit Cloud Foundations")
-  await input("credential_id", "CLOUD-123")
+  await input("description", "Updated cloud knowledge.")
   await click("Save certificate")
   await waitFor("!document.querySelector('[role=dialog]')")
-  assert.equal(last("PUT").body.credential_id, "CLOUD-123")
-  assert.equal(Object.keys(last("PUT").body).length, 6)
+  assert.equal(last("PUT").body.description, "Updated cloud knowledge.")
+  assert.equal(Object.keys(last("PUT").body).length, 4)
   pass("Certificate PUT sends the full supported schema (200)")
   await screenshot("owner-desktop.png")
 
@@ -443,10 +440,21 @@ try {
     "Settings cannot write a local-only login email",
   )
   await go("/ai")
-  await waitFor(text("Profile tools are taking shape"))
+  await waitFor(text("Build your profile with AI"))
+  const beforeAiDraft = mutations().length
+  await evaluate(`(() => {
+    const fields = document.querySelectorAll('main textarea');
+    for (const [index, value] of [[0, 'React'], [1, 'Synthetic AI draft project']]) {
+      Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value').set.call(fields[index], value);
+      fields[index].dispatchEvent(new Event('input', { bubbles: true }));
+    }
+  })()`)
+  await click("Generate profile")
+  await waitFor(text("Demo summary generated"))
+  assert.equal(mutations().length, beforeAiDraft)
   await check(
-    "!document.querySelector('main input[type=file]') && ![...document.querySelectorAll('main button')].some(button => /Generate|Accept|Extract/.test(button.textContent))",
-    "AI Studio no longer writes demo summaries or free-text skills into the profile",
+    text("Updated Student"),
+    "AI Studio demo generation does not mutate the server-backed profile",
   )
   await fault("GET", `${ownerPath}/experiences`, { disconnect: true })
   await go("/profile")

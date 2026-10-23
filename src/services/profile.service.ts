@@ -54,15 +54,22 @@ export const getCertificates = (userId?: string, signal?: AbortSignal) =>
     `${userId ? member(userId) : owner}/certificates`,
     { signal },
   ).then((res) => res.data)
-export const createCertificate = (payload: CertificateUpsert) =>
-  apiRequest<CertificateResponse>(
-    `${owner}/certificates`,
-    json("POST", payload),
-  ).then((res) => res.data)
-export const updateCertificate = (id: string, payload: CertificateUpsert) =>
+export const createCertificate = (
+  payload: CertificateUpsert,
+  signal?: AbortSignal,
+) =>
+  apiRequest<CertificateResponse>(`${owner}/certificates`, {
+    ...json("POST", payload),
+    signal,
+  }).then((res) => res.data)
+export const updateCertificate = (
+  id: string,
+  payload: CertificateUpsert,
+  signal?: AbortSignal,
+) =>
   apiRequest<CertificateResponse>(
     `${owner}/certificates/${encodeURIComponent(id)}`,
-    json("PUT", payload),
+    { ...json("PUT", payload), signal },
   ).then((res) => res.data)
 export const deleteCertificate = async (id: string): Promise<void> => {
   await apiRequest<void>(`${owner}/certificates/${encodeURIComponent(id)}`, {

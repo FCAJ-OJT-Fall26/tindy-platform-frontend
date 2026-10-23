@@ -1,5 +1,4 @@
 import type { CatalogSkill } from "./catalog"
-
 export interface MemberProfileResponse {
   user_id: string
   username: string | null
@@ -24,16 +23,17 @@ export interface MemberProfileResponse {
   public_email: string | null
   avatar_url: string | null
   cover_image_url: string | null
+  avatar_source: "default" | "uploaded" | "oauth" | null
+  avatar_media_asset_id: string | null
+  cover_media_asset_id: string | null
   skills: CatalogSkill[]
   experiences_count: number
   certificates_count: number
 }
-
 export interface MyProfileResponse extends MemberProfileResponse {
   phone_number: string | null
   resume_url: string | null
 }
-
 export interface ProfilePatch {
   display_name?: string
   university?: string
@@ -55,7 +55,6 @@ export interface ProfilePatch {
   public_email?: string | null
   skill_ids?: string[]
 }
-
 export interface ExperienceUpsert {
   project_name: string
   role_title: string
@@ -66,7 +65,6 @@ export interface ExperienceUpsert {
   is_ongoing: boolean
   skill_ids: string[]
 }
-
 export interface ExperienceResponse
   extends Omit<ExperienceUpsert, "skill_ids"> {
   experience_id: string
@@ -74,18 +72,32 @@ export interface ExperienceResponse
   created_at: string
   updated_at: string | null
 }
-
 export interface CertificateUpsert {
   title: string
   issuer: string
-  credential_id: string | null
+  description: string | null
   credential_url: string | null
-  issued_at: string | null
-  expires_at: string | null
 }
-
 export interface CertificateResponse extends CertificateUpsert {
   certificate_id: string
   created_at: string
   updated_at: string | null
+}
+export type ProfileMediaState = Pick<MemberProfileResponse, "avatar_source" | "avatar_media_asset_id" | "cover_media_asset_id">
+export type AttachmentVisibility = "owner_only" | "members"
+export interface CertificateAttachment {
+  attachment_id: string
+  media_asset_id: string
+  file_name: string
+  content_type: string
+  file_size_bytes: number
+  status: "pending_upload" | "processing" | "active" | "rejected" | "pending_delete"
+  visibility: AttachmentVisibility
+  created_at: string
+}
+export interface MediaQuota {
+  quota_bytes: number
+  used_bytes: number
+  reserved_bytes: number
+  available_bytes: number
 }
