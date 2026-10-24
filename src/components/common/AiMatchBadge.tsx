@@ -15,8 +15,8 @@ export default function AiMatchBadge({
   size = 'md',
   showVerdict = true,
 }: AiMatchBadgeProps) {
-  const tier = getMatchTier(score);
-  const displayVerdict = verdict || tier.label;
+  const finalTier = getMatchTier(score);
+  const displayVerdict = verdict || finalTier.label;
   const clamped = Math.max(0, Math.min(100, score));
 
   const [animatedPct, setAnimatedPct] = useState(0);
@@ -32,19 +32,31 @@ export default function AiMatchBadge({
     }
 
     setAnimatedPct(0);
-    let raf1 = 0;
-    let raf2 = 0;
-    raf1 = requestAnimationFrame(() => {
-      raf2 = requestAnimationFrame(() => {
+    let countRaf = 0;
+    const duration = 900;
+    let startTime: number | null = null;
+
+    const step = (timestamp: number) => {
+      if (startTime === null) startTime = timestamp;
+      const elapsed = timestamp - startTime;
+      const progress = Math.min(1, elapsed / duration);
+      const eased = 1 - Math.pow(1 - progress, 2.4);
+      setAnimatedPct(eased * clamped);
+      if (progress < 1) {
+        countRaf = requestAnimationFrame(step);
+      } else {
         setAnimatedPct(clamped);
-      });
-    });
+      }
+    };
+    countRaf = requestAnimationFrame(step);
 
     return () => {
-      cancelAnimationFrame(raf1);
-      cancelAnimationFrame(raf2);
+      cancelAnimationFrame(countRaf);
     };
   }, [clamped]);
+
+  const displayScore = Math.round(animatedPct);
+  const tier = getMatchTier(displayScore);
 
   const config = {
     sm: { dimension: 44, stroke: 3, radius: 18, fontSize: 'text-xs', labelSize: 'text-[9px]' },
@@ -80,12 +92,15 @@ export default function AiMatchBadge({
             strokeDasharray={circumference}
             strokeDashoffset={strokeDashoffset}
             strokeLinecap="round"
-            className="transition-all duration-700 ease-out"
+            className="transition-colors duration-150"
           />
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
-          <span className={`font-mono leading-none tracking-tight font-extrabold ${config.fontSize} ${tier.textColor}`}>
-            {score}%
+          <span
+            className={`font-mono leading-none tracking-tight font-extrabold transition-colors duration-150 ${config.fontSize} ${tier.textColor}`}
+            style={{ fontVariantNumeric: 'tabular-nums' }}
+          >
+            {displayScore}%
           </span>
           <span className={`text-[7px] tracking-wider uppercase font-semibold ${tier.labelColor}`}>
             MATCH

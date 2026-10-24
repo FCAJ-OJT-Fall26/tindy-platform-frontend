@@ -186,6 +186,24 @@ export function EmptyState({
     </div>
   )
 }
+function describePieSlice(cx: number, cy: number, r: number, pct: number): string {
+  const clampedPct = Math.max(0, Math.min(100, pct))
+  if (clampedPct <= 0) return ""
+  if (clampedPct >= 99.99) {
+    return [
+      `M ${cx} ${cy - r}`,
+      `A ${r} ${r} 0 1 1 ${cx} ${cy + r}`,
+      `A ${r} ${r} 0 1 1 ${cx} ${cy - r}`,
+      "Z",
+    ].join(" ")
+  }
+  const angle = (clampedPct / 100) * 2 * Math.PI - Math.PI / 2
+  const x = cx + r * Math.cos(angle)
+  const y = cy + r * Math.sin(angle)
+  const largeArc = clampedPct > 50 ? 1 : 0
+  return `M ${cx} ${cy} L ${cx} ${cy - r} A ${r} ${r} 0 ${largeArc} 1 ${x.toFixed(3)} ${y.toFixed(3)} Z`
+}
+
 export function Score({
   project,
   value: explicitValue,
@@ -200,14 +218,12 @@ export function Score({
   const value =
     explicitValue !== undefined ? explicitValue : project ? score(project) : 0
   const clamped = Math.max(0, Math.min(100, value))
-  const tier = getMatchTier(value)
   const size = compact ? 28 : 44
-  const outerRadius = compact ? 12 : 19
-  const pieRadius = outerRadius / 2
-  const pieCircumference = 2 * Math.PI * pieRadius
+  const center = size / 2
+  const outerRadius = compact ? 12 : 19.5
+  const pieRadius = compact ? 9.2 : 15.2
 
   const [animatedPct, setAnimatedPct] = useState(0)
-  const [displayValue, setDisplayValue] = useState(0)
 
   useEffect(() => {
     const prefersReducedMotion =
@@ -216,82 +232,71 @@ export function Score({
 
     if (prefersReducedMotion) {
       setAnimatedPct(clamped)
-      setDisplayValue(value)
       return
     }
 
     setAnimatedPct(0)
-    setDisplayValue(0)
 
-    let raf1 = 0
-    let raf2 = 0
     let countRaf = 0
-    const duration = 700
+    const duration = 950
     let startTime: number | null = null
-
-    raf1 = requestAnimationFrame(() => {
-      raf2 = requestAnimationFrame(() => {
-        setAnimatedPct(clamped)
-      })
-    })
 
     const step = (timestamp: number) => {
       if (startTime === null) startTime = timestamp
       const elapsed = timestamp - startTime
       const progress = Math.min(1, elapsed / duration)
-      const eased = 1 - Math.pow(1 - progress, 3)
-      setDisplayValue(Math.round(eased * value))
+      const eased = 1 - Math.pow(1 - progress, 2.4)
+      setAnimatedPct(eased * clamped)
       if (progress < 1) {
         countRaf = requestAnimationFrame(step)
+      } else {
+        setAnimatedPct(clamped)
       }
     }
     countRaf = requestAnimationFrame(step)
 
     return () => {
-      cancelAnimationFrame(raf1)
-      cancelAnimationFrame(raf2)
       cancelAnimationFrame(countRaf)
     }
-  }, [clamped, value])
+  }, [clamped])
 
-  const pieDashoffset =
-    pieCircumference - (animatedPct / 100) * pieCircumference
+  const displayValue = Math.round(animatedPct)
+  const activeTier = getMatchTier(displayValue)
+  const finalTier = getMatchTier(value)
+  const pieColor =
+    activeTier.tier === "low"
+      ? "#e11d48"
+      : activeTier.tier === "medium"
+        ? "#ea580c"
+        : "#10b981"
+  const piePath = describePieSlice(center, center, pieRadius, animatedPct)
 
   return (
-    <div className={`match-score match-tier-${tier.tier} ${compact ? "compact" : ""}`}>
+    <div className={`match-score match-tier-${activeTier.tier} ${compact ? "compact" : ""}`}>
       <div
         className="match-pie-chart"
         style={{ width: size, height: size }}
-        title={`${value}% — ${tier.label}`}
+        title={`${value}% — ${finalTier.label}`}
         aria-hidden="true"
       >
         <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="match-pie-svg">
+          {/* Outer dark-rimmed white circle */}
           <circle
-            cx={size / 2}
-            cy={size / 2}
+            cx={center}
+            cy={center}
             r={outerRadius}
-            fill={tier.trackStroke}
+            fill="#ffffff"
+            stroke="#334155"
+            strokeWidth={compact ? 1.8 : 2.2}
           />
-          <circle
-            cx={size / 2}
-            cy={size / 2}
-            r={pieRadius}
-            fill="transparent"
-            stroke={tier.stroke}
-            strokeWidth={outerRadius}
-            strokeDasharray={pieCircumference}
-            strokeDashoffset={pieDashoffset}
-            className="match-pie-wedge"
-          />
-          <circle
-            cx={size / 2}
-            cy={size / 2}
-            r={outerRadius}
-            fill="transparent"
-            stroke={tier.stroke}
-            strokeWidth={compact ? 1.5 : 2}
-            strokeOpacity={0.35}
-          />
+          {/* Dynamic solid pie slice with white gap inside outer ring */}
+          {piePath && (
+            <path
+              d={piePath}
+              fill={pieColor}
+              className="match-pie-slice"
+            />
+          )}
         </svg>
       </div>
       <div className="score-number" style={{ fontVariantNumeric: "tabular-nums" }}>
@@ -302,9 +307,9 @@ export function Score({
         <strong>
           {compact
             ? "Match"
-            : tier.tier === "low"
+            : finalTier.tier === "low"
               ? "Warning: Low match"
-              : tier.tier === "medium"
+              : finalTier.tier === "medium"
                 ? "Moderate match"
                 : value >= 85
                   ? "Excellent match"
@@ -314,7 +319,7 @@ export function Score({
       </div>
       {!compact && (
         <div className="score-meter">
-          <span style={{ width: `${animatedPct}%`, background: tier.stroke }} />
+          <span style={{ width: `${animatedPct}%`, background: pieColor }} />
         </div>
       )}
     </div>

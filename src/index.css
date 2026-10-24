@@ -1926,17 +1926,20 @@ main {
   transition: background-color 0.2s ease, border-color 0.2s ease;
 }
 
-.match-strip.match-tier-high {
+.match-strip.match-tier-high,
+.match-strip:has(.match-score.match-tier-high) {
   background: #f0fdf4;
   border-color: #bbf7d0;
 }
 
-.match-strip.match-tier-medium {
+.match-strip.match-tier-medium,
+.match-strip:has(.match-score.match-tier-medium) {
   background: #fffbeb;
   border-color: #fde68a;
 }
 
-.match-strip.match-tier-low {
+.match-strip.match-tier-low,
+.match-strip:has(.match-score.match-tier-low) {
   background: #fff1f2;
   border-color: #fecdd3;
 }
@@ -1949,6 +1952,7 @@ main {
   flex-wrap: wrap;
   padding: 20px 0;
   color: #047857;
+  transition: color 0.16s ease;
 }
 
 .match-score.match-tier-high {
@@ -1956,7 +1960,7 @@ main {
 }
 
 .match-score.match-tier-medium {
-  color: #b45309;
+  color: #c2410c;
 }
 
 .match-score.match-tier-low {
@@ -1969,18 +1973,14 @@ main {
   justify-content: center;
   flex-shrink: 0;
   border-radius: 9999px;
-  background: #ffffff;
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
 }
 
 .match-pie-svg {
   display: block;
-  transform: rotate(-90deg);
 }
 
-.match-pie-wedge {
-  transition: stroke-dashoffset 0.7s cubic-bezier(0.22, 1, 0.36, 1),
-    stroke 0.2s ease;
+.match-pie-slice {
+  transition: fill 0.16s ease;
 }
 
 .score-number {
@@ -2023,7 +2023,7 @@ main {
   display: block;
   background: #10b981;
   border-radius: 3px;
-  transition: width 0.7s cubic-bezier(0.22, 1, 0.36, 1), background-color 0.2s ease;
+  transition: background-color 0.16s ease;
 }
 
 .match-score.compact {
@@ -2062,19 +2062,23 @@ main {
   color: #065f46
 }
 
-.match-strip.match-tier-medium>button {
-  color: #b45309 !important;
+.match-strip.match-tier-medium>button,
+.match-strip:has(.match-score.match-tier-medium)>button {
+  color: #c2410c !important;
 }
 
-.match-strip.match-tier-medium>button:hover {
-  color: #92400e !important;
+.match-strip.match-tier-medium>button:hover,
+.match-strip:has(.match-score.match-tier-medium)>button:hover {
+  color: #9a3412 !important;
 }
 
-.match-strip.match-tier-low>button {
+.match-strip.match-tier-low>button,
+.match-strip:has(.match-score.match-tier-low)>button {
   color: #be123c !important;
 }
 
-.match-strip.match-tier-low>button:hover {
+.match-strip.match-tier-low>button:hover,
+.match-strip:has(.match-score.match-tier-low)>button:hover {
   color: #9f1239 !important;
 }
 
