@@ -106,7 +106,7 @@ export default function DiscoverySegmentedControl<T extends string>({
             onClick={() => onChange(opt.value)}
             className={`discovery-segmented-btn ${
               size === 'compact'
-                ? 'py-2 px-2.5 rounded-md text-xs font-bold flex flex-col items-center gap-0.5 flex-1'
+                ? 'py-1.5 lg:py-2 px-2 sm:px-2.5 rounded-md text-xs font-bold flex flex-col items-center justify-center gap-0.5 flex-1 min-w-0'
                 : 'py-2 px-3.5 sm:px-4 rounded-md text-xs font-bold flex items-center justify-center gap-1.5'
             } ${
               isActive
@@ -114,10 +114,10 @@ export default function DiscoverySegmentedControl<T extends string>({
                 : 'text-slate-700 hover:text-black'
             }`}
           >
-            <span>{opt.label}</span>
+            <span className="truncate max-w-full">{opt.label}</span>
             {opt.sublabel && (
               <span
-                className={`text-[9px] font-medium transition-colors ${
+                className={`text-[9px] font-medium leading-tight truncate max-w-full transition-colors ${
                   isActive ? 'text-slate-300' : 'text-slate-500'
                 }`}
               >

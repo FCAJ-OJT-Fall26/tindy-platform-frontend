@@ -19,7 +19,7 @@ export default function LiveAiInspector({
 }: LiveAiInspectorProps) {
   if (!item) {
     return (
-      <aside className="w-80 bg-white rounded-xl border border-slate-200 p-6 flex flex-col items-center justify-center text-center shadow-xs">
+      <aside className="w-full min-w-0 bg-white rounded-xl border border-slate-200 p-6 flex flex-col items-center justify-center text-center shadow-xs">
         <h4 className="font-bold text-slate-800 text-sm">No Card Selected</h4>
         <p className="text-xs text-slate-500 mt-1">
           Select or drag a recommendation to inspect its live match breakdown.
@@ -34,7 +34,7 @@ export default function LiveAiInspector({
   const match = item.match;
 
   return (
-    <aside className="w-80 bg-white rounded-xl border border-slate-200 p-5 shadow-xs flex flex-col h-fit sticky top-24 space-y-4">
+    <aside className="w-full min-w-0 bg-white rounded-xl border border-slate-200 p-5 shadow-xs flex flex-col h-fit xl:sticky xl:top-24 space-y-4">
       {/* Header */}
       <div className="flex items-center justify-between pb-3 border-b border-slate-100">
         <div>

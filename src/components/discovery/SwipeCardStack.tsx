@@ -134,7 +134,7 @@ export default function SwipeCardStack({
 
   if (currentIndex >= items.length) {
     return (
-      <div className="w-full max-w-md mx-auto aspect-3/4 min-h-[480px] bg-white rounded-2xl border border-slate-200 p-8 flex flex-col items-center justify-center text-center shadow-xs">
+      <div className="w-full max-w-md mx-auto min-h-[420px] sm:min-h-[480px] bg-white rounded-2xl border border-slate-200 p-6 sm:p-8 flex flex-col items-center justify-center text-center shadow-xs">
         <div className="w-12 h-12 rounded-xl bg-slate-100 flex items-center justify-center text-slate-800 mb-4 border border-slate-200">
           <RotateCcw size={20} />
         </div>
@@ -179,8 +179,8 @@ export default function SwipeCardStack({
   const visibleItems = items.slice(currentIndex, currentIndex + 2);
 
   return (
-    <div className="w-full max-w-[460px] sm:max-w-[480px] mx-auto flex flex-col items-center select-none">
-      <div className="relative w-full h-[540px] sm:h-[570px] min-h-[520px]">
+    <div className="w-full max-w-[460px] sm:max-w-[480px] mx-auto flex flex-col items-center select-none min-w-0">
+      <div className="relative w-full h-[530px] sm:h-[570px] min-h-[500px]">
         {visibleItems.map((item, index) => {
           const isTop = index === 0;
           const offsetStyle = {
@@ -280,7 +280,7 @@ export default function SwipeCardStack({
       </div>
 
       {/* Accessible Action Buttons */}
-      <div className="w-full mt-4 flex items-center justify-center gap-3 sm:gap-4 px-2">
+      <div className="w-full mt-4 flex items-center justify-center gap-2 sm:gap-4 px-1 sm:px-2 min-w-0">
         <button
           type="button"
           disabled={!canUndo || currentIndex === 0}
@@ -288,7 +288,7 @@ export default function SwipeCardStack({
             onUndo?.();
             setCurrentIndex((prev) => Math.max(0, prev - 1));
           }}
-          className={`w-10 h-10 rounded-lg border flex items-center justify-center transition-all ${
+          className={`w-10 h-10 min-h-[40px] shrink-0 rounded-lg border flex items-center justify-center transition-all ${
             canUndo && currentIndex > 0
               ? 'border-slate-300 bg-white text-slate-800 hover:bg-slate-100'
               : 'border-slate-200 bg-slate-50 text-slate-300 cursor-not-allowed'
@@ -301,19 +301,19 @@ export default function SwipeCardStack({
 
         <SkipActionButton
           onClick={() => executeSwipe('left')}
-          className="flex-1 max-w-[120px] py-2.5 rounded-lg border border-rose-300 bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold text-xs flex items-center justify-center gap-1.5 transition-colors shadow-2xs"
+          className="flex-1 min-w-0 max-w-[120px] min-h-[40px] py-2.5 px-2 rounded-lg border border-rose-300 bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold text-xs flex items-center justify-center gap-1.5 transition-colors shadow-2xs"
           title="Skip recommendation"
           ariaLabel="Skip"
           iconSize={15}
           strokeWidth={2.5}
         >
-          <span>Skip</span>
+          <span className="truncate">Skip</span>
         </SkipActionButton>
 
         <StarActionButton
           isActionTrigger
           onToggle={() => executeSwipe('up')}
-          className="w-10 h-10 rounded-lg border border-sky-300 bg-sky-50 hover:bg-sky-100 text-sky-700 flex items-center justify-center transition-colors shadow-2xs"
+          className="w-10 h-10 min-h-[40px] shrink-0 rounded-lg border border-sky-300 bg-sky-50 hover:bg-sky-100 text-sky-700 flex items-center justify-center transition-colors shadow-2xs"
           title="Save for later"
           ariaLabel="Save for later"
           iconSize={16}
@@ -322,17 +322,17 @@ export default function SwipeCardStack({
         <InterestedActionButton
           isActionTrigger
           onClick={() => executeSwipe('right')}
-          className="flex-1 max-w-[140px] py-2.5 rounded-lg border border-emerald-400 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-bold text-xs flex items-center justify-center gap-1.5 transition-colors shadow-2xs"
+          className="flex-1 min-w-0 max-w-[140px] min-h-[40px] py-2.5 px-2 rounded-lg border border-emerald-400 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-bold text-xs flex items-center justify-center gap-1.5 transition-colors shadow-2xs"
           title={mode === 'student' ? 'Mark Interested' : 'Shortlist Candidate'}
           ariaLabel={mode === 'student' ? 'Interested' : 'Shortlist'}
           iconSize={15}
         >
-          <span>{mode === 'student' ? 'Interested' : 'Shortlist'}</span>
+          <span className="truncate">{mode === 'student' ? 'Interested' : 'Shortlist'}</span>
         </InterestedActionButton>
       </div>
 
       {/* Keyboard Controls Note */}
-      <div className="mt-3 text-[11px] text-slate-500 flex items-center gap-3">
+      <div className="mt-3 text-[11px] text-slate-500 flex flex-wrap items-center justify-center gap-x-3 gap-y-1">
         <span className="flex items-center gap-1 text-rose-600 font-semibold">
           <X size={12} strokeWidth={2.5} className="text-rose-600" /> Skip (←)
         </span>

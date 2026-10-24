@@ -118,6 +118,7 @@ export default function SwipeDiscoveryView({
 
   const [minScore, setMinScore] = useState<number>(0);
   const [mobileFilterOpen, setMobileFilterOpen] = useState<boolean>(false);
+  const [mobileInspectorOpen, setMobileInspectorOpen] = useState<boolean>(false);
 
   // Currently active card in stack for Live AI Inspector
   const [activeItem, setActiveItem] = useState<DiscoveryProject | DiscoveryCandidate | null>(null);
@@ -381,7 +382,6 @@ export default function SwipeDiscoveryView({
       setLeaderSkill('All');
     }
     setMinScore(0);
-    setStackResetKey((prev) => prev + 1);
     showToast('Reset all filters to default.');
   };
 
@@ -415,16 +415,16 @@ export default function SwipeDiscoveryView({
   };
 
   return (
-    <div className="w-full flex flex-col space-y-6 pb-16 overflow-x-hidden">
+    <div className="w-full min-w-0 flex flex-col space-y-6 pb-16">
       {/* Page Title & Two-Sided Switcher Header */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 bg-white p-6 rounded-2xl border border-slate-200/90 shadow-2xs">
-        <div className={`discovery-header-fade ${transitionState === 'exiting' ? 'opacity-40' : 'opacity-100'}`}>
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 bg-white p-4 sm:p-6 rounded-2xl border border-slate-200/90 shadow-2xs min-w-0">
+        <div className={`min-w-0 discovery-header-fade ${transitionState === 'exiting' ? 'opacity-40' : 'opacity-100'}`}>
           <div className="flex items-center gap-2">
             <span className="text-[10px] uppercase font-bold tracking-wider text-slate-900 bg-slate-100 px-2.5 py-1 rounded-md border border-slate-200">
               Interactive Matching Stack
             </span>
           </div>
-          <h1 className="font-manrope font-extrabold text-2xl sm:text-3xl text-slate-900 tracking-tight mt-1.5 transition-colors">
+          <h1 className="font-manrope font-extrabold text-xl sm:text-2xl lg:text-3xl text-slate-900 tracking-tight mt-1.5 transition-colors break-words">
             {displayMode === 'student' ? 'Discover Projects That Fit You' : 'Discover Candidates for Your Team'}
           </h1>
           <p className="text-xs text-slate-500 mt-1 max-w-xl leading-relaxed">
@@ -444,36 +444,60 @@ export default function SwipeDiscoveryView({
             { value: 'leader', label: 'Find Teammates' },
           ]}
           ariaLabel="Discovery Mode Switcher"
-          className="self-start md:self-auto shrink-0"
+          className="self-start md:self-auto shrink-0 max-w-full"
         />
       </div>
 
-      {/* Mobile Filters Accordion Button */}
-      <div className="lg:hidden w-full">
+      {/* Mobile Collapsible Matching Perspective & Filters Panel (< 1024px) */}
+      <div className="lg:hidden w-full min-w-0">
         <button
           type="button"
-          onClick={() => setMobileFilterOpen(!mobileFilterOpen)}
-          className="w-full flex items-center justify-between px-4 py-3 bg-white border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 shadow-2xs cursor-pointer transition-colors hover:bg-slate-50"
+          onClick={() => setMobileFilterOpen((prev) => !prev)}
+          aria-expanded={mobileFilterOpen}
+          aria-controls="mobile-matching-perspective-panel"
+          className="w-full flex items-center justify-between gap-2 px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 shadow-2xs cursor-pointer transition-colors hover:bg-slate-50"
         >
-          <span className="flex items-center gap-2">
-            <SlidersHorizontal size={14} className="text-slate-500" />
-            <span>Filters & Score Threshold</span>
+          <span className="flex items-center gap-2 min-w-0 flex-1 overflow-hidden">
+            <SlidersHorizontal size={14} className="text-slate-500 shrink-0" />
+            <span className="truncate font-bold text-slate-900">Matching Perspective & Filters</span>
+            <span className="px-2 py-0.5 rounded-md text-[10px] bg-slate-100 text-slate-800 border border-slate-200 font-bold shrink-0">
+              {mode === 'student' ? 'Projects' : 'Teammates'}
+            </span>
+            {selectedRole !== 'All' && (
+              <span className="hidden sm:inline-block px-2 py-0.5 rounded-md text-[10px] bg-slate-100 text-slate-700 border border-slate-200 font-medium truncate max-w-[120px]">
+                {selectedRole}
+              </span>
+            )}
+            {selectedSkill !== 'All' && (
+              <span className="hidden sm:inline-block px-2 py-0.5 rounded-md text-[10px] bg-slate-100 text-slate-700 border border-slate-200 font-medium truncate max-w-[110px]">
+                {selectedSkill}
+              </span>
+            )}
             {minScore > 0 && (
-              <span className="px-2 py-0.5 rounded-full text-[10px] bg-indigo-50 text-indigo-700 font-mono font-bold">
+              <span className="px-2 py-0.5 rounded-full text-[10px] bg-indigo-50 text-indigo-700 border border-indigo-200 font-mono font-bold shrink-0">
                 ≥{minScore}%
+              </span>
+            )}
+            {(selectedRole !== 'All' || selectedSkill !== 'All') && (
+              <span className="sm:hidden px-1.5 py-0.5 rounded-full text-[10px] bg-slate-900 text-white font-mono font-bold shrink-0">
+                {(selectedRole !== 'All' ? 1 : 0) + (selectedSkill !== 'All' ? 1 : 0)}
               </span>
             )}
           </span>
           <ChevronDown
             size={14}
-            className={`text-slate-400 transition-transform ${
+            className={`text-slate-400 shrink-0 transition-transform duration-200 ${
               mobileFilterOpen ? 'rotate-180' : ''
             }`}
           />
         </button>
 
-        {mobileFilterOpen && (
-          <div className="mt-3 p-4 bg-white border border-slate-200 rounded-2xl shadow-xs">
+        <div
+          id="mobile-matching-perspective-panel"
+          aria-hidden={!mobileFilterOpen}
+          className={`discovery-collapsible-grid ${mobileFilterOpen ? 'is-open' : ''}`}
+        >
+          <div className="discovery-collapsible-inner" inert={!mobileFilterOpen ? true : undefined}>
             <DiscoveryFilters
               mode={mode}
               onModeChange={handleModeSwitch}
@@ -489,13 +513,13 @@ export default function SwipeDiscoveryView({
               availableSkills={availableSkills}
             />
           </div>
-        )}
+        </div>
       </div>
 
-      {/* Main 3-Column Layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+      {/* Main Responsive Discovery Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start min-w-0">
         {/* Left Column: Stable Filters Panel */}
-        <div className="hidden lg:block lg:col-span-3">
+        <div className="hidden lg:block lg:col-span-4 xl:col-span-3 min-w-0">
           <DiscoveryFilters
             mode={mode}
             onModeChange={handleModeSwitch}
@@ -513,8 +537,8 @@ export default function SwipeDiscoveryView({
         </div>
 
         {/* Center Column: Interactive Discovery Card Stack */}
-        <div className="lg:col-span-6 flex flex-col items-center min-w-0">
-          <div className={`w-full flex flex-col items-center ${getTransitionClass()}`}>
+        <div className="lg:col-span-8 xl:col-span-6 flex flex-col items-center min-w-0 w-full">
+          <div className={`w-full flex flex-col items-center min-w-0 ${getTransitionClass()}`}>
             <SwipeCardStack
               key={`${displayMode}-${selectedRole}-${selectedSkill}-${minScore}-${stackResetKey}`}
               items={filteredItems}
@@ -533,9 +557,61 @@ export default function SwipeDiscoveryView({
           </div>
         </div>
 
-        {/* Right Column: Live AI Algorithmic Inspector */}
-        <div className="hidden lg:block lg:col-span-3 min-w-0">
-          <div className={`w-full ${getTransitionClass()}`}>
+        {/* Mobile / Tablet Portrait Collapsible Match Inspector (< 1024px) */}
+        <div className="lg:hidden w-full min-w-0">
+          <button
+            type="button"
+            onClick={() => setMobileInspectorOpen((prev) => !prev)}
+            aria-expanded={mobileInspectorOpen}
+            aria-controls="mobile-match-inspector-panel"
+            className="w-full flex items-center justify-between px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 shadow-2xs cursor-pointer transition-colors hover:bg-slate-50"
+          >
+            <span className="flex items-center gap-2 min-w-0">
+              <span className="px-2 py-0.5 rounded bg-slate-900 text-white text-[10px] font-bold uppercase tracking-wider shrink-0">
+                Match Inspector
+              </span>
+              <span className="truncate text-slate-600">
+                {(activeItem || filteredItems[0])
+                  ? `${(activeItem || filteredItems[0]).name} · ${(activeItem || filteredItems[0]).match.overall}% Fit`
+                  : 'Live Algorithmic Evaluation'}
+              </span>
+            </span>
+            <ChevronDown
+              size={14}
+              className={`text-slate-400 shrink-0 transition-transform duration-200 ${
+                mobileInspectorOpen ? 'rotate-180' : ''
+              }`}
+            />
+          </button>
+
+          <div
+            id="mobile-match-inspector-panel"
+            aria-hidden={!mobileInspectorOpen}
+            className={`discovery-collapsible-grid ${mobileInspectorOpen ? 'is-open' : ''}`}
+          >
+            <div
+              className={`discovery-collapsible-inner w-full min-w-0 ${getTransitionClass()}`}
+              inert={!mobileInspectorOpen ? true : undefined}
+            >
+              <LiveAiInspector
+                item={activeItem || filteredItems[0] || null}
+                mode={displayMode}
+                onOpenFullDetail={() => {
+                  const current = activeItem || filteredItems[0];
+                  if (current) handleCardTap(current);
+                }}
+                onOpenAiModal={() => {
+                  const current = activeItem || filteredItems[0];
+                  if (current) handleWhyMatches(current);
+                }}
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Right / Bottom Column: Live AI Algorithmic Inspector (lg: docked full-width below 2-col row, xl: 3-col right rail) */}
+        <div className="hidden lg:block lg:col-span-12 xl:col-span-3 min-w-0 w-full">
+          <div className={`w-full min-w-0 ${getTransitionClass()}`}>
             <LiveAiInspector
               item={activeItem || filteredItems[0] || null}
               mode={displayMode}

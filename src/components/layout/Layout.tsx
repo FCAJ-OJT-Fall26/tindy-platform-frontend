@@ -13,6 +13,17 @@ export default function Layout() {
   const location = useLocation()
   const [mobile, setMobile] = useState(false)
 
+  // Close mobile sidebar drawer automatically when viewport expands above mobile breakpoint
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth > 760) {
+        setMobile((prev) => (prev ? false : prev))
+      }
+    }
+    window.addEventListener("resize", handleResize, { passive: true })
+    return () => window.removeEventListener("resize", handleResize)
+  }, [])
+
   // Dynamic document title updater
   useEffect(() => {
     const titleMap: Record<string, string> = {
