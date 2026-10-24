@@ -28,3 +28,8 @@ docs
 # beside it.
 /.plugins/
 /.opencode-skills/
+
+# Keep the Profile Media handoff reviewable while other local docs remain ignored.
+!/docs/
+/docs/*
+!/docs/PROFILE_MEDIA_FRONTEND_INTEGRATION.md

@@ -13,7 +13,7 @@ import {
 } from "../../services/oauth.service"
 
 export default function ConnectedAccounts() {
-  const { authUser } = useTindy()
+  const { authUser, ownerProfile } = useTindy()
   const location = useLocation()
   const [data, setData] = useState<AccountConnections | null>(null)
   const [loading, setLoading] = useState(true)
@@ -102,6 +102,7 @@ export default function ConnectedAccounts() {
     setNotice("")
     try {
       await disconnectAccountApi(provider)
+      ownerProfile.reload()
       setConfirm(null)
       setNotice("Account disconnected. Your Tindy session is still active.")
       setRetry((value) => value + 1)

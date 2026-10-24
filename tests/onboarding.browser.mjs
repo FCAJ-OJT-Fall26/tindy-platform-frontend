@@ -570,6 +570,7 @@ try {
   saveFailure = { status: 401, detail: "Expired" }
   await clickText("Continue")
   await waitFor('location.pathname === "/login"', "expired token redirects to login")
+  await waitFor('Boolean(document.querySelector("input[name=identifier]"))', "sign-in form mounts after redirect")
   await check(
     'localStorage.getItem("tindy_access_token") === null && Boolean(document.querySelector("input[name=identifier]"))',
     "HTTP 401 clears the token/auth state and redirects to sign-in",

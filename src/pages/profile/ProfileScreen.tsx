@@ -2,8 +2,8 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from "react"
 import { Link, useParams } from "react-router"
 import {
   ArrowUpRight,
-  Award,
   BriefcaseBusiness,
+  Camera,
   GraduationCap,
   MapPin,
   Pencil,
@@ -11,7 +11,6 @@ import {
   Trash2,
 } from "lucide-react"
 import {
-  Avatar,
   Button,
   Chips,
   EmptyState,
@@ -47,7 +46,11 @@ import type {
   MyProfileResponse,
 } from "../../types/profile"
 import "./profile.css"
-
+import ProfileMediaImage from "../../components/profile/ProfileMediaImage"
+import ProfileMediaControls from "../../components/profile/ProfileMediaControls"
+import CertificateAttachments from "../../components/profile/CertificateAttachments"
+import MediaQuotaSummary from "../../components/profile/MediaQuotaSummary"
+import { getMediaQuota } from "../../services/profileMedia.service"
 function ResourceStatus({
   loading,
   error,
@@ -75,27 +78,6 @@ function ResourceStatus({
     </>
   )
 }
-
-function ProfileAvatar({ name, url }: {
-  name: string
-  url: string | null
-}) {
-  const [failed, setFailed] = useState(false)
-  useEffect(() => setFailed(false), [url])
-  const src = safeHttpUrl(url)
-  return src && !failed ? (
-    <img
-      className="profile-photo"
-      src={src}
-      alt={`${name}'s avatar`}
-      referrerPolicy="no-referrer"
-      onError={() => setFailed(true)}
-    />
-  ) : (
-    <Avatar name={name || "Tindy member"} size="xl" color="neutral" />
-  )
-}
-
 function ExternalLink({
   url,
   children,
@@ -111,7 +93,6 @@ function ExternalLink({
     </a>
   ) : null
 }
-
 function ProfileDetails({
   profile,
   owner,
@@ -176,7 +157,6 @@ function ProfileDetails({
     </>
   )
 }
-
 function About({ profile }: { profile: MemberProfileResponse }) {
   return (
     <section className="panel">
@@ -205,7 +185,6 @@ function About({ profile }: { profile: MemberProfileResponse }) {
     </section>
   )
 }
-
 type Editor = {
   kind: "experience"
   item: ExperienceResponse | null
@@ -218,7 +197,6 @@ type Deletion = {
   id: string
   title: string
 }
-
 function ProfileView({ userId }: { userId?: string }) {
   const owner = !userId
   const { authUser, ownerProfile, saveOwnerProfile, notify } = useTindy()
@@ -241,7 +219,27 @@ function ProfileView({ userId }: { userId?: string }) {
   )
   const experiences = useRemoteResource(key, loadExperiences)
   const certificates = useRemoteResource(key, loadCertificates)
+  const quota = useRemoteResource(owner ? key : null, getMediaQuota)
+  const [certificateFileRevisions, setCertificateFileRevisions] =
+    useState<Record<string, number>>({})
+  const certificateFileChanged = useCallback(
+    (id: string) => {
+      setCertificateFileRevisions((previous) => ({
+        ...previous,
+        [id]: (previous[id] ?? 0) + 1,
+      }))
+      quota.reload()
+    },
+    [quota.reload],
+  )
+  useEffect(() => {
+    // Returning after an aborted upload must reconcile a possible server commit.
+    // The provider performs the initial load when no cached owner profile exists.
+    if (owner && ownerProfile.data) ownerProfile.reload()
+  }, [owner, ownerProfile.reload])
   const [editing, setEditing] = useState(false)
+  const [mediaEditing, setMediaEditing] = useState<"avatar" | "cover-image" | null>(null)
+  const coverElement = useRef<HTMLDivElement>(null)
   const [profileBusy, setProfileBusy] = useState(false)
   const [editorBusy, setEditorBusy] = useState(false)
   const [editor, setEditor] = useState<Editor | null>(null)
@@ -269,7 +267,6 @@ function ProfileView({ userId }: { userId?: string }) {
       return { ...base, [field]: Math.max(0, base[field] + delta) }
     })
   }
-
   const remove = async () => {
     if (!deletion || busyDelete.current) return
     busyDelete.current = true
@@ -290,6 +287,7 @@ function ProfileView({ userId }: { userId?: string }) {
           ),
         )
       refreshCounts(deletion.kind, -1)
+      if (deletion.kind === "certificate") quota.reload()
       setDeletion(null)
       notify("Item deleted")
     } catch (error) {
@@ -338,7 +336,6 @@ function ProfileView({ userId }: { userId?: string }) {
       </div>
     )
   }
-
   return (
     <>
       <PageHeader
@@ -368,27 +365,16 @@ function ProfileView({ userId }: { userId?: string }) {
       />
       {profile && (
         <>
-          <div className="profile-cover">
-            {safeHttpUrl(profile.cover_image_url) && (
-              <img
-                className="profile-cover-image"
-                src={safeHttpUrl(profile.cover_image_url)}
-                alt=""
-                referrerPolicy="no-referrer"
-                onError={(event) => {
-                  event.currentTarget.hidden = true
-                }}
-              />
-            )}
+          <div className={`profile-cover ${profile.cover_media_asset_id || safeHttpUrl(profile.cover_image_url) ? "has-cover-image" : ""}`} ref={coverElement}>
+            <ProfileMediaImage profile={profile} kind="cover" />
             <div className="cover-line" />
             <span>TINDY / BUILT TO BUILD</span>
+            {owner && <button type="button" className="profile-cover-edit" aria-label="Edit cover" onClick={() => setMediaEditing("cover-image")}><Camera size={15} aria-hidden="true" />Edit cover</button>}
           </div>
           <div className="profile-identity">
             <div className="profile-avatar-wrap">
-              <ProfileAvatar
-                name={profile.display_name}
-                url={profile.avatar_url}
-              />
+              <ProfileMediaImage profile={profile} />
+              {owner && <button type="button" className="profile-avatar-edit" aria-label="Edit avatar" title="Edit avatar" onClick={() => setMediaEditing("avatar")}><Camera size={16} aria-hidden="true" /><span className="profile-media-sr-only">Edit avatar</span></button>}
             </div>
             <div>
               <h2>{profile.display_name}</h2>
@@ -413,6 +399,7 @@ function ProfileView({ userId }: { userId?: string }) {
               </div>
             )}
           </div>
+          {owner && mediaEditing && <ProfileMediaControls kind={mediaEditing} coverElement={coverElement.current} onClose={() => setMediaEditing(null)} />}
           {owner && editing && (
             <ProfileEditor
               profile={profile as MyProfileResponse}
@@ -432,145 +419,161 @@ function ProfileView({ userId }: { userId?: string }) {
       )}
       {profile && !editing && (
         <div className="profile-layout">
-        <div>
-          {profile && <About profile={profile} />}
-          <section className="panel" aria-label="Experiences">
-            <SectionHeading
-              title="Experiences"
-              action={
-                owner && (
-                  <button
-                    type="button"
-                    className="text-link"
-                    disabled={experiences.loading || !profile}
-                    onClick={() =>
-                      setEditor({ kind: "experience", item: null })
+          <div>
+            {profile && <About profile={profile} />}
+            <section className="panel" aria-label="Experiences">
+              <SectionHeading
+                title="Experiences"
+                action={
+                  owner && (
+                    <button
+                      type="button"
+                      className="text-link"
+                      disabled={experiences.loading || !profile}
+                      onClick={() =>
+                        setEditor({ kind: "experience", item: null })
+                      }
+                    >
+                      <Plus size={14} />
+                      Add experience
+                    </button>
+                  )
+                }
+              />
+              <ResourceStatus
+                {...experiences}
+                retry={experiences.reload}
+                label="experiences"
+              />
+              {experiences.data?.length === 0 &&
+                !experiences.loading &&
+                !experiences.error && (
+                  <EmptyState
+                    title="No experiences yet"
+                    description={
+                      owner
+                        ? "Add a project and describe your contribution."
+                        : "This member has not added any experiences."
                     }
-                  >
-                    <Plus size={14} />
-                    Add experience
-                  </button>
-                )
-              }
-            />
-            <ResourceStatus
-              {...experiences}
-              retry={experiences.reload}
-              label="experiences"
-            />
-            {experiences.data?.length === 0 &&
-              !experiences.loading &&
-              !experiences.error && (
-                <EmptyState
-                  title="No experiences yet"
-                  description={
-                    owner
-                      ? "Add a project and describe your contribution."
-                      : "This member has not added any experiences."
-                  }
-                />
-              )}
-            {experiences.data?.map((item) => (
-              <article
-                className="experience-card profile-api-item"
-                key={item.experience_id}
-              >
-                <span className="project-mark indigo">
-                  <BriefcaseBusiness size={18} />
-                </span>
-                <div className="profile-item-body">
-                  <h3>{item.project_name}</h3>
-                  <p className="profile-item-meta">
-                    {item.role_title} ·{" "}
-                    {item.start_date ?? "Start not specified"} –{" "}
-                    {item.is_ongoing
-                      ? "Present"
-                      : (item.end_date ?? "End not specified")}
-                  </p>
-                  <p className="profile-prose">{item.description}</p>
-                  {item.technologies.length > 0 && (
-                    <Chips
-                      items={item.technologies.map((skill) => skill.name)}
-                    />
-                  )}
-                  <div className="profile-contact-links">
-                    <ExternalLink url={item.repo_url}>Repository</ExternalLink>
+                  />
+                )}
+              {experiences.data?.map((item) => (
+                <article
+                  className="experience-card profile-api-item"
+                  key={item.experience_id}
+                >
+                  <span className="project-mark indigo">
+                    <BriefcaseBusiness size={18} />
+                  </span>
+                  <div className="profile-item-body">
+                    <h3>{item.project_name}</h3>
+                    <p className="profile-item-meta">
+                      {item.role_title} ·{" "}
+                      {item.start_date ?? "Start not specified"} –{" "}
+                      {item.is_ongoing
+                        ? "Present"
+                        : (item.end_date ?? "End not specified")}
+                    </p>
+                    <p className="profile-prose">{item.description}</p>
+                    {item.technologies.length > 0 && (
+                      <Chips
+                        items={item.technologies.map((skill) => skill.name)}
+                      />
+                    )}
+                    <div className="profile-contact-links">
+                      <ExternalLink url={item.repo_url}>
+                        Repository
+                      </ExternalLink>
+                    </div>
                   </div>
-                </div>
-                {actions("experience", item)}
-              </article>
-            ))}
-          </section>
-          <section className="panel" aria-label="Certificates">
-            <SectionHeading
-              title="Certificates"
-              description="Certificate details are provided by the member."
-              action={
-                owner && (
-                  <button
-                    type="button"
-                    className="text-link"
-                    disabled={certificates.loading || !profile}
-                    onClick={() =>
-                      setEditor({ kind: "certificate", item: null })
+                  {actions("experience", item)}
+                </article>
+              ))}
+            </section>
+            <section className="panel" aria-label="Certificates">
+              <SectionHeading
+                title="Certificates"
+                description="Certificate details are provided by the member."
+                action={
+                  owner && (
+                    <button
+                      type="button"
+                      className="text-link"
+                      disabled={certificates.loading || !profile}
+                      onClick={() =>
+                        setEditor({ kind: "certificate", item: null })
+                      }
+                    >
+                      <Plus size={14} />
+                      Add certificate
+                    </button>
+                  )
+                }
+              />
+              {owner && <MediaQuotaSummary {...quota} />}
+              <ResourceStatus
+                {...certificates}
+                retry={certificates.reload}
+                label="certificates"
+              />
+              {certificates.data?.length === 0 &&
+                !certificates.loading &&
+                !certificates.error && (
+                  <EmptyState
+                    title="No certificates yet"
+                    description={
+                      owner
+                        ? "Add the title, issuer, and credential details of a certificate."
+                        : "This member has not added any certificates."
                     }
-                  >
-                    <Plus size={14} />
-                    Add certificate
-                  </button>
-                )
-              }
-            />
-            <ResourceStatus
-              {...certificates}
-              retry={certificates.reload}
-              label="certificates"
-            />
-            {certificates.data?.length === 0 &&
-              !certificates.loading &&
-              !certificates.error && (
-                <EmptyState
-                  title="No certificates yet"
-                  description={
-                    owner
-                      ? "Add the title, issuer, and credential details of a certificate."
-                      : "This member has not added any certificates."
-                  }
-                />
-              )}
-            {certificates.data?.map((item) => (
-              <article
-                className="experience-card profile-api-item"
-                key={item.certificate_id}
-              >
-                <span className="project-mark teal">
-                  <Award size={18} />
-                </span>
-                <div className="profile-item-body">
-                  <h3>{item.title}</h3>
-                  <p>{item.issuer}</p>
-                  {item.credential_id && (
-                    <p>Credential ID: {item.credential_id}</p>
+                  />
+                )}
+              {certificates.data?.map((item) => (
+                <CertificateAttachments
+                  key={`${key}:${item.certificate_id}`}
+                  certificateId={item.certificate_id}
+                  userId={userId}
+                  quota={quota.data}
+                  quotaChanged={quota.reload}
+                  revision={certificateFileRevisions[item.certificate_id] ?? 0}
+                  render={({ thumbnail, content }) => (
+                    <article
+                      className="certificate-card profile-api-item"
+                      data-certificate-id={item.certificate_id}
+                    >
+                      {thumbnail}
+                      <div className="profile-item-body">
+                        <div className="certificate-card-heading">
+                          <div>
+                            <h3>{item.title}</h3>
+                            <p className="certificate-issuer">{item.issuer}</p>
+                          </div>
+                          {actions("certificate", item)}
+                        </div>
+                        {item.description && (
+                          <p className="profile-prose certificate-description">
+                            {item.description}
+                          </p>
+                        )}
+                        {item.credential_url && (
+                          <div className="profile-contact-links">
+                            <ExternalLink url={item.credential_url}>
+                              Verify credential
+                            </ExternalLink>
+                          </div>
+                        )}
+                      </div>
+                      {content}
+                    </article>
                   )}
-                  <p className="profile-item-meta">
-                    Issued: {item.issued_at ?? "Not provided"} · Expires:{" "}
-                    {item.expires_at ?? "Not provided"}
-                  </p>
-                  <div className="profile-contact-links">
-                    <ExternalLink url={item.credential_url}>
-                      View credential
-                    </ExternalLink>
-                  </div>
-                </div>
-                {actions("certificate", item)}
-              </article>
-            ))}
-          </section>
+                />
+              ))}
+            </section>
+          </div>
+          <aside>
+            {profile && <ProfileDetails profile={profile} owner={owner} />}
+          </aside>
         </div>
-        <aside>
-          {profile && <ProfileDetails profile={profile} owner={owner} />}
-        </aside>
-      </div>
       )}
       {owner && editor && (
         <Modal
@@ -607,11 +610,14 @@ function ProfileView({ userId }: { userId?: string }) {
               item={editor.item}
               onBusyChange={setEditorBusy}
               onCancel={() => setEditor(null)}
-              onSave={async (payload) => {
-                const item = editor.item
-                  ? await updateCertificate(editor.item.certificate_id, payload)
-                  : await createCertificate(payload)
-                if (!currentSession()) return
+              quota={quota.data}
+              onFileChange={certificateFileChanged}
+              onSave={async (payload, id, signal) => {
+                const item = id
+                  ? await updateCertificate(id, payload, signal)
+                  : await createCertificate(payload, signal)
+                if (!currentSession())
+                  throw new DOMException("Session changed", "AbortError")
                 certificates.replace((previous) => [
                   item,
                   ...(previous ?? []).filter(
@@ -619,7 +625,11 @@ function ProfileView({ userId }: { userId?: string }) {
                   ),
                 ])
                 certificates.reload()
-                if (!editor.item) refreshCounts("certificate", 1)
+                if (!id) refreshCounts("certificate", 1)
+                return item
+              }}
+              onComplete={() => {
+                if (!currentSession()) return
                 setEditorBusy(false)
                 setEditor(null)
                 notify("Certificate saved")
@@ -654,10 +664,10 @@ function ProfileView({ userId }: { userId?: string }) {
     </>
   )
 }
-
 export default function ProfileScreen() {
   const { userId } = useParams<{ userId: string }>()
-  const { authUser } = useTindy()
+  const { authUser, loggingOut } = useTindy()
+  if (loggingOut) return <p role="status">Signing out…</p>
   if (userId && !UUID_PATTERN.test(userId))
     return (
       <EmptyState
@@ -672,10 +682,9 @@ export default function ProfileScreen() {
     )
   return (
     <ProfileView
-      key={`${authUser?.user_id}:${userId ?? "owner"}`}
+      key={`${authUser?.user_id}:${getStoredToken()}:${userId ?? "owner"}`}
       userId={userId}
     />
   )
 }
-
 export { ProfileScreen }

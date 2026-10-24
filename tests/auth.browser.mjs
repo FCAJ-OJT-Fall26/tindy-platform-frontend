@@ -647,11 +647,13 @@ try {
         code === "provider-private-error-canary" ? "(unknown)" : code
       } is cleaned and never exchanged`,
     )
-    if (code === "account_link_required")
+    if (code === "account_link_required") {
+      await waitFor(hasText("then connect Google or GitHub in Settings"), "link guidance rendered")
       await check(
         hasText("then connect Google or GitHub in Settings"),
         "Email collision guides explicit linking without merging",
       )
+    }
     if (code.includes("canary")) {
       await noLeaks(code)
       await screenshot("oauth-callback-error.png")

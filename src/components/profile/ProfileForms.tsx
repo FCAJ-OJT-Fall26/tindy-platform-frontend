@@ -27,6 +27,12 @@ import type {
   CertificateUpsert,
 } from "../../types/profile"
 import useRemoteResource from "../../hooks/useRemoteResource"
+import { getStoredToken, SESSION_CHANGED_EVENT } from "../../services/apiClient"
+import { getAttachments, mediaErrorMessage, uploadAttachment, validateMediaFile } from "../../services/profileMedia.service"
+import type { MediaQuota } from "../../types/profile"
+import CertificateAttachments from "./CertificateAttachments"
+import CertificateFilePicker from "./CertificateFilePicker"
+
 
 type Errors = Record<string, string>
 const validId = (value: string) =>
@@ -639,49 +645,149 @@ export function CertificateEditor({
   onSave,
   onCancel,
   onBusyChange,
+  onComplete,
+  onFileChange,
+  quota,
 }: {
   item: CertificateResponse | null
-  onSave: (payload: CertificateUpsert) => Promise<void>
+  onSave: (
+    payload: CertificateUpsert,
+    id: string | undefined,
+    signal: AbortSignal,
+  ) => Promise<CertificateResponse>
   onCancel: () => void
   onBusyChange: (busy: boolean) => void
+  onComplete: () => void
+  onFileChange: (id: string) => void
+  quota: MediaQuota | null
 }) {
   const [draft, setDraft] = useState<CertificateUpsert>(() => ({
     title: item?.title ?? "",
     issuer: item?.issuer ?? "",
-    credential_id: item?.credential_id ?? null,
+    description: item?.description ?? null,
     credential_url: item?.credential_url ?? null,
-    issued_at: item?.issued_at ?? null,
-    expires_at: item?.expires_at ?? null,
   }))
+  const token = useRef(getStoredToken()).current
+  const [file, setFile] = useState<File | null>(null)
+  const [fileError, setFileError] = useState<string | null>(null)
+  const [uploadFailure, setUploadFailure] = useState<unknown>(null)
+  const [phase, setPhase] = useState<"metadata" | "upload" | null>(null)
+  const [saved, setSaved] = useState(item)
+  const savedItem = useRef(item)
+  const savedPayload = useRef<string | null>(null)
+  const [linked, setLinked] = useState<boolean | null>(item ? null : false)
+  const [revision, setRevision] = useState(0)
+  const [mediaDialog, setMediaDialog] = useState(false)
+  const request = useRef<AbortController | null>(null)
+  const mounted = useRef(true)
+  const cancelEditor = useRef(onCancel)
+  cancelEditor.current = onCancel
+  useEffect(() => {
+    mounted.current = true
+    const abort = () => request.current?.abort()
+    const sessionChanged = () => {
+      mounted.current = false
+      abort()
+      cancelEditor.current()
+    }
+    const storageChanged = (event: StorageEvent) => {
+      if (event.key === "tindy_access_token" || event.key === null)
+        sessionChanged()
+    }
+    window.addEventListener(SESSION_CHANGED_EVENT, sessionChanged)
+    window.addEventListener("storage", storageChanged)
+    return () => {
+      mounted.current = false
+      abort()
+      window.removeEventListener(SESSION_CHANGED_EVENT, sessionChanged)
+      window.removeEventListener("storage", storageChanged)
+    }
+  }, [token])
+  const currentSession = () => mounted.current && token === getStoredToken()
   const payload = (): CertificateUpsert => ({
     title: draft.title.trim(),
     issuer: draft.issuer.trim(),
-    credential_id: nullable(draft.credential_id ?? ""),
+    description: nullable(draft.description ?? ""),
     credential_url: nullable(draft.credential_url ?? ""),
-    issued_at: nullable(draft.issued_at ?? ""),
-    expires_at: nullable(draft.expires_at ?? ""),
   })
   const submission = useSubmission(
-    () => onSave(payload()),
+    async () => {
+      const controller = new AbortController()
+      request.current = controller
+      setUploadFailure(null)
+      try {
+        const value = payload()
+        const serialized = JSON.stringify(value)
+        if (!savedItem.current || savedPayload.current !== serialized) {
+          setPhase("metadata")
+          const result = await onSave(
+            value,
+            savedItem.current?.certificate_id,
+            controller.signal,
+          )
+          if (!currentSession() || controller.signal.aborted) return
+          // Persist the ID before uploading. Every retry uses this same certificate.
+          savedItem.current = result
+          savedPayload.current = serialized
+          setSaved(result)
+        }
+        const certificate = savedItem.current!
+        if (file && !linked) {
+          setPhase("upload")
+          try {
+            // A timed-out/cancelled request may have committed on the server.
+            // Reconcile the slot before retrying; never delete or replace silently.
+            const existing = await getAttachments(
+              certificate.certificate_id,
+              undefined,
+              controller.signal,
+            )
+            if (!currentSession() || controller.signal.aborted) return
+            if (existing.length) {
+              setLinked(true)
+              setUploadFailure(
+                "A file is already linked. Review it below and delete it before uploading another.",
+              )
+              return
+            }
+            await uploadAttachment(
+              certificate.certificate_id,
+              file,
+              controller.signal,
+            )
+          } catch (failure) {
+            if (currentSession()) setUploadFailure(failure)
+            return
+          } finally {
+            if (currentSession()) {
+              onFileChange(certificate.certificate_id)
+              setRevision((previous) => previous + 1)
+            }
+          }
+        }
+        if (currentSession() && !controller.signal.aborted) onComplete()
+      } finally {
+        if (request.current === controller) request.current = null
+        if (currentSession()) setPhase(null)
+      }
+    },
     () => {
       const errors: Errors = {},
         value = payload()
       validateText(errors, "title", value.title, 255, true)
       validateText(errors, "issuer", value.issuer, 255, true)
-      validateText(errors, "credential_id", value.credential_id ?? "", 255)
+      validateText(errors, "description", value.description ?? "", 2000)
       validateUrl(errors, "credential_url", value.credential_url)
-      validateDates(
-        errors,
-        "issued_at",
-        "expires_at",
-        value.issued_at,
-        value.expires_at,
-        false,
-      )
+      if (file && !linked) {
+        const invalid = validateMediaFile(file, 10_000_000, true)
+        if (invalid) errors.file = invalid
+      }
       return errors
     },
-    onBusyChange,
   )
+  useEffect(() => {
+    onBusyChange(submission.busy || mediaDialog)
+  }, [submission.busy, mediaDialog, onBusyChange])
   const field = (
     name: keyof CertificateUpsert,
     label: string,
@@ -699,36 +805,103 @@ export function CertificateEditor({
     />
   )
   return (
-    <form className="profile-api-form" noValidate onSubmit={submission.submit}>
+    <form
+      className="profile-api-form certificate-editor"
+      noValidate
+      onSubmit={submission.submit}
+    >
       <p className="helper-text">
         Add the certificate details supplied by its issuer.
       </p>
       <RequestFeedback error={submission.error} />
+      {Boolean(uploadFailure) && (
+        <div className="profile-feedback" role="alert">
+          <strong>
+            Certificate saved, but the file upload did not complete.
+          </strong>
+          <p>{mediaErrorMessage(uploadFailure)}</p>
+          <p>
+            Your certificate is already in the list. Retry here, or close this
+            form and manage its file later.
+          </p>
+        </div>
+      )}
       <fieldset disabled={submission.busy}>
         <div className="form-grid">
           {field("title", "Certificate title", { required: true, max: 255 })}
           {field("issuer", "Issuer", { required: true, max: 255 })}
-          {field("credential_id", "Credential ID", { max: 255 })}
-          {field("credential_url", "Credential URL", {
-            type: "url",
-            max: 1000,
-          })}
-          {field("issued_at", "Issued date", {
-            type: "date",
-            min: "0001-01-01",
-            maxValue: "9999-12-31",
-          })}
-          {field("expires_at", "Expiry date", {
-            type: "date",
-            min: "0001-01-01",
-            maxValue: "9999-12-31",
-          })}
         </div>
+        {field("description", "Description", { multiline: true, max: 2000 })}
+        {field("credential_url", "Credential URL", { type: "url", max: 1000 })}
       </fieldset>
+      {saved && (
+        <CertificateAttachments
+          certificateId={saved.certificate_id}
+          quota={quota}
+          quotaChanged={() => onFileChange(saved.certificate_id)}
+          allowUpload={false}
+          revision={revision}
+          disabled={submission.busy}
+          onLinkedChange={setLinked}
+          onDialogChange={setMediaDialog}
+        />
+      )}
+      {linked === false && (
+        <section
+          className="certificate-editor-file"
+          aria-label="Select certificate file"
+        >
+          {!saved && (
+            <h3>
+              Certificate file <span className="helper-text">(optional)</span>
+            </h3>
+          )}
+          <CertificateFilePicker
+            file={file}
+            disabled={submission.busy}
+            onChange={setFile}
+            onError={setFileError}
+          />
+        </section>
+      )}
+      {Boolean(fileError || submission.errors.file) && (
+        <p className="profile-field-error" role="alert">
+          {fileError || submission.errors.file}
+        </p>
+      )}
+      {file &&
+        linked === false &&
+        quota &&
+        file.size > quota.available_bytes && (
+          <p className="profile-feedback" role="alert">
+            This file exceeds your available storage. Remove a file or refresh
+            quota before retrying.
+          </p>
+        )}
+      {phase && (
+        <p role="status">
+          {phase === "metadata"
+            ? "Saving certificate details…"
+            : "Certificate saved. Uploading file…"}
+        </p>
+      )}
+      {phase === "upload" && (
+        <Button
+          type="button"
+          variant="secondary"
+          onClick={() => request.current?.abort()}
+        >
+          Cancel upload
+        </Button>
+      )}
       <FormActions
         busy={submission.busy}
         onCancel={onCancel}
-        label="Save certificate"
+        label={
+          uploadFailure && file && linked === false
+            ? "Retry file upload"
+            : "Save certificate"
+        }
       />
     </form>
   )
