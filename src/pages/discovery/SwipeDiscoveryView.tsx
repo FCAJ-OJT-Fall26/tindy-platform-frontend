@@ -54,13 +54,27 @@ export default function SwipeDiscoveryView({
   const modeRef = useRef<DiscoveryMode>(mode);
   modeRef.current = mode;
 
+  const displayModeRef = useRef<DiscoveryMode>(displayMode);
+  displayModeRef.current = displayMode;
+
   const transitionStateRef = useRef<'idle' | 'exiting' | 'entering'>(transitionState);
   transitionStateRef.current = transitionState;
 
   const lastUrlModeRef = useRef<string | null>(searchParams.get('mode'));
 
   const exitTimerRef = useRef<number | null>(null);
-  const enterTimerRef = useRef<number | null>(null);
+  const enterRafRef = useRef<number | null>(null);
+
+  const clearTransitionTimers = useCallback(() => {
+    if (exitTimerRef.current !== null) {
+      clearTimeout(exitTimerRef.current);
+      exitTimerRef.current = null;
+    }
+    if (enterRafRef.current !== null) {
+      cancelAnimationFrame(enterRafRef.current);
+      enterRafRef.current = null;
+    }
+  }, []);
 
   // Data collections
   const [projects, setProjects] = useState<DiscoveryProject[]>(INITIAL_PROJECTS);
@@ -124,23 +138,17 @@ export default function SwipeDiscoveryView({
 
   // Coordinated mode transition handler
   const handleModeSwitch = useCallback((targetMode: DiscoveryMode, updateUrl = true) => {
-    // Prevent switching to the exact same mode if already idle or transitioning to it
-    if (targetMode === modeRef.current && transitionStateRef.current === 'idle') return;
+    // 1. Ignore any click on the already-selected mode, even while a transition is in progress
+    if (targetMode === modeRef.current) return;
 
-    // Clear active timers to avoid overlapping animations on rapid clicks
-    if (exitTimerRef.current) clearTimeout(exitTimerRef.current);
-    if (enterTimerRef.current) clearTimeout(enterTimerRef.current);
+    // Clear active timers/rAF to avoid overlapping transitions on rapid clicks
+    clearTransitionTimers();
 
-    const dir: 'to-leader' | 'to-student' = targetMode === 'leader' ? 'to-leader' : 'to-student';
-
-    // 1. Segmented control slider starts moving immediately
+    // Update segmented control selection immediately
     setMode(targetMode);
     modeRef.current = targetMode;
-    setTransitionDirection(dir);
-    setTransitionState('exiting');
-    transitionStateRef.current = 'exiting';
 
-    // 2. Synchronize URL search params safely
+    // Synchronize URL search params safely
     if (updateUrl) {
       const urlValue = targetMode === 'student' ? 'projects' : 'teammates';
       lastUrlModeRef.current = urlValue;
@@ -151,20 +159,50 @@ export default function SwipeDiscoveryView({
       }, { replace: true });
     }
 
-    // 3. Outgoing content fades and shifts out (170ms)
+    // 2. Changed mind while exiting: if targetMode matches the currently mounted displayMode,
+    // smoothly transition back to idle from the current intermediate opacity/transform
+    // without swapping content or remounting SwipeCardStack.
+    if (targetMode === displayModeRef.current) {
+      setTransitionState('idle');
+      transitionStateRef.current = 'idle';
+      return;
+    }
+
+    const dir: 'to-leader' | 'to-student' = targetMode === 'leader' ? 'to-leader' : 'to-student';
+    setTransitionDirection(dir);
+    setTransitionState('exiting');
+    transitionStateRef.current = 'exiting';
+
+    // 3. Outgoing content fades and shifts out (170ms) from current visual state
     exitTimerRef.current = window.setTimeout(() => {
-      setDisplayMode(targetMode);
-      setActiveItem(null); // Clear active item so previous mode details do not linger
+      exitTimerRef.current = null;
+      const finalMode = modeRef.current;
+
+      // 4. Only swap content and remount card stack if mode actually differs after fade-out
+      if (finalMode === displayModeRef.current) {
+        setTransitionState('idle');
+        transitionStateRef.current = 'idle';
+        return;
+      }
+
+      const finalDir: 'to-leader' | 'to-student' = finalMode === 'leader' ? 'to-leader' : 'to-student';
+      displayModeRef.current = finalMode;
+      setDisplayMode(finalMode);
+      setActiveItem(null);
+      setTransitionDirection(finalDir);
       setTransitionState('entering');
       transitionStateRef.current = 'entering';
 
-      // 4. Incoming content enters from opposite direction and settles (250ms)
-      enterTimerRef.current = window.setTimeout(() => {
-        setTransitionState('idle');
-        transitionStateRef.current = 'idle';
-      }, 250);
+      // Place incoming content at pre-enter offset for 1 painted frame, then transition to idle
+      enterRafRef.current = window.requestAnimationFrame(() => {
+        enterRafRef.current = window.requestAnimationFrame(() => {
+          enterRafRef.current = null;
+          setTransitionState('idle');
+          transitionStateRef.current = 'idle';
+        });
+      });
     }, 170);
-  }, [setSearchParams]);
+  }, [clearTransitionTimers, setSearchParams]);
 
   // Synchronize browser back/forward navigation safely without feedback loops
   useEffect(() => {
@@ -191,10 +229,9 @@ export default function SwipeDiscoveryView({
   // Cleanup timers on unmount
   useEffect(() => {
     return () => {
-      if (exitTimerRef.current) clearTimeout(exitTimerRef.current);
-      if (enterTimerRef.current) clearTimeout(enterTimerRef.current);
+      clearTransitionTimers();
     };
-  }, []);
+  }, [clearTransitionTimers]);
 
   // Compute transition CSS class for coordinated center and inspector zones
   const getTransitionClass = () => {
@@ -248,6 +285,16 @@ export default function SwipeDiscoveryView({
       });
     }
   }, [displayMode, projects, candidates, minScore, selectedRole, selectedSkill]);
+
+  const firstFilteredItemRef = useRef<DiscoveryProject | DiscoveryCandidate | null>(null);
+  firstFilteredItemRef.current = filteredItems[0] || null;
+
+  const handleActiveItemChanged = useCallback((item: DiscoveryProject | DiscoveryCandidate | null) => {
+    setActiveItem((prev) => {
+      if (prev === null && item === firstFilteredItemRef.current) return prev;
+      return prev === item ? prev : item;
+    });
+  }, []);
 
   // Session Statistics
   const sessionStats = {
@@ -478,7 +525,7 @@ export default function SwipeDiscoveryView({
               onUndo={handleUndo}
               canUndo={history.length > 0}
               onResetStack={handleResetStack}
-              activeItemChanged={setActiveItem}
+              activeItemChanged={handleActiveItemChanged}
               onCandidateChatClick={(candidate) => {
                 setShortlistModalCandidate(candidate);
               }}

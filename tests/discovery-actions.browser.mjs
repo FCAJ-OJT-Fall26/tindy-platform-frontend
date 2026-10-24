@@ -389,6 +389,65 @@ try {
   assert.equal(confirmInterestState.text, "Interest Confirmed", "Button updates to 'Interest Confirmed'")
   console.log("PASS 10: Confirm interest transitions to 'Interest Confirmed' with glow, pop, and micro-particles")
 
+  // Test 7b: Mode Switch Spam & Cancel-Mid-Exit Behavior
+  await send("Page.navigate", { url: `${origin}/discover` })
+  await waitForBrowser(evalInBrowser, "Boolean(document.querySelector('[aria-label=\"Discovery Mode Switcher\"]'))")
+
+  const modeSwitchState = await evalInBrowser(`
+    (async () => {
+      const switcher = document.querySelector('[aria-label="Discovery Mode Switcher"]');
+      const buttons = switcher.querySelectorAll('button[role="tab"]');
+      const projectsBtn = buttons[0];
+      const teammatesBtn = buttons[1];
+      const syncWrapper = document.querySelector('.discovery-sync-idle, .discovery-sync-exit-left, .discovery-sync-exit-right');
+      const initialStackChild = syncWrapper?.firstElementChild;
+
+      // 1. Clicking already-active mode is ignored
+      projectsBtn.click();
+      await new Promise(r => setTimeout(r, 20));
+      const stayedIdleOnSameClick = syncWrapper?.classList.contains('discovery-sync-idle');
+
+      // 2. Switch to Teammates then change mind back to Projects mid-exit (after 60ms < 170ms)
+      teammatesBtn.click();
+      await new Promise(r => setTimeout(r, 30));
+      const startedExit = syncWrapper?.classList.contains('discovery-sync-exit-left');
+      await new Promise(r => setTimeout(r, 30));
+      projectsBtn.click();
+      await new Promise(r => setTimeout(r, 20));
+      const recoveredImmediatelyToIdle = syncWrapper?.classList.contains('discovery-sync-idle');
+      await new Promise(r => setTimeout(r, 200));
+      const sameStackAfterCancel = syncWrapper?.firstElementChild === initialStackChild;
+
+      // 3. Spamming Teammates 5 times during transition does not loop exit; finishes on Teammates
+      teammatesBtn.click();
+      await new Promise(r => setTimeout(r, 40));
+      teammatesBtn.click();
+      await new Promise(r => setTimeout(r, 40));
+      teammatesBtn.click();
+      await new Promise(r => setTimeout(r, 40));
+      teammatesBtn.click();
+      await new Promise(r => setTimeout(r, 150));
+      const h1Text = document.querySelector('h1')?.textContent?.trim();
+      const settledIdle = syncWrapper?.classList.contains('discovery-sync-idle');
+
+      return {
+        stayedIdleOnSameClick,
+        startedExit,
+        recoveredImmediatelyToIdle,
+        sameStackAfterCancel,
+        h1Text,
+        settledIdle,
+      };
+    })()
+  `)
+  assert.equal(modeSwitchState.stayedIdleOnSameClick, true, "Clicking active mode button is ignored")
+  assert.equal(modeSwitchState.startedExit, true, "Clicking other mode starts exit transition")
+  assert.equal(modeSwitchState.recoveredImmediatelyToIdle, true, "Changing mind during exit immediately transitions back to idle")
+  assert.equal(modeSwitchState.sameStackAfterCancel, true, "Changing mind during exit does not unmount/remount card stack")
+  assert.equal(modeSwitchState.h1Text, "Discover Candidates for Your Team", "Spamming target mode completes transition without looping")
+  assert.equal(modeSwitchState.settledIdle, true, "Transition settles to idle cleanly")
+  console.log("PASS 10b: Mode switch ignores active-mode spam, recovers mid-exit without remount, and never loops")
+
   // Test 8: ProjectDetailScreen Skip for now
   await send("Page.navigate", { url: `${origin}/project/studywise` })
   await waitForBrowser(evalInBrowser, "Boolean(document.querySelector('.detail-skip-btn'))")
