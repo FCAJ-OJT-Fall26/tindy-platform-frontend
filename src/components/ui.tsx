@@ -17,6 +17,7 @@ import {
 } from "lucide-react"
 import { factors, score, type Profile, type Project } from "../data"
 import { useTindy } from "../store"
+import { getMatchTier } from "../utils/matchTier"
 import SkillIcon from "./onboarding/SkillIcon"
 import ProjectSaveButton, { BookmarkBurst } from "./common/ProjectSaveButton"
 import {
@@ -187,14 +188,62 @@ export function EmptyState({
 }
 export function Score({
   project,
+  value: explicitValue,
   compact = false,
+  subtitle,
 }: {
-  project: Project
+  project?: Project
+  value?: number
   compact?: boolean
+  subtitle?: string
 }) {
-  const value = score(project)
+  const value =
+    explicitValue !== undefined ? explicitValue : project ? score(project) : 0
+  const clamped = Math.max(0, Math.min(100, value))
+  const tier = getMatchTier(value)
+  const size = compact ? 28 : 44
+  const outerRadius = compact ? 12 : 19
+  const pieRadius = outerRadius / 2
+  const pieCircumference = 2 * Math.PI * pieRadius
+  const pieDashoffset = pieCircumference - (clamped / 100) * pieCircumference
+
   return (
-    <div className={`match-score ${compact ? "compact" : ""}`}>
+    <div className={`match-score match-tier-${tier.tier} ${compact ? "compact" : ""}`}>
+      <div
+        className="match-pie-chart"
+        style={{ width: size, height: size }}
+        title={`${value}% — ${tier.label}`}
+        aria-hidden="true"
+      >
+        <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="match-pie-svg">
+          <circle
+            cx={size / 2}
+            cy={size / 2}
+            r={outerRadius}
+            fill={tier.trackStroke}
+          />
+          <circle
+            cx={size / 2}
+            cy={size / 2}
+            r={pieRadius}
+            fill="transparent"
+            stroke={tier.stroke}
+            strokeWidth={outerRadius}
+            strokeDasharray={pieCircumference}
+            strokeDashoffset={pieDashoffset}
+            className="match-pie-wedge"
+          />
+          <circle
+            cx={size / 2}
+            cy={size / 2}
+            r={outerRadius}
+            fill="transparent"
+            stroke={tier.stroke}
+            strokeWidth={compact ? 1.5 : 2}
+            strokeOpacity={0.35}
+          />
+        </svg>
+      </div>
       <div className="score-number">
         {value}
         <span>%</span>
@@ -203,19 +252,44 @@ export function Score({
         <strong>
           {compact
             ? "Match"
-            : value >= 85
-              ? "Excellent match"
-              : value >= 75
-                ? "Strong match"
-                : "Potential match"}
+            : tier.tier === "low"
+              ? "Warning: Low match"
+              : tier.tier === "medium"
+                ? "Moderate match"
+                : value >= 85
+                  ? "Excellent match"
+                  : "Strong match"}
         </strong>
-        {!compact && <small>Based on 5 matching factors</small>}
+        {!compact && <small>{subtitle || "Based on 5 matching factors"}</small>}
       </div>
       {!compact && (
         <div className="score-meter">
-          <span style={{ width: `${value}%` }} />
+          <span style={{ width: `${clamped}%`, background: tier.stroke }} />
         </div>
       )}
+    </div>
+  )
+}
+export function CardStatusFooter({ status }: { status: string }) {
+  const parts = status.split(" · ")
+  const title = parts[0]
+  const subtitle = parts.length > 1 ? parts.slice(1).join(" · ") : undefined
+  const lower = status.toLowerCase()
+  const isPending =
+    lower.includes("waiting") ||
+    lower.includes("pending") ||
+    lower.includes("interest sent") ||
+    lower.includes("applicant")
+
+  return (
+    <div className={`card-status ${isPending ? "is-pending" : "is-confirmed"}`}>
+      <span className="card-status-icon" aria-hidden="true">
+        {isPending ? <Clock size={15} /> : <Check size={15} />}
+      </span>
+      <div className="card-status-body">
+        <strong className="card-status-title">{title}</strong>
+        {subtitle && <span className="card-status-subtitle">{subtitle}</span>}
+      </div>
     </div>
   )
 }
@@ -232,6 +306,7 @@ export function ProjectCard({
   onExplain: () => void
   status?: string
 }) {
+  const projectTier = getMatchTier(score(project))
   return (
     <article className="project-card">
       <div className="project-card-top">
@@ -269,7 +344,7 @@ export function ProjectCard({
           {project.duration}
         </span>
       </div>
-      <div className="match-strip">
+      <div className={`match-strip match-tier-${projectTier.tier}`}>
         <Score project={project} compact />
         <button onClick={onExplain}>
           Why this matches you <ChevronRight size={13} />
@@ -290,12 +365,7 @@ export function ProjectCard({
           View project <ArrowRight size={14} />
         </Link>
       </div>
-      {status && (
-        <div className="card-status">
-          <Check size={13} />
-          {status}
-        </div>
-      )}
+      {status && <CardStatusFooter status={status} />}
     </article>
   )
 }

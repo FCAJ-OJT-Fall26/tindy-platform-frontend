@@ -14,6 +14,7 @@ import {
   Send,
 } from "lucide-react"
 import { useTindy, initialCandidates } from "../../store"
+import { getMatchTier } from "../../utils/matchTier"
 import {
   PageHeader,
   Avatar,
@@ -22,6 +23,8 @@ import {
   EmptyState,
   Modal,
   Badge,
+  Score,
+  CardStatusFooter,
 } from "../../components/ui"
 
 export function Candidates() {
@@ -197,16 +200,8 @@ export function Candidates() {
                       </span>
                     </div>
 
-                    <div className="match-strip">
-                      <div className="match-score compact">
-                        <div className="score-number">
-                          {candidate.match}
-                          <span>%</span>
-                        </div>
-                        <div>
-                          <strong>Match</strong>
-                        </div>
-                      </div>
+                    <div className={`match-strip match-tier-${getMatchTier(candidate.match).tier}`}>
+                      <Score value={candidate.match} compact />
                       <button onClick={() => setExplainCandidate(candidate)}>
                         Why this match <ChevronRight size={13} />
                       </button>
@@ -250,12 +245,7 @@ export function Candidates() {
                       )}
                     </div>
 
-                    {cardStatus && (
-                      <div className="card-status">
-                        <Check size={13} />
-                        {cardStatus}
-                      </div>
-                    )}
+                    {cardStatus && <CardStatusFooter status={cardStatus} />}
                   </article>
                 )
               })}
@@ -383,22 +373,10 @@ export function Candidates() {
           onClose={() => setExplainCandidate(null)}
         >
           <div className="drawer-header">
-            <div className="match-score">
-              <div className="score-number">
-                {explainCandidate.match}
-                <span>%</span>
-              </div>
-              <div>
-                <strong>
-                  {explainCandidate.match >= 85
-                    ? "Excellent candidate match"
-                    : "Strong candidate match"}
-                </strong>
-                <small>
-                  Calculated against AI Customer Support System requirements
-                </small>
-              </div>
-            </div>
+            <Score
+              value={explainCandidate.match}
+              subtitle="Calculated against AI Customer Support System requirements"
+            />
           </div>
           <h3>Why {explainCandidate.name} matches your project</h3>
           <ul className="match-evidence">
