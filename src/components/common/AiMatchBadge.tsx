@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { AlertTriangle, CheckCircle } from 'lucide-react';
 import { getMatchTier } from '../../utils/matchTier';
 
@@ -17,6 +17,34 @@ export default function AiMatchBadge({
 }: AiMatchBadgeProps) {
   const tier = getMatchTier(score);
   const displayVerdict = verdict || tier.label;
+  const clamped = Math.max(0, Math.min(100, score));
+
+  const [animatedPct, setAnimatedPct] = useState(0);
+
+  useEffect(() => {
+    const prefersReducedMotion =
+      typeof window !== 'undefined' &&
+      window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+
+    if (prefersReducedMotion) {
+      setAnimatedPct(clamped);
+      return;
+    }
+
+    setAnimatedPct(0);
+    let raf1 = 0;
+    let raf2 = 0;
+    raf1 = requestAnimationFrame(() => {
+      raf2 = requestAnimationFrame(() => {
+        setAnimatedPct(clamped);
+      });
+    });
+
+    return () => {
+      cancelAnimationFrame(raf1);
+      cancelAnimationFrame(raf2);
+    };
+  }, [clamped]);
 
   const config = {
     sm: { dimension: 44, stroke: 3, radius: 18, fontSize: 'text-xs', labelSize: 'text-[9px]' },
@@ -25,7 +53,7 @@ export default function AiMatchBadge({
   }[size];
 
   const circumference = 2 * Math.PI * config.radius;
-  const strokeDashoffset = circumference - (score / 100) * circumference;
+  const strokeDashoffset = circumference - (animatedPct / 100) * circumference;
 
   return (
     <div className="flex items-center gap-3">
@@ -52,7 +80,7 @@ export default function AiMatchBadge({
             strokeDasharray={circumference}
             strokeDashoffset={strokeDashoffset}
             strokeLinecap="round"
-            className="transition-all duration-300 ease-out"
+            className="transition-all duration-700 ease-out"
           />
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center text-center">

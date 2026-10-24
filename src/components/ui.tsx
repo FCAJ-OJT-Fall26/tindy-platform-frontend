@@ -205,7 +205,57 @@ export function Score({
   const outerRadius = compact ? 12 : 19
   const pieRadius = outerRadius / 2
   const pieCircumference = 2 * Math.PI * pieRadius
-  const pieDashoffset = pieCircumference - (clamped / 100) * pieCircumference
+
+  const [animatedPct, setAnimatedPct] = useState(0)
+  const [displayValue, setDisplayValue] = useState(0)
+
+  useEffect(() => {
+    const prefersReducedMotion =
+      typeof window !== "undefined" &&
+      window.matchMedia?.("(prefers-reduced-motion: reduce)").matches
+
+    if (prefersReducedMotion) {
+      setAnimatedPct(clamped)
+      setDisplayValue(value)
+      return
+    }
+
+    setAnimatedPct(0)
+    setDisplayValue(0)
+
+    let raf1 = 0
+    let raf2 = 0
+    let countRaf = 0
+    const duration = 700
+    let startTime: number | null = null
+
+    raf1 = requestAnimationFrame(() => {
+      raf2 = requestAnimationFrame(() => {
+        setAnimatedPct(clamped)
+      })
+    })
+
+    const step = (timestamp: number) => {
+      if (startTime === null) startTime = timestamp
+      const elapsed = timestamp - startTime
+      const progress = Math.min(1, elapsed / duration)
+      const eased = 1 - Math.pow(1 - progress, 3)
+      setDisplayValue(Math.round(eased * value))
+      if (progress < 1) {
+        countRaf = requestAnimationFrame(step)
+      }
+    }
+    countRaf = requestAnimationFrame(step)
+
+    return () => {
+      cancelAnimationFrame(raf1)
+      cancelAnimationFrame(raf2)
+      cancelAnimationFrame(countRaf)
+    }
+  }, [clamped, value])
+
+  const pieDashoffset =
+    pieCircumference - (animatedPct / 100) * pieCircumference
 
   return (
     <div className={`match-score match-tier-${tier.tier} ${compact ? "compact" : ""}`}>
@@ -244,8 +294,8 @@ export function Score({
           />
         </svg>
       </div>
-      <div className="score-number">
-        {value}
+      <div className="score-number" style={{ fontVariantNumeric: "tabular-nums" }}>
+        {displayValue}
         <span>%</span>
       </div>
       <div>
@@ -264,7 +314,7 @@ export function Score({
       </div>
       {!compact && (
         <div className="score-meter">
-          <span style={{ width: `${clamped}%`, background: tier.stroke }} />
+          <span style={{ width: `${animatedPct}%`, background: tier.stroke }} />
         </div>
       )}
     </div>

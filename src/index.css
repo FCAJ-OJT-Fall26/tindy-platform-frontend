@@ -1979,7 +1979,7 @@ main {
 }
 
 .match-pie-wedge {
-  transition: stroke-dashoffset 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+  transition: stroke-dashoffset 0.7s cubic-bezier(0.22, 1, 0.36, 1),
     stroke 0.2s ease;
 }
 
@@ -2023,7 +2023,7 @@ main {
   display: block;
   background: #10b981;
   border-radius: 3px;
-  transition: width 0.3s ease, background-color 0.2s ease;
+  transition: width 0.7s cubic-bezier(0.22, 1, 0.36, 1), background-color 0.2s ease;
 }
 
 .match-score.compact {
