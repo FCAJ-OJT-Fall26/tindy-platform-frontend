@@ -36,6 +36,17 @@ export default function SwipeCardStack({
 
   const dragStartRef = useRef<{ x: number; y: number; time: number } | null>(null);
   const cardRef = useRef<HTMLDivElement | null>(null);
+  const swipedIdsRef = useRef<Set<string>>(new Set());
+  const swipedOrderRef = useRef<string[]>([]);
+  const prevItemsRef = useRef(items);
+
+  // When filters update `items`, jump to the first unswiped card in the filtered list
+  useEffect(() => {
+    if (prevItemsRef.current === items) return;
+    prevItemsRef.current = items;
+    const firstUnswipedIdx = items.findIndex((item) => !swipedIdsRef.current.has(item.id));
+    setCurrentIndex(firstUnswipedIdx !== -1 ? firstUnswipedIdx : items.length);
+  }, [items]);
 
   const currentItem = currentIndex < items.length ? items[currentIndex] : null;
 
@@ -50,6 +61,8 @@ export default function SwipeCardStack({
       setFlyDirection(direction);
 
       setTimeout(() => {
+        swipedIdsRef.current.add(currentItem.id);
+        swipedOrderRef.current.push(currentItem.id);
         onSwipe(currentItem, direction);
         setCurrentIndex((prev) => prev + 1);
         setFlyDirection(null);
@@ -122,6 +135,8 @@ export default function SwipeCardStack({
       } else if ((e.key === 'z' || e.key === 'Z') && (e.ctrlKey || e.metaKey)) {
         if (canUndo) {
           e.preventDefault();
+          const lastId = swipedOrderRef.current.pop();
+          if (lastId) swipedIdsRef.current.delete(lastId);
           onUndo?.();
           setCurrentIndex((prev) => Math.max(0, prev - 1));
         }
@@ -151,6 +166,8 @@ export default function SwipeCardStack({
           <button
             type="button"
             onClick={() => {
+              swipedIdsRef.current.clear();
+              swipedOrderRef.current = [];
               setCurrentIndex(0);
               onResetStack?.();
             }}
@@ -163,6 +180,8 @@ export default function SwipeCardStack({
             <button
               type="button"
               onClick={() => {
+                const lastId = swipedOrderRef.current.pop();
+                if (lastId) swipedIdsRef.current.delete(lastId);
                 onUndo?.();
                 setCurrentIndex((prev) => Math.max(0, prev - 1));
               }}
@@ -252,6 +271,7 @@ export default function SwipeCardStack({
               {mode === 'student' ? (
                 <ProjectCardContent
                   project={item as DiscoveryProject}
+                  isActive={isTop}
                   onWhyMatchesClick={(e) => {
                     e.stopPropagation();
                     onWhyMatchesClick(item);
@@ -264,6 +284,7 @@ export default function SwipeCardStack({
               ) : (
                 <CandidateCardContent
                   candidate={item as DiscoveryCandidate}
+                  isActive={isTop}
                   onWhyMatchesClick={(e) => {
                     e.stopPropagation();
                     onWhyMatchesClick(item);
@@ -285,6 +306,8 @@ export default function SwipeCardStack({
           type="button"
           disabled={!canUndo || currentIndex === 0}
           onClick={() => {
+            const lastId = swipedOrderRef.current.pop();
+            if (lastId) swipedIdsRef.current.delete(lastId);
             onUndo?.();
             setCurrentIndex((prev) => Math.max(0, prev - 1));
           }}

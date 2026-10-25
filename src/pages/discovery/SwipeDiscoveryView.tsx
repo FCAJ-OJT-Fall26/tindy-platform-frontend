@@ -540,7 +540,7 @@ export default function SwipeDiscoveryView({
         <div className="lg:col-span-8 xl:col-span-6 flex flex-col items-center min-w-0 w-full">
           <div className={`w-full flex flex-col items-center min-w-0 ${getTransitionClass()}`}>
             <SwipeCardStack
-              key={`${displayMode}-${selectedRole}-${selectedSkill}-${minScore}-${stackResetKey}`}
+              key={`${displayMode}-${stackResetKey}`}
               items={filteredItems}
               mode={displayMode}
               onSwipe={handleSwipe}

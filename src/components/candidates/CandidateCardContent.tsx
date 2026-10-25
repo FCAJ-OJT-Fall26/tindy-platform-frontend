@@ -6,12 +6,14 @@ import SkillIcon from '../onboarding/SkillIcon';
 
 interface CandidateCardContentProps {
   candidate: DiscoveryCandidate;
+  isActive?: boolean;
   onWhyMatchesClick: (e: React.MouseEvent) => void;
   onViewDetailsClick: (e: React.MouseEvent) => void;
 }
 
 export default function CandidateCardContent({
   candidate,
+  isActive = true,
   onWhyMatchesClick,
   onViewDetailsClick,
 }: CandidateCardContentProps) {
@@ -71,7 +73,7 @@ export default function CandidateCardContent({
             ? 'bg-amber-50/70 border-amber-200'
             : 'bg-slate-50 border-slate-200'
         }`}>
-          <AiMatchBadge score={match.overall} verdict={match.verdict} size="md" showVerdict={true} />
+          <AiMatchBadge score={match.overall} verdict={match.verdict} size="md" showVerdict={true} animate={isActive} />
 
           <button
             type="button"

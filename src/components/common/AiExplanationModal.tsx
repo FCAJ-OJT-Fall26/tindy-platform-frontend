@@ -1,8 +1,78 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { X, Check } from 'lucide-react';
 import { MatchBreakdown } from '../../types/discovery';
 import AiMatchBadge from './AiMatchBadge';
 import { getMatchTier } from '../../utils/matchTier';
+
+function AnimatedWeightedEvaluationRow({
+  label,
+  score,
+  weight,
+}: {
+  label: string;
+  score: number;
+  weight: number;
+}) {
+  const clamped = Math.max(0, Math.min(100, score));
+  const [animatedPct, setAnimatedPct] = useState(0);
+
+  useEffect(() => {
+    const prefersReducedMotion =
+      typeof window !== 'undefined' &&
+      window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+
+    if (prefersReducedMotion) {
+      setAnimatedPct(clamped);
+      return;
+    }
+
+    setAnimatedPct(0);
+    let rafId = 0;
+    const duration = 900;
+    let startTime: number | null = null;
+
+    const step = (timestamp: number) => {
+      if (startTime === null) startTime = timestamp;
+      const elapsed = timestamp - startTime;
+      const progress = Math.min(1, elapsed / duration);
+      const eased = 1 - Math.pow(1 - progress, 2.4);
+      setAnimatedPct(eased * clamped);
+      if (progress < 1) {
+        rafId = requestAnimationFrame(step);
+      } else {
+        setAnimatedPct(clamped);
+      }
+    };
+    rafId = requestAnimationFrame(step);
+
+    return () => {
+      cancelAnimationFrame(rafId);
+    };
+  }, [clamped]);
+
+  const displayScore = Math.round(animatedPct);
+  const activeTier = getMatchTier(displayScore);
+
+  return (
+    <div className="space-y-1">
+      <div className="flex items-center justify-between text-xs">
+        <span className="font-semibold text-slate-800">{label}</span>
+        <span
+          className={`font-mono text-xs font-bold transition-colors duration-150 ${activeTier.textColor}`}
+          style={{ fontVariantNumeric: 'tabular-nums' }}
+        >
+          {displayScore}% <span className="text-slate-400 font-normal">({weight}% weight)</span>
+        </span>
+      </div>
+      <div className="w-full h-1.5 bg-slate-200 rounded-xs overflow-hidden">
+        <div
+          className={`h-full ${activeTier.progressBarBg} transition-colors duration-150`}
+          style={{ width: `${animatedPct}%` }}
+        />
+      </div>
+    </div>
+  );
+}
 
 interface AiExplanationModalProps {
   isOpen: boolean;
@@ -82,25 +152,14 @@ export default function AiExplanationModal({
               Weighted Evaluation Breakdown
             </h4>
             <div className="space-y-2.5 bg-slate-50 p-3.5 rounded-xl border border-slate-200">
-              {(match?.factors || match?.dimensions || []).map((dim) => {
-                const dimTier = getMatchTier(dim.score);
-                return (
-                  <div key={dim.label} className="space-y-1">
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="font-semibold text-slate-800">{dim.label}</span>
-                      <span className={`font-mono text-xs font-bold ${dimTier.textColor}`}>
-                        {dim.score}% <span className="text-slate-400 font-normal">({dim.weight}% weight)</span>
-                      </span>
-                    </div>
-                    <div className="w-full h-1.5 bg-slate-200 rounded-xs overflow-hidden">
-                      <div
-                        className={`h-full ${dimTier.progressBarBg} transition-all duration-300`}
-                        style={{ width: `${dim.score}%` }}
-                      />
-                    </div>
-                  </div>
-                );
-              })}
+              {(match?.factors || match?.dimensions || []).map((dim) => (
+                <AnimatedWeightedEvaluationRow
+                  key={dim.label}
+                  label={dim.label}
+                  score={dim.score}
+                  weight={dim.weight}
+                />
+              ))}
             </div>
           </div>
 

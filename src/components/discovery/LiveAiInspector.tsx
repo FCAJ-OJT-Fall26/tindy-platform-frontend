@@ -1,8 +1,83 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { ArrowUpRight, AlertTriangle } from 'lucide-react';
 import { DiscoveryProject, DiscoveryCandidate } from '../../types/discovery';
 import AiMatchBadge from '../common/AiMatchBadge';
 import { getMatchTier } from '../../utils/matchTier';
+
+function AnimatedScoringDimensionRow({
+  label,
+  score,
+  weight,
+  triggerKey,
+}: {
+  label: string;
+  score: number;
+  weight: number;
+  triggerKey: string;
+}) {
+  const clamped = Math.max(0, Math.min(100, score));
+  const [animatedPct, setAnimatedPct] = useState(0);
+
+  useEffect(() => {
+    const prefersReducedMotion =
+      typeof window !== 'undefined' &&
+      window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+
+    if (prefersReducedMotion) {
+      setAnimatedPct(clamped);
+      return;
+    }
+
+    setAnimatedPct(0);
+    let rafId = 0;
+    const duration = 900;
+    let startTime: number | null = null;
+
+    const step = (timestamp: number) => {
+      if (startTime === null) startTime = timestamp;
+      const elapsed = timestamp - startTime;
+      const progress = Math.min(1, elapsed / duration);
+      const eased = 1 - Math.pow(1 - progress, 2.4);
+      setAnimatedPct(eased * clamped);
+      if (progress < 1) {
+        rafId = requestAnimationFrame(step);
+      } else {
+        setAnimatedPct(clamped);
+      }
+    };
+    rafId = requestAnimationFrame(step);
+
+    return () => {
+      cancelAnimationFrame(rafId);
+    };
+  }, [clamped, triggerKey]);
+
+  const displayScore = Math.round(animatedPct);
+  const activeTier = getMatchTier(displayScore);
+
+  return (
+    <div className="space-y-0.5">
+      <div className="flex items-center justify-between text-[11px]">
+        <span className="text-slate-600 flex items-center gap-1">
+          {score < 35 && <AlertTriangle size={11} className="text-rose-600" />}
+          <span>{label}</span>
+        </span>
+        <span
+          className={`font-mono font-bold transition-colors duration-150 ${activeTier.textColor}`}
+          style={{ fontVariantNumeric: 'tabular-nums' }}
+        >
+          {displayScore}% <span className="text-slate-400 font-normal">({weight}% wt)</span>
+        </span>
+      </div>
+      <div className="w-full h-1.5 bg-slate-100 rounded-xs overflow-hidden">
+        <div
+          className={`h-full ${activeTier.progressBarBg} transition-colors duration-150`}
+          style={{ width: `${animatedPct}%` }}
+        />
+      </div>
+    </div>
+  );
+}
 
 interface LiveAiInspectorProps {
   item: DiscoveryProject | DiscoveryCandidate | null;
@@ -75,7 +150,7 @@ export default function LiveAiInspector({
 
       {/* Score Ring Component */}
       <div className="py-1">
-        <AiMatchBadge score={match.overall} verdict={match.verdict} size="sm" showVerdict={true} />
+        <AiMatchBadge key={item.id} score={match.overall} verdict={match.verdict} size="sm" showVerdict={true} />
       </div>
 
       {/* Warning Banner if match < 35% */}
@@ -106,28 +181,15 @@ export default function LiveAiInspector({
         </span>
 
         <div className="space-y-2">
-          {(match?.factors || match?.dimensions || []).map((dim) => {
-            const dimTier = getMatchTier(dim.score);
-            return (
-              <div key={dim.label} className="space-y-0.5">
-                <div className="flex items-center justify-between text-[11px]">
-                  <span className="text-slate-600 flex items-center gap-1">
-                    {dim.score < 35 && <AlertTriangle size={11} className="text-rose-600" />}
-                    <span>{dim.label}</span>
-                  </span>
-                  <span className={`font-mono font-bold ${dimTier.textColor}`}>
-                    {dim.score}% <span className="text-slate-400 font-normal">({dim.weight}% wt)</span>
-                  </span>
-                </div>
-                <div className="w-full h-1.5 bg-slate-100 rounded-xs overflow-hidden">
-                  <div
-                    className={`h-full ${dimTier.progressBarBg} transition-all duration-300`}
-                    style={{ width: `${dim.score}%` }}
-                  />
-                </div>
-              </div>
-            );
-          })}
+          {(match?.factors || match?.dimensions || []).map((dim) => (
+            <AnimatedScoringDimensionRow
+              key={dim.label}
+              label={dim.label}
+              score={dim.score}
+              weight={dim.weight}
+              triggerKey={item.id}
+            />
+          ))}
         </div>
       </div>
 

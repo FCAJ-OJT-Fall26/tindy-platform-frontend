@@ -304,7 +304,20 @@ export function Score({
         <span>%</span>
       </div>
       <div>
-        <strong>
+        <strong
+          style={
+            !compact
+              ? {
+                  color:
+                    finalTier.tier === "low"
+                      ? "#be123c"
+                      : finalTier.tier === "medium"
+                        ? "#c2410c"
+                        : "#047857",
+                }
+              : undefined
+          }
+        >
           {compact
             ? "Match"
             : finalTier.tier === "low"
@@ -424,6 +437,74 @@ export function ProjectCard({
     </article>
   )
 }
+function FactorBreakdownRow({
+  name,
+  targetScore,
+  weight,
+  projectId,
+}: {
+  name: string
+  targetScore: number
+  weight: number
+  projectId: string
+}) {
+  const clamped = Math.max(0, Math.min(100, targetScore))
+  const [animatedPct, setAnimatedPct] = useState(0)
+
+  useEffect(() => {
+    const prefersReducedMotion =
+      typeof window !== "undefined" &&
+      window.matchMedia?.("(prefers-reduced-motion: reduce)").matches
+
+    if (prefersReducedMotion) {
+      setAnimatedPct(clamped)
+      return
+    }
+
+    setAnimatedPct(0)
+    let rafId = 0
+    const duration = 950
+    let startTime: number | null = null
+
+    const step = (timestamp: number) => {
+      if (startTime === null) startTime = timestamp
+      const elapsed = timestamp - startTime
+      const progress = Math.min(1, elapsed / duration)
+      const eased = 1 - Math.pow(1 - progress, 2.4)
+      setAnimatedPct(eased * clamped)
+      if (progress < 1) {
+        rafId = requestAnimationFrame(step)
+      } else {
+        setAnimatedPct(clamped)
+      }
+    }
+    rafId = requestAnimationFrame(step)
+
+    return () => {
+      cancelAnimationFrame(rafId)
+    }
+  }, [clamped, projectId])
+
+  const displayScore = Math.round(animatedPct)
+
+  return (
+    <div className="factor">
+      <div>
+        <span>{name}</span>
+        <strong style={{ fontVariantNumeric: "tabular-nums" }}>
+          {displayScore}% fit <small>· {weight}% weight</small>
+        </strong>
+      </div>
+      <div className="progress">
+        <span style={{ width: `${animatedPct}%`, transition: "none" }} />
+      </div>
+      <small style={{ fontVariantNumeric: "tabular-nums" }}>
+        {((animatedPct * weight) / 100).toFixed(1)} / {weight} points
+      </small>
+    </div>
+  )
+}
+
 export function MatchExplanation({
   project,
   full = false,
@@ -516,22 +597,13 @@ export function MatchExplanation({
           <h3>How your score is calculated</h3>
           <p>Factor fit × weight = contribution to the final score.</p>
           {factors.map((factor, index) => (
-            <div className="factor" key={factor.name}>
-              <div>
-                <span>{factor.name}</span>
-                <strong>
-                  {project.factors[index]}% fit{" "}
-                  <small>· {factor.weight}% weight</small>
-                </strong>
-              </div>
-              <div className="progress">
-                <span style={{ width: `${project.factors[index]}%` }} />
-              </div>
-              <small>
-                {((project.factors[index] * factor.weight) / 100).toFixed(1)} /{" "}
-                {factor.weight} points
-              </small>
-            </div>
+            <FactorBreakdownRow
+              key={factor.name}
+              name={factor.name}
+              targetScore={project.factors[index]}
+              weight={factor.weight}
+              projectId={project.id}
+            />
           ))}
         </section>
       )}

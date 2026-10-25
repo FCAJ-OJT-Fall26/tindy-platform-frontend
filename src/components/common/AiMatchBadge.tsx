@@ -7,6 +7,7 @@ interface AiMatchBadgeProps {
   verdict?: string;
   size?: 'sm' | 'md' | 'lg';
   showVerdict?: boolean;
+  animate?: boolean;
 }
 
 export default function AiMatchBadge({
@@ -14,6 +15,7 @@ export default function AiMatchBadge({
   verdict,
   size = 'md',
   showVerdict = true,
+  animate = true,
 }: AiMatchBadgeProps) {
   const finalTier = getMatchTier(score);
   const displayVerdict = verdict || finalTier.label;
@@ -22,6 +24,11 @@ export default function AiMatchBadge({
   const [animatedPct, setAnimatedPct] = useState(0);
 
   useEffect(() => {
+    if (!animate) {
+      setAnimatedPct(0);
+      return;
+    }
+
     const prefersReducedMotion =
       typeof window !== 'undefined' &&
       window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
@@ -53,7 +60,7 @@ export default function AiMatchBadge({
     return () => {
       cancelAnimationFrame(countRaf);
     };
-  }, [clamped]);
+  }, [clamped, animate]);
 
   const displayScore = Math.round(animatedPct);
   const tier = getMatchTier(displayScore);
@@ -111,19 +118,19 @@ export default function AiMatchBadge({
       {showVerdict && (
         <div className="min-w-0">
           <div className="flex items-center gap-1.5">
-            {tier.isWarning ? (
+            {finalTier.isWarning ? (
               <span className="flex items-center gap-1 text-xs font-bold text-rose-700">
                 <AlertTriangle size={13} className="text-rose-600 shrink-0" />
                 <span>{displayVerdict}</span>
               </span>
             ) : (
-              <span className={`font-bold text-xs ${tier.verdictColor}`}>
+              <span className={`font-bold text-xs ${finalTier.verdictColor}`}>
                 {displayVerdict}
               </span>
             )}
           </div>
           <p className="text-[10px] text-slate-500 font-medium">
-            {tier.subhead}
+            {finalTier.subhead}
           </p>
         </div>
       )}
