@@ -9838,3 +9838,214 @@ button.text-link {
 .profile-skill-section .skill-selector {
   margin-top: 14px;
 }
+
+/* Project Skill Manager in CreateProjectScreen */
+.tech-stack-readonly-display {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  min-height: 42px;
+  padding: 6px 10px;
+  background: var(--bg-alt);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+.tech-stack-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.tech-stack-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 9px;
+  background: #ffffff;
+  border: 1px solid #dbe4f0;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 500;
+  color: #2b394e;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+}
+
+.project-skills-manager {
+  margin: 18px 0 8px;
+  background: #fafbfe;
+  border: 1px solid #e2eaf4;
+  border-radius: 8px;
+  padding: 18px;
+}
+
+.skill-category-tabs-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid #e7edf5;
+}
+
+.skill-mode-toggle {
+  display: inline-flex;
+  background: #eef3f9;
+  border-radius: 7px;
+  padding: 3px;
+  gap: 3px;
+}
+
+.skill-mode-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: none;
+  background: transparent;
+  padding: 6px 12px;
+  border-radius: 5px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #5d6f85;
+  cursor: pointer;
+  transition: all 160ms ease;
+}
+
+.skill-mode-btn:hover {
+  color: #1e293b;
+}
+
+.skill-mode-btn.active {
+  background: #ffffff;
+  color: #1a273a;
+  font-weight: 600;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.skill-mode-btn.required-active {
+  color: #2045a8;
+}
+
+.skill-mode-btn.nice-active {
+  color: #0d7065;
+}
+
+.mode-indicator {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.required-dot {
+  background: #3553b5;
+}
+
+.nice-dot {
+  background: #0ea58a;
+}
+
+.mode-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 10px;
+  background: #e2eaf5;
+  font-size: 10px;
+  font-weight: 700;
+  color: inherit;
+}
+
+.skill-selector-wrapper {
+  background: #ffffff;
+  border: 1px solid #e2eaf4;
+  border-radius: 7px;
+  padding: 14px;
+  margin-bottom: 16px;
+}
+
+.skills-overview-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.skills-overview-column {
+  background: #ffffff;
+  border: 1px solid #e2eaf4;
+  border-radius: 7px;
+  padding: 12px;
+}
+
+.skills-overview-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.skills-overview-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-height: 36px;
+  align-items: center;
+}
+
+.overview-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 8px;
+  border-radius: 5px;
+  font-size: 11px;
+  font-weight: 500;
+  transition: all 120ms ease;
+}
+
+.overview-chip.chip-required {
+  background: #eef3ff;
+  border: 1px solid #c9dafb;
+  color: #1d40a0;
+}
+
+.overview-chip.chip-nice {
+  background: #eafaf6;
+  border: 1px solid #c1ece0;
+  color: #0b6858;
+}
+
+.chip-action-btn {
+  background: transparent;
+  border: none;
+  color: #718299;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 0 2px;
+  line-height: 1;
+}
+
+.chip-action-btn:hover {
+  color: #1a202c;
+}
+
+.chip-remove-btn {
+  background: transparent;
+  border: none;
+  color: #9aa7b9;
+  font-size: 14px;
+  cursor: pointer;
+  padding: 0 2px;
+  line-height: 1;
+}
+
+.chip-remove-btn:hover {
+  color: #e53e3e;
+}
