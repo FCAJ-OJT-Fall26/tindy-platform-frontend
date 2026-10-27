@@ -1,6 +1,7 @@
 export type Project = {
   id: string
   name: string
+  tagline?: string
   description: string
   type: string
   skills: string[]

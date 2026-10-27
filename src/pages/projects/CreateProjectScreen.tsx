@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useParams, useNavigate, Link } from "react-router"
 import {
   ArrowLeft,
@@ -10,6 +10,14 @@ import {
 } from "lucide-react"
 import { useTindy, Project } from "../../store"
 import { PageHeader, Button } from "../../components/ui"
+import { getStoredToken } from "../../services/apiClient"
+import { getProfessionalRolesApi, getSkillsApi } from "../../services/catalog.service"
+import {
+  createProjectApi,
+  toApiDifficulty,
+  updateProjectApi,
+} from "../../services/projects.service"
+import type { CatalogSkill, ProfessionalRole } from "../../types/catalog"
 
 export function CreateProject() {
   const { id } = useParams()
@@ -18,6 +26,7 @@ export function CreateProject() {
   const navigate = useNavigate()
   const [jd, setJd] = useState(existing?.description || "")
   const [name, setName] = useState(existing?.name || "")
+  const [tagline, setTagline] = useState(existing?.tagline || "")
   const [goals, setGoals] = useState(existing?.goals.join("\n") || "")
   const [stack, setStack] = useState(existing?.skills.join(", ") || "")
   const [role, setRole] = useState(existing?.role || "Backend Developer")
@@ -35,6 +44,20 @@ export function CreateProject() {
   const [nice, setNice] = useState(existing?.gap.join(", ") || "")
   const [level, setLevel] = useState(existing?.difficulty || "Intermediate")
   const [confirmed, setConfirmed] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
+  const [catalogRoles, setCatalogRoles] = useState<ProfessionalRole[]>([])
+  const [catalogSkills, setCatalogSkills] = useState<CatalogSkill[]>([])
+
+  useEffect(() => {
+    const controller = new AbortController()
+    getProfessionalRolesApi(undefined, controller.signal)
+      .then(setCatalogRoles)
+      .catch(() => {})
+    getSkillsApi(undefined, undefined, controller.signal)
+      .then(setCatalogSkills)
+      .catch(() => {})
+    return () => controller.abort()
+  }, [])
 
   return (
     <>
@@ -51,17 +74,101 @@ export function CreateProject() {
       <div className="create-layout">
         <form
           className="panel project-form"
-          onSubmit={(event) => {
+          onSubmit={async (event) => {
             event.preventDefault()
+            if (submitting) return
+            setSubmitting(true)
+
+            const requiredList = required
+              .split(",")
+              .map((item) => item.trim())
+              .filter(Boolean)
+            const niceList = nice
+              .split(",")
+              .map((item) => item.trim())
+              .filter(Boolean)
+            const goalList = goals.split("\n").filter(Boolean)
+            const stackList = stack
+              .split(",")
+              .map((item) => item.trim())
+              .filter(Boolean)
+
+            let finalProjectId = existing?.id || `project-${Date.now()}`
+
+            if (getStoredToken()) {
+              try {
+                const matchedRole = catalogRoles.find(
+                  (r) => r.name.toLowerCase() === role.toLowerCase(),
+                )
+                const resolveSkillId = (skillName: string) =>
+                  catalogSkills.find(
+                    (s) => s.name.toLowerCase() === skillName.toLowerCase(),
+                  )?.skill_id || `skill_${skillName.toLowerCase().replace(/[^a-z0-9]+/g, "_")}`
+
+                if (existing) {
+                  await updateProjectApi(existing.id, {
+                    name,
+                    tagline: tagline.trim() || undefined,
+                    description: jd,
+                    category: type,
+                    difficulty_level: toApiDifficulty(level),
+                    expected_commitment_hours: hours,
+                    duration,
+                    max_team_capacity: members + positions,
+                    color_theme: existing.color || "indigo",
+                    goals: goalList,
+                  })
+                } else {
+                  const created = await createProjectApi({
+                    name,
+                    tagline: tagline.trim() || undefined,
+                    description: jd,
+                    category: type,
+                    difficulty_level: toApiDifficulty(level),
+                    expected_commitment_hours: hours,
+                    duration,
+                    initial_team_size: members,
+                    max_team_capacity: members + positions,
+                    color_theme: "indigo",
+                    recruitment_closing_days: 14,
+                    goals: goalList,
+                    positions: [
+                      {
+                        role_id:
+                          matchedRole?.professional_role_id ||
+                          `role_${role.toLowerCase().replace(/[^a-z0-9]+/g, "_")}`,
+                        title: role,
+                        required_count: positions,
+                        experience_level: toApiDifficulty(level),
+                        skills: [
+                          ...requiredList.map((s) => ({
+                            skill_id: resolveSkillId(s),
+                            is_required: true,
+                          })),
+                          ...niceList.map((s) => ({
+                            skill_id: resolveSkillId(s),
+                            is_required: false,
+                          })),
+                        ],
+                      },
+                    ],
+                  })
+                  if (created?.project_id) {
+                    finalProjectId = created.project_id
+                  }
+                }
+              } catch {
+                // Keep local state working when backend is offline in prototype mode
+              }
+            }
+
             const project: Project = {
-              id: existing?.id || `project-${Date.now()}`,
+              id: finalProjectId,
               name,
+              tagline: tagline.trim() || undefined,
               description: jd,
               type,
-              skills: stack
-                .split(",")
-                .map((item) => item.trim())
-                .filter(Boolean),
+              skills: stackList,
               role,
               hours,
               duration,
@@ -79,21 +186,16 @@ export function CreateProject() {
               created: Date.now(),
               closing: 14,
               factors: existing?.factors || [80, 85, 100, 75, 100],
-              goals: goals.split("\n").filter(Boolean),
-              requiredSkills: required
-                .split(",")
-                .map((item) => item.trim())
-                .filter(Boolean),
-              gap: nice
-                .split(",")
-                .map((item) => item.trim())
-                .filter(Boolean),
+              goals: goalList,
+              requiredSkills: requiredList,
+              gap: niceList,
             }
             setProjects((old) =>
               existing
                 ? old.map((item) => (item.id === existing.id ? project : item))
                 : [...old, project],
             )
+            setSubmitting(false)
             notify(
               existing
                 ? "Project updated"
@@ -116,6 +218,14 @@ export function CreateProject() {
               placeholder="e.g. AI Customer Support System"
               value={name}
               onChange={(event) => setName(event.target.value)}
+            />
+          </label>
+          <label className="field">
+            Project tagline <small>Short summary shown on cards</small>
+            <input
+              placeholder="e.g. Empowering student mental health with AI"
+              value={tagline}
+              onChange={(event) => setTagline(event.target.value)}
             />
           </label>
           <label className="field">
@@ -245,6 +355,7 @@ export function CreateProject() {
               >
                 <option>Beginner-friendly</option>
                 <option>Intermediate</option>
+                <option>Advanced</option>
               </select>
             </label>
           </div>
@@ -310,7 +421,7 @@ export function CreateProject() {
             <Link className="btn btn-secondary" to="/leader">
               Cancel
             </Link>
-            <Button>
+            <Button disabled={submitting}>
               {existing ? "Save changes" : "Publish project"}
               <ArrowRight size={16} />
             </Button>

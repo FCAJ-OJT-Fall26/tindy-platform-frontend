@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
 import {
   Sparkles,
@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { projects, ProjectItem } from '../../data/projectsData';
 import ProjectSaveButton from '../../components/common/ProjectSaveButton';
+import { getProjectsApi } from '../../services/projects.service';
 
 interface WorkspaceProjectsScreenProps {
   mode: 'projects' | 'saved';
@@ -33,6 +34,37 @@ export default function WorkspaceProjectsScreen({
   const navigate = useNavigate();
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState('All projects');
+  const [projectList, setProjectList] = useState<ProjectItem[]>(projects);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    getProjectsApi({ q: query || undefined }, controller.signal)
+      .then((res) => {
+        if (res.items?.length) {
+          setProjectList((prev) => {
+            const baseIcon = prev[0]?.icon || Sparkles;
+            const mapped: ProjectItem[] = res.items.map((dto, idx) => ({
+              id: idx + 100,
+              name: dto.name,
+              sub: dto.tagline || dto.category,
+              type: dto.category,
+              desc: dto.description,
+              tags: dto.open_positions?.[0]?.required_skills ?? [],
+              role: dto.open_positions?.[0]?.title || 'Developer',
+              color: dto.color_theme || 'default',
+              hours: `${dto.expected_commitment_hours} hrs/week`,
+              duration: dto.duration,
+              people: [dto.initials || 'PL'],
+              score: 90,
+              icon: baseIcon,
+            }));
+            return [...prev, ...mapped.filter((m) => !prev.some((p) => p.name === m.name))];
+          });
+        }
+      })
+      .catch(() => {});
+    return () => controller.abort();
+  }, [query]);
 
   const card = (project: ProjectItem) => (
     <article className="project-card" key={project.id}>
@@ -96,7 +128,7 @@ export default function WorkspaceProjectsScreen({
     </article>
   );
 
-  const displayedProjects = projects.filter(project => {
+  const displayedProjects = projectList.filter(project => {
     if (mode === 'saved' && !saved.includes(project.id)) return false;
     if (mode === 'projects' && project.id >= 3) return false;
     const matchQuery = `${project.name} ${project.tags.join(' ')}`.toLowerCase().includes(query.toLowerCase());

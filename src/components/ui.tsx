@@ -308,13 +308,13 @@ export function Score({
           style={
             !compact
               ? {
-                  color:
-                    finalTier.tier === "low"
-                      ? "#be123c"
-                      : finalTier.tier === "medium"
-                        ? "#c2410c"
-                        : "#047857",
-                }
+                color:
+                  finalTier.tier === "low"
+                    ? "#be123c"
+                    : finalTier.tier === "medium"
+                      ? "#c2410c"
+                      : "#047857",
+              }
               : undefined
           }
         >
@@ -526,9 +526,6 @@ export function MatchExplanation({
   ].filter((skill) => !hasSkill(skill))
   return (
     <div className="match-explanation">
-      <div className="insight-label">
-        <Sparkles size={15} /> AI MATCH ANALYSIS
-      </div>
       <h2>Why this project matches you</h2>
       <p className="muted">
         A clear look at your strengths, experience, and room to grow.

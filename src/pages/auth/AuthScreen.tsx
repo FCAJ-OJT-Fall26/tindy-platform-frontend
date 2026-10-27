@@ -289,10 +289,6 @@ export function AuthScreen() {
 
       {/* Right Form Area */}
       <div className="auth-form-area">
-        <Link className="auth-back auth-back-link" to="/">
-          Back to Tindy <ArrowUpRight size={14} />
-        </Link>
-
         <section className={`auth-form auth-form-card ${transitionClass}`}>
           <div className="stagger-1">
             <Badge tone="blue">YOUR NEXT CHAPTER</Badge>

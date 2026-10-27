@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Link, useLocation, useSearchParams } from "react-router"
 import {
   ArrowRight,
@@ -11,6 +11,8 @@ import {
 } from "lucide-react"
 import { Badge, Button, EmptyState, Modal, PageHeader, ProjectCard } from "../../components/ui"
 import type { Project } from "../../data"
+import { getStoredToken } from "../../services/apiClient"
+import { getMyProjectsApi } from "../../services/projects.service"
 import { useTindy } from "../../store"
 import { useExplanation } from "../../utils/useExplanation"
 
@@ -38,7 +40,9 @@ function Cards({ projects, status }: { projects: Project[]; status?: string }) {
 
 export function MyProjectsScreen() {
   const {
+    profile,
     projects,
+    setProjects,
     interested,
     saved,
     invited,
@@ -58,11 +62,118 @@ export function MyProjectsScreen() {
         ? "Interested"
         : "Active")
   const [invitation, setInvitation] = useState<Project | null>(null)
+  const [remoteLeadingIds, setRemoteLeadingIds] = useState<string[]>([])
+  const [pendingApplicantsByProject, setPendingApplicantsByProject] = useState<
+    Record<string, number>
+  >({})
+
+  useEffect(() => {
+    if (!getStoredToken()) return
+    const controller = new AbortController()
+    getMyProjectsApi(controller.signal)
+      .then((res) => {
+        if (res.leading_projects?.length) {
+          setRemoteLeadingIds(res.leading_projects.map((p) => p.project_id))
+          const counts: Record<string, number> = {}
+          for (const item of res.leading_projects) {
+            counts[item.project_id] = item.pending_applications_count
+          }
+          setPendingApplicantsByProject(counts)
+          setProjects((old) => {
+            const next = [...old]
+            for (const lp of res.leading_projects) {
+              if (!next.some((existing) => existing.id === lp.project_id)) {
+                next.push({
+                  id: lp.project_id,
+                  name: lp.name,
+                  description: "Project managed in your leader workspace.",
+                  type: "Web Application",
+                  skills: [],
+                  role: "Project Leader",
+                  hours: 10,
+                  duration: "3 months",
+                  difficulty: "Intermediate",
+                  team: lp.current_team_size,
+                  capacity: lp.max_team_capacity,
+                  leader: profile.name || "Project Leader",
+                  initials: lp.name
+                    .split(" ")
+                    .slice(0, 2)
+                    .map((w) => w[0])
+                    .join("")
+                    .toUpperCase(),
+                  color: "indigo",
+                  created: Date.now(),
+                  closing: 14,
+                  factors: [85, 90, 90, 80, 100],
+                  goals: [],
+                  gap: [],
+                })
+              }
+            }
+            return next
+          })
+        }
+        if (res.joined_projects?.length) {
+          const joinedIds = res.joined_projects.map((p) => p.project_id)
+          setActive((old) => Array.from(new Set([...old, ...joinedIds])))
+          setProjects((old) => {
+            const next = [...old]
+            for (const jp of res.joined_projects) {
+              if (!next.some((existing) => existing.id === jp.project_id)) {
+                next.push({
+                  id: jp.project_id,
+                  name: jp.name,
+                  description: `Joined as ${jp.my_role}`,
+                  type: "Collaborative Project",
+                  skills: [],
+                  role: jp.my_role,
+                  hours: 10,
+                  duration: "3 months",
+                  difficulty: "Intermediate",
+                  team: 2,
+                  capacity: 5,
+                  leader: jp.leader_name,
+                  initials: jp.name
+                    .split(" ")
+                    .slice(0, 2)
+                    .map((w) => w[0])
+                    .join("")
+                    .toUpperCase(),
+                  color: "teal",
+                  created: Date.now(),
+                  closing: 14,
+                  factors: [85, 90, 90, 80, 100],
+                  goals: [],
+                  gap: [],
+                })
+              }
+            }
+            return next
+          })
+        }
+      })
+      .catch(() => {
+        // Fallback to local project lists when backend is offline
+      })
+    return () => controller.abort()
+  }, [profile.name, setActive, setProjects])
+
+  const leadingIds = Array.from(
+    new Set([
+      ...remoteLeadingIds,
+      ...projects
+        .filter((p) => p.id === "cloud-desk" || (profile.name && p.leader === profile.name))
+        .map((p) => p.id),
+    ]),
+  )
+
   const statuses: Record<string, string[]> = {
     Interested: interested,
     Saved: saved,
     Invited: invited,
     Active: active,
+    Leading: leadingIds,
     Completed: completed,
   }
   const selected = projects.filter((project) =>
@@ -112,9 +223,13 @@ export function MyProjectsScreen() {
                   ? "Interest sent · Waiting for project leader"
                   : tab === "Active"
                     ? "You’re on the team"
-                    : tab === "Completed"
-                      ? "Project completed"
-                      : undefined
+                    : tab === "Leading"
+                      ? Object.values(pendingApplicantsByProject).some((c) => c > 0)
+                        ? `Project leader · ${Object.values(pendingApplicantsByProject).reduce((a, b) => a + b, 0)} pending applicants`
+                        : "You’re leading this project"
+                      : tab === "Completed"
+                        ? "Project completed"
+                        : undefined
               }
             />
             {tab === "Invited" &&

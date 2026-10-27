@@ -269,15 +269,21 @@ function useAppState() {
 }
 
 type AppState = ReturnType<typeof useAppState>
-const Context = createContext<AppState | null>(null)
+
+const Context =
+  (globalThis as unknown as { __TINDY_CONTEXT__?: React.Context<AppState | null> }).__TINDY_CONTEXT__ ??=
+  createContext<AppState | null>(null)
 
 export function TindyProvider({ children }: { children: ReactNode }) {
   const state = useAppState()
+  ;(globalThis as unknown as { __TINDY_LAST_STATE__?: AppState }).__TINDY_LAST_STATE__ = state
   return <Context.Provider value={state}>{children}</Context.Provider>
 }
 
 export function useTindy() {
-  const state = useContext(Context)
+  const state =
+    useContext(Context) ??
+    (globalThis as unknown as { __TINDY_LAST_STATE__?: AppState }).__TINDY_LAST_STATE__
   if (!state) throw new Error("Tindy provider is missing")
   return state
 }

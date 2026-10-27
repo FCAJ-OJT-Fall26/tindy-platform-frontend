@@ -17,6 +17,8 @@ import {
 } from "lucide-react"
 import { useTindy, Project, initialProjects, initialCandidates } from "../../store"
 import { PageHeader, Stat, SectionHeading, Avatar, Badge } from "../../components/ui"
+import { getStoredToken } from "../../services/apiClient"
+import { deleteProjectApi } from "../../services/projects.service"
 
 export const mockProjectTemplates: Array<{
   name: string
@@ -235,7 +237,14 @@ export function LeaderDashboard() {
     notify("Reset projects back to default.")
   }
 
-  const handleDeleteProject = (projectId: string, projectName: string) => {
+  const handleDeleteProject = async (projectId: string, projectName: string) => {
+    if (getStoredToken() && !projectId.startsWith("sim-proj-")) {
+      try {
+        await deleteProjectApi(projectId)
+      } catch {
+        // Keep local archive working when backend is offline
+      }
+    }
     setProjects((prev) => prev.filter((p) => p.id !== projectId))
     notify(`Project "${projectName}" removed.`)
   }
@@ -429,19 +438,17 @@ export function LeaderDashboard() {
                       gap: "4px",
                     }}
                   >
-                    {project.id.startsWith("sim-proj-") && (
-                      <button
-                        className="icon-button"
-                        onClick={() =>
-                          handleDeleteProject(project.id, project.name)
-                        }
-                        title="Delete simulated project"
-                        aria-label="Delete project"
-                        style={{ color: "#d9534f" }}
-                      >
-                        <Trash2 size={16} />
-                      </button>
-                    )}
+                    <button
+                      className="icon-button"
+                      onClick={() =>
+                        handleDeleteProject(project.id, project.name)
+                      }
+                      title="Close or archive project"
+                      aria-label="Delete project"
+                      style={{ color: "#d9534f" }}
+                    >
+                      <Trash2 size={16} />
+                    </button>
                     <Link
                       className="icon-button"
                       to={`/project/${project.id}/edit`}

@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Link, useParams } from "react-router"
 import {
   ArrowLeft,
@@ -13,6 +13,12 @@ import {
 } from "lucide-react"
 import { Avatar, Badge, Button, Chips, Modal, Score, ProjectSaveButton, SkipActionButton } from "../../components/ui"
 import { useTindy } from "../../store"
+import {
+  fromApiDifficulty,
+  getProjectByIdApi,
+  mapProjectDetailToUiProject,
+} from "../../services/projects.service"
+import type { ProjectDetailDto } from "../../types/project"
 import { useExplanation } from "../../utils/useExplanation"
 import NotFoundPage from "../NotFoundPage"
 
@@ -34,7 +40,10 @@ function SectionHeading({
 export function ProjectDetailScreen() {
   const { id } = useParams()
   const {
+    authUser,
+    profile,
     projects,
+    setProjects,
     saved,
     toggleSave,
     interested,
@@ -43,11 +52,40 @@ export function ProjectDetailScreen() {
     notify,
     active,
   } = useTindy()
-  const project = projects.find((item) => item.id === id)
+  const localProject = projects.find((item) => item.id === id)
+  const [remoteDetail, setRemoteDetail] = useState<ProjectDetailDto | null>(null)
   const explanation = useExplanation()
   const [interestModal, setInterestModal] = useState(false)
+
+  useEffect(() => {
+    if (!id) return
+    const controller = new AbortController()
+    getProjectByIdApi(id, controller.signal)
+      .then((dto) => {
+        setRemoteDetail(dto)
+        setProjects((old) => {
+          const existing = old.find((p) => p.id === dto.project_id)
+          const mapped = mapProjectDetailToUiProject(dto, existing)
+          return existing
+            ? old.map((p) => (p.id === dto.project_id ? mapped : p))
+            : [...old, mapped]
+        })
+      })
+      .catch(() => {
+        // Fallback to local project state when backend is unavailable
+      })
+    return () => controller.abort()
+  }, [id, setProjects])
+
+  const project =
+    (remoteDetail ? mapProjectDetailToUiProject(remoteDetail, localProject) : undefined) ||
+    localProject
   if (!project) return <NotFoundPage />
   const sent = interested.includes(project.id)
+  const isOwner = Boolean(
+    (authUser?.user_id && remoteDetail?.leader?.user_id === authUser.user_id) ||
+      (profile.name && project.leader === profile.name),
+  )
   return (
     <>
       <Link className="back-link" to="/discover">
@@ -80,18 +118,24 @@ export function ProjectDetailScreen() {
         </div>
         <div className="detail-header-actions">
           <div className="detail-primary-actions">
-            <Button disabled={sent} onClick={() => setInterestModal(true)}>
-              {sent ? (
-                <>
-                  <Check size={16} />
-                  Interest sent
-                </>
-              ) : (
-                <>
-                  Interested <ArrowRight size={16} />
-                </>
-              )}
-            </Button>
+            {isOwner ? (
+              <Link className="btn btn-primary" to={`/project/${project.id}/edit`}>
+                Manage your project <ArrowRight size={16} />
+              </Link>
+            ) : (
+              <Button disabled={sent} onClick={() => setInterestModal(true)}>
+                {sent ? (
+                  <>
+                    <Check size={16} />
+                    Interest sent
+                  </>
+                ) : (
+                  <>
+                    Interested <ArrowRight size={16} />
+                  </>
+                )}
+              </Button>
+            )}
             <ProjectSaveButton
               saved={saved.includes(project.id)}
               onToggle={() => toggleSave(project.id)}
@@ -152,41 +196,84 @@ export function ProjectDetailScreen() {
               title="Open positions"
               action={<Badge>{project.capacity - project.team} openings</Badge>}
             />
-            {[
-              project.role,
-              project.role === "Frontend Developer"
-                ? "Backend Developer"
-                : "Frontend Developer",
-            ].map((role, index) => (
-              <div className="position-card" key={role}>
-                <div className="section-heading">
-                  <h3>{role}</h3>
-                  <Badge tone="blue">1 position</Badge>
-                </div>
-                <p>
-                  Help build our next release with an ambitious, supportive
-                  team.
-                </p>
-                <Chips
-                  items={
-                    index
-                      ? ["React", "TypeScript", "Git"]
-                      : project.requiredSkills || project.skills.slice(0, 3)
-                  }
-                />
-                <div className="position-meta">
-                  <span>
-                    <Clock size={13} />
-                    {project.hours} hrs/week
-                  </span>
-                  <span>{project.difficulty}</span>
-                </div>
-                <small>
-                  Nice to have: {project.gap.join(", ")} · Collaborative
-                  development
-                </small>
-              </div>
-            ))}
+            {remoteDetail?.positions?.length
+              ? remoteDetail.positions.map((pos) => {
+                  const reqSkills = pos.skills
+                    .filter((s) => s.is_required)
+                    .map((s) => s.name)
+                  const niceSkills = pos.skills
+                    .filter((s) => !s.is_required)
+                    .map((s) => s.name)
+                  const openCount = Math.max(1, pos.required_count - pos.filled_count)
+                  return (
+                    <div className="position-card" key={pos.position_id}>
+                      <div className="section-heading">
+                        <h3>{pos.title}</h3>
+                        <Badge tone="blue">
+                          {openCount} {openCount === 1 ? "position" : "positions"}
+                        </Badge>
+                      </div>
+                      <p>
+                        {pos.description ||
+                          "Help build our next release with an ambitious, supportive team."}
+                      </p>
+                      <Chips
+                        items={
+                          reqSkills.length
+                            ? reqSkills
+                            : project.requiredSkills || project.skills.slice(0, 3)
+                        }
+                      />
+                      <div className="position-meta">
+                        <span>
+                          <Clock size={13} />
+                          {project.hours} hrs/week
+                        </span>
+                        <span>{fromApiDifficulty(pos.experience_level)}</span>
+                      </div>
+                      <small>
+                        Nice to have:{" "}
+                        {(niceSkills.length ? niceSkills : project.gap).join(", ")} ·
+                        Collaborative development
+                      </small>
+                    </div>
+                  )
+                })
+              : [
+                  project.role,
+                  project.role === "Frontend Developer"
+                    ? "Backend Developer"
+                    : "Frontend Developer",
+                ].map((role, index) => (
+                  <div className="position-card" key={role}>
+                    <div className="section-heading">
+                      <h3>{role}</h3>
+                      <Badge tone="blue">1 position</Badge>
+                    </div>
+                    <p>
+                      Help build our next release with an ambitious, supportive
+                      team.
+                    </p>
+                    <Chips
+                      items={
+                        index
+                          ? ["React", "TypeScript", "Git"]
+                          : project.requiredSkills || project.skills.slice(0, 3)
+                      }
+                    />
+                    <div className="position-meta">
+                      <span>
+                        <Clock size={13} />
+                        {project.hours} hrs/week
+                      </span>
+                      <span>{project.difficulty}</span>
+                    </div>
+                    <small>
+                      Nice to have: {project.gap.join(", ")} · Collaborative
+                      development
+                    </small>
+                  </div>
+                ))}
           </section>
           <section className="panel">
             <SectionHeading
@@ -197,29 +284,45 @@ export function ProjectDetailScreen() {
                 </span>
               }
             />
-            {[project.leader, "An Hoang", "Linh Tran"]
-              .slice(0, project.team)
-              .map((name, index) => (
-                <div className="team-person" key={name}>
-                  <Avatar
-                    name={name}
-                    color={index ? "neutral" : project.color}
-                  />
-                  <div>
-                    <strong>{name}</strong>
-                    <p>
-                      {index === 0
-                        ? "Project leader · Backend"
-                        : index === 1
-                          ? "AI Engineer · Python, RAG"
-                          : "Frontend Developer · React"}
-                    </p>
+            {remoteDetail?.team_members?.length
+              ? remoteDetail.team_members.map((member) => (
+                  <div className="team-person" key={member.user_id}>
+                    <Avatar
+                      name={member.display_name}
+                      color={member.is_leader ? project.color : "neutral"}
+                    />
+                    <div>
+                      <strong>{member.display_name}</strong>
+                      <p>{member.role_title}</p>
+                    </div>
+                    <Badge tone={member.is_leader ? "blue" : ""}>
+                      {member.is_leader ? "LEADER" : "MEMBER"}
+                    </Badge>
                   </div>
-                  <Badge tone={index === 0 ? "blue" : ""}>
-                    {index === 0 ? "LEADER" : "MEMBER"}
-                  </Badge>
-                </div>
-              ))}
+                ))
+              : [project.leader, "An Hoang", "Linh Tran"]
+                  .slice(0, project.team)
+                  .map((name, index) => (
+                    <div className="team-person" key={name}>
+                      <Avatar
+                        name={name}
+                        color={index ? "neutral" : project.color}
+                      />
+                      <div>
+                        <strong>{name}</strong>
+                        <p>
+                          {index === 0
+                            ? "Project leader · Backend"
+                            : index === 1
+                              ? "AI Engineer · Python, RAG"
+                              : "Frontend Developer · React"}
+                        </p>
+                      </div>
+                      <Badge tone={index === 0 ? "blue" : ""}>
+                        {index === 0 ? "LEADER" : "MEMBER"}
+                      </Badge>
+                    </div>
+                  ))}
           </section>
         </div>
         <aside>
