@@ -904,6 +904,14 @@ export function ProjectForm({ mode, initialProject }: ProjectFormProps) {
         <div className="project-form-main-col">
           {/* Sticky Section Navigation */}
           <nav className="project-section-nav" aria-label="Form sections">
+            {/* Sliding active pill indicator */}
+            <div
+              className={`section-nav-slider slider-pos-${
+                activeSection === "big-picture" ? 0 : activeSection === "people-skills" ? 1 : 2
+              }`}
+              aria-hidden="true"
+            />
+
             <button
               type="button"
               className={`section-nav-tab ${
@@ -911,11 +919,9 @@ export function ProjectForm({ mode, initialProject }: ProjectFormProps) {
               }`}
               onClick={() => scrollTo("section-big-picture")}
             >
-              {activeSection === "big-picture" ? (
-                <span className="nav-badge-circle">1</span>
-              ) : (
-                <span className="nav-num-plain">1</span>
-              )}
+              <span className={activeSection === "big-picture" ? "nav-badge-circle" : "nav-num-plain"}>
+                1
+              </span>
               <span className="nav-tab-label">The big picture</span>
             </button>
 
@@ -926,11 +932,9 @@ export function ProjectForm({ mode, initialProject }: ProjectFormProps) {
               }`}
               onClick={() => scrollTo("section-people-skills")}
             >
-              {activeSection === "people-skills" ? (
-                <span className="nav-badge-circle">2</span>
-              ) : (
-                <span className="nav-num-plain">2</span>
-              )}
+              <span className={activeSection === "people-skills" ? "nav-badge-circle" : "nav-num-plain"}>
+                2
+              </span>
               <span className="nav-tab-label">People & skills</span>
             </button>
 
@@ -941,11 +945,9 @@ export function ProjectForm({ mode, initialProject }: ProjectFormProps) {
               }`}
               onClick={() => scrollTo("section-commitment")}
             >
-              {activeSection === "commitment" ? (
-                <span className="nav-badge-circle">3</span>
-              ) : (
-                <span className="nav-num-plain">3</span>
-              )}
+              <span className={activeSection === "commitment" ? "nav-badge-circle" : "nav-num-plain"}>
+                3
+              </span>
               <span className="nav-tab-label">Commitment</span>
             </button>
           </nav>
@@ -1287,7 +1289,7 @@ export function ProjectForm({ mode, initialProject }: ProjectFormProps) {
                     </div>
                   </div>
                 ) : currentPos ? (
-                  <div className="active-position-panel">
+                  <div className="active-position-panel" key={currentPosIndex}>
                       <div className="active-position-panel-heading">
                         <div className="active-position-panel-heading-left">
                           <div className="panel-role-icon">

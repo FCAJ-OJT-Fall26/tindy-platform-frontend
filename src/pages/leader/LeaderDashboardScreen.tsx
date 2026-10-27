@@ -438,16 +438,6 @@ export function LeaderDashboard() {
                   </div>
                   <div className="leader-project-top-actions">
                     <button
-                      type="button"
-                      className="icon-button"
-                      onClick={() => setManagingPositionProject(project)}
-                      title="Manage recruitment positions & skills"
-                      aria-label="Manage positions"
-                      style={{ color: "#6366f1" }}
-                    >
-                      <SlidersHorizontal size={16} />
-                    </button>
-                    <button
                       className="icon-button"
                       onClick={() =>
                         handleDeleteProject(project.id, project.name)

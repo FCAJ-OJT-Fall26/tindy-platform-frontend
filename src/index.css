@@ -10835,7 +10835,51 @@ button.text-link {
   }
 }
 
+/* Sliding active pill indicator */
+.section-nav-slider {
+  position: absolute;
+  top: 6px;
+  bottom: 6px;
+  left: 6px;
+  width: calc((100% - 12px - 16px) / 3);
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 10px;
+  transition: transform 0.3s cubic-bezier(0.25, 1, 0.5, 1);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.section-nav-slider.slider-pos-0 {
+  transform: translateX(0);
+}
+
+.section-nav-slider.slider-pos-1 {
+  transform: translateX(calc(100% + 8px));
+}
+
+.section-nav-slider.slider-pos-2 {
+  transform: translateX(calc(200% + 16px));
+}
+
+@media (max-width: 768px) {
+  .section-nav-slider {
+    top: 4px;
+    bottom: 4px;
+    left: 4px;
+    width: calc((100% - 8px - 8px) / 3);
+  }
+  .section-nav-slider.slider-pos-1 {
+    transform: translateX(calc(100% + 4px));
+  }
+  .section-nav-slider.slider-pos-2 {
+    transform: translateX(calc(200% + 8px));
+  }
+}
+
 .section-nav-tab {
+  position: relative;
+  z-index: 2;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -10843,23 +10887,21 @@ button.text-link {
   padding: 10px 14px;
   border-radius: 10px;
   border: none;
-  background: transparent;
-  color: #475569;
+  background: transparent !important;
+  color: #64748b;
   font-size: 13.5px;
   font-weight: 500;
   cursor: pointer;
-  transition: all 0.18s ease;
+  transition: color 0.2s ease;
   user-select: none;
 }
 
 .section-nav-tab:hover {
   color: #1e293b;
-  background: #f8fafc;
 }
 
 .section-nav-tab.active {
-  background: #f0f5ff;
-  color: #1e40af;
+  color: #1d4ed8;
   font-weight: 600;
 }
 
@@ -10875,6 +10917,7 @@ button.text-link {
   font-size: 11px;
   font-weight: 700;
   flex-shrink: 0;
+  transition: transform 0.25s cubic-bezier(0.34, 1.3, 0.64, 1), background 0.2s ease;
 }
 
 .nav-num-plain {
@@ -10886,10 +10929,11 @@ button.text-link {
   font-size: 13.5px;
   font-weight: 500;
   flex-shrink: 0;
+  transition: color 0.2s ease;
 }
 
 .section-nav-tab.active .nav-tab-label {
-  color: #1e40af;
+  color: #1d4ed8;
   font-weight: 650;
 }
 
@@ -11444,17 +11488,17 @@ button.text-link {
   display: flex;
   flex-direction: column;
   gap: 18px;
-  animation: fadeInPositionTab 0.18s ease;
+  animation: slideInPositionTab 0.24s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-@keyframes fadeInPositionTab {
+@keyframes slideInPositionTab {
   from {
-    opacity: 0.85;
-    transform: translateY(2px);
+    opacity: 0.5;
+    transform: translateX(12px);
   }
   to {
     opacity: 1;
-    transform: translateY(0);
+    transform: translateX(0);
   }
 }
 
