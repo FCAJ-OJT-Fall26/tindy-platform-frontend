@@ -38,6 +38,7 @@ import SkillIcon from "../onboarding/SkillIcon"
 import AiWritingDialog from "./AiWritingDialog"
 import FullPreviewDialog from "./FullPreviewDialog"
 import { UnsavedChangesDialog } from "./UnsavedChangesDialog"
+import { SaveConfirmDialog } from "./SaveConfirmDialog"
 
 export interface FormPositionItem {
   id: string
@@ -169,6 +170,7 @@ export function ProjectForm({ mode, initialProject }: ProjectFormProps) {
   const [showAiDialog, setShowAiDialog] = useState(false)
   const [showPreviewDialog, setShowPreviewDialog] = useState(false)
   const [showDiscardDialog, setShowDiscardDialog] = useState(false)
+  const [showSaveConfirmDialog, setShowSaveConfirmDialog] = useState(false)
   const [skillPickerState, setSkillPickerState] = useState<{
     open: boolean
     posIndex: number
@@ -575,8 +577,8 @@ export function ProjectForm({ mode, initialProject }: ProjectFormProps) {
     }
   }
 
-  // Handle Form Submission
-  const handleSubmit = async (event: React.FormEvent) => {
+  // Handle Form Submission - validates and triggers confirmation dialog
+  const handleSubmit = (event: React.FormEvent) => {
     event.preventDefault()
 
     if (!name.trim() || name.trim().length < 3) {
@@ -645,6 +647,12 @@ export function ProjectForm({ mode, initialProject }: ProjectFormProps) {
       return
     }
 
+    // All validations passed -> Prompt confirmation modal
+    setShowSaveConfirmDialog(true)
+  }
+
+  // Execute Save after user confirms in modal
+  const executeSave = async () => {
     // Auto-confirm on explicit submit click
     if (!confirmed) {
       setConfirmed(true)
@@ -784,13 +792,17 @@ export function ProjectForm({ mode, initialProject }: ProjectFormProps) {
 
     setSubmitting(false)
     setIsDirty(false)
+    setShowSaveConfirmDialog(false)
 
-    if (mode === "create") {
-      notify("Project published · Recruitment is open")
-      navigate(`/project/${savedProject.id}/edit`, { replace: true })
-    } else {
-      notify("Changes saved")
-    }
+    // Navigate to Leader project with savedSuccess state to trigger success modal
+    navigate("/leader", {
+      state: {
+        savedSuccess: true,
+        projectName: name,
+        isCreate: mode === "create",
+      },
+      replace: true,
+    })
   }
 
   // Handle Cancel action
@@ -1713,8 +1725,11 @@ export function ProjectForm({ mode, initialProject }: ProjectFormProps) {
 
                 <button
                   type="submit"
-                  className="action-btn primary submit-btn"
-                  disabled={submitting}
+                  className={`action-btn primary submit-btn ${
+                    mode === "edit" && !isDirty ? "disabled" : ""
+                  }`}
+                  disabled={submitting || (mode === "edit" && !isDirty)}
+                  title={mode === "edit" && !isDirty ? "No changes to save" : undefined}
                 >
                   <span>
                     {submitting
@@ -1990,6 +2005,16 @@ export function ProjectForm({ mode, initialProject }: ProjectFormProps) {
           setShowDiscardDialog(false)
           navigate("/leader")
         }}
+      />
+
+      {/* 5. Save Confirmation Dialog */}
+      <SaveConfirmDialog
+        open={showSaveConfirmDialog}
+        projectName={name}
+        isSubmitting={submitting}
+        mode={mode}
+        onCancel={() => setShowSaveConfirmDialog(false)}
+        onConfirm={executeSave}
       />
     </div>
   )

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react"
-import { Link } from "react-router"
+import { Link, useLocation } from "react-router"
 import {
   Sparkles,
   RotateCcw,
@@ -10,7 +10,6 @@ import {
   FolderKanban,
   Trash2,
   MoreHorizontal,
-  SlidersHorizontal,
   ArrowRight,
   ArrowUpRight,
   ChevronLeft,
@@ -19,6 +18,7 @@ import {
 import { useTindy, Project, initialProjects, initialCandidates } from "../../store"
 import { PageHeader, Stat, SectionHeading, Avatar, Badge } from "../../components/ui"
 import LeaderPositionManagerModal from "../../components/projects/LeaderPositionManagerModal"
+import { SaveSuccessModal } from "../../components/projects/SaveSuccessModal"
 import { getStoredToken } from "../../services/apiClient"
 import { deleteProjectApi, toApiDifficulty } from "../../services/projects.service"
 
@@ -184,9 +184,23 @@ export function LeaderDashboard() {
     notify,
   } = useTindy()
 
+  const location = useLocation()
   const [currentPage, setCurrentPage] = useState(1)
   const [managingPositionProject, setManagingPositionProject] = useState<Project | null>(null)
+  const [showSaveSuccessModal, setShowSaveSuccessModal] = useState(false)
+  const [savedSuccessProjectName, setSavedSuccessProjectName] = useState("")
+  const [isSavedCreate, setIsSavedCreate] = useState(false)
   const PROJECTS_PER_PAGE = 4
+
+  useEffect(() => {
+    if (location.state?.savedSuccess) {
+      setShowSaveSuccessModal(true)
+      setSavedSuccessProjectName(location.state.projectName || "Project")
+      setIsSavedCreate(Boolean(location.state.isCreate))
+      // Clear location state so refresh or back doesn't re-trigger modal
+      window.history.replaceState({}, document.title)
+    }
+  }, [location.state])
 
   const managed = projects.filter(
     (project) => project.id === "cloud-desk" || project.leader === profile.name,
@@ -640,6 +654,12 @@ export function LeaderDashboard() {
           onClose={() => setManagingPositionProject(null)}
         />
       )}
+      <SaveSuccessModal
+        open={showSaveSuccessModal}
+        projectName={savedSuccessProjectName}
+        isCreate={isSavedCreate}
+        onClose={() => setShowSaveSuccessModal(false)}
+      />
     </>
   )
 }

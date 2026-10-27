@@ -12518,3 +12518,172 @@ button.text-link {
   padding: 8px 18px;
   font-size: 13.5px;
 }
+
+.action-btn:disabled,
+.action-btn.disabled {
+  opacity: 0.42;
+  cursor: not-allowed !important;
+  pointer-events: none;
+  box-shadow: none !important;
+}
+
+.action-btn.primary:disabled {
+  background: #93c5fd;
+  border-color: #93c5fd;
+  color: #ffffff;
+}
+
+/* Save Confirm Dialog */
+.save-confirm-modal-card {
+  max-width: 480px;
+  border-radius: 16px;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.12), 0 10px 10px -5px rgba(0, 0, 0, 0.05);
+  animation: modalScaleIn 0.18s ease-out;
+}
+
+.save-confirm-modal-header {
+  padding: 18px 22px;
+  align-items: flex-start;
+}
+
+.save-confirm-modal-title-group {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.save-confirm-icon-badge {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: #eff6ff;
+  border: 1px solid #dbeafe;
+  color: #2563eb;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.save-confirm-modal-title {
+  font-family: 'Manrope', sans-serif;
+  font-size: 16.5px;
+  font-weight: 750;
+  color: #0f172a;
+  margin: 0;
+  line-height: 1.3;
+}
+
+.save-confirm-modal-subtitle {
+  margin: 3px 0 0;
+  font-size: 13px;
+  color: #64748b;
+  line-height: 1.4;
+}
+
+.save-confirm-modal-body {
+  padding: 16px 22px 20px;
+}
+
+.save-confirm-message {
+  margin: 0;
+  font-size: 14px;
+  color: #475569;
+  line-height: 1.6;
+}
+
+.save-confirm-modal-footer {
+  padding: 14px 22px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  background: #f8fafc;
+  border-top: 1px solid #e2e8f0;
+}
+
+/* Save Success Modal */
+.save-success-modal-card {
+  position: relative;
+  max-width: 440px;
+  border-radius: 20px;
+  padding: 34px 28px 24px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  box-shadow: 0 25px 35px -5px rgba(0, 0, 0, 0.16), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  animation: modalScaleIn 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.save-success-close-btn {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+}
+
+.save-success-icon-wrap {
+  margin-bottom: 18px;
+}
+
+.save-success-icon-badge {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: #ecfdf5;
+  border: 2px solid #a7f3d0;
+  color: #059669;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 14px rgba(16, 185, 129, 0.25);
+  animation: successBadgePop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes successBadgePop {
+  0% {
+    transform: scale(0.6);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.save-success-content {
+  margin-bottom: 24px;
+}
+
+.save-success-title {
+  font-family: 'Manrope', sans-serif;
+  font-size: 18.5px;
+  font-weight: 750;
+  color: #0f172a;
+  margin: 0 0 8px;
+  line-height: 1.3;
+}
+
+.save-success-description {
+  margin: 0;
+  font-size: 14px;
+  color: #475569;
+  line-height: 1.55;
+}
+
+.save-success-footer {
+  width: 100%;
+}
+
+.save-success-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 20px;
+  font-size: 14.5px;
+  font-weight: 600;
+  border-radius: 10px;
+}
