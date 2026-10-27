@@ -29,9 +29,7 @@ export default function Layout() {
     const titleMap: Record<string, string> = {
       "/": "Dashboard — Tindy",
       "/discover": "Discover Projects — Tindy",
-      "/interests": "My Interests — Tindy",
       "/projects": "My Projects — Tindy",
-      "/saved": "Saved Projects — Tindy",
       "/candidates": "Candidate Pipeline — Tindy",
       "/candidate": "Candidate Profile — Tindy",
       "/messages": "Messages & Chats — Tindy",
