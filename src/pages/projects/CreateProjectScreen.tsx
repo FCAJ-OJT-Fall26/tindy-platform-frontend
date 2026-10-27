@@ -256,7 +256,15 @@ export function CreateProject() {
           className="panel project-form"
           onSubmit={async (event) => {
             event.preventDefault()
-            if (submitting) return
+            if (!name.trim() || name.trim().length < 3) {
+              notify("Project name must be at least 3 characters.")
+              return
+            }
+
+            if (!jd.trim() || jd.trim().length < 20) {
+              notify(`Project description must be at least 20 characters (currently ${jd.trim().length}).`)
+              return
+            }
 
             const missingSkillPos = positionsList.find(
               (p) => p.requiredSkills.length === 0,
@@ -351,8 +359,12 @@ export function CreateProject() {
                     finalProjectId = created.project_id
                   }
                 }
-              } catch (err) {
-                console.warn("Backend sync failed; using local state fallback:", err)
+              } catch (err: any) {
+                setSubmitting(false)
+                const errorMsg = err?.message || "Failed to save project on server."
+                notify(errorMsg)
+                console.error("Backend project sync failed:", err)
+                return
               }
             }
 
@@ -436,17 +448,22 @@ export function CreateProject() {
             />
           </label>
           <label className="field">
-            Project description
+            Project description <small>Minimum 20 characters ({jd.trim().length} chars)</small>
             <textarea
               required
               rows={5}
-              placeholder="What are you building, and why does it matter?"
+              placeholder="What are you building, and why does it matter? (At least 20 characters)"
               value={jd}
               onChange={(event) => {
                 setJd(event.target.value)
                 setConfirmed(false)
               }}
             />
+            {jd.trim().length > 0 && jd.trim().length < 20 && (
+              <small style={{ color: "var(--red, #f43f5e)", marginTop: "4px" }}>
+                Description is too short ({jd.trim().length}/20 characters minimum).
+              </small>
+            )}
           </label>
           <div className="ai-assist-row">
             <span>
