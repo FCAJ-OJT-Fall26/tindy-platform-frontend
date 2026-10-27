@@ -1,14 +1,12 @@
 import {
   Clock,
   Users,
-  Target,
   Briefcase,
-  Check,
-  Info,
+  CheckCircle2,
   Calendar,
-  Layers,
+  X,
+  Sparkles,
 } from "lucide-react"
-import { Modal, Button, Badge, Avatar, Chips } from "../ui"
 import type { SelectedSkill } from "../../types/catalog"
 import SkillIcon from "../onboarding/SkillIcon"
 
@@ -16,7 +14,7 @@ export interface FullPreviewPosition {
   id: string
   role: string
   title: string
-  description: string
+  description?: string
   count: number
   level: string
   requiredSkills: SelectedSkill[]
@@ -43,7 +41,6 @@ export interface FullPreviewDialogProps {
 
 export default function FullPreviewDialog({
   isOpen,
-  mode,
   projectName,
   tagline,
   description,
@@ -55,196 +52,283 @@ export default function FullPreviewDialog({
   positionsList,
   allSkills,
   leaderName,
-  projectColor = "indigo",
   onClose,
 }: FullPreviewDialogProps) {
   if (!isOpen) return null
 
-  const totalOpenings = positionsList.reduce((acc, p) => acc + (Number(p.count) || 1), 0)
+  const totalOpenings = positionsList.reduce(
+    (acc, p) => acc + (Number(p.count) || 1),
+    0,
+  )
   const maxCapacity = currentMembers + totalOpenings
-  const initials = (projectName.trim() || "UP")
-    .split(" ")
-    .slice(0, 2)
-    .map((w) => w[0])
-    .join("")
-    .toUpperCase()
+  const leaderInitial = (leaderName.trim() || "N")[0].toUpperCase()
 
   return (
-    <Modal title="Project Brief Preview — Teammate's Perspective" onClose={onClose} wide>
-      <div className="full-preview-dialog-body">
-        {/* Banner */}
-        <div className="preview-status-banner">
-          <Info size={16} />
-          <div>
-            <strong>Preview Mode</strong> ·{" "}
-            {mode === "create"
-              ? "This reflects your live draft. Publish the project when you're ready to open team recruitment."
-              : "Review how teammates will see your project. Save changes on the form to apply updates."}
-          </div>
+    <div
+      className="dark-preview-overlay"
+      onClick={onClose}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="dark-preview-header-title"
+    >
+      <div
+        className="dark-preview-card"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Top Header */}
+        <div className="dark-preview-header">
+          <span id="dark-preview-header-title" className="dark-preview-header-title">
+            PROJECT PREVIEW
+          </span>
+          <button
+            type="button"
+            className="dark-preview-close-btn"
+            onClick={onClose}
+            aria-label="Close preview"
+          >
+            <X size={18} />
+          </button>
         </div>
 
-        {/* Hero Section */}
-        <div className="preview-hero-card panel">
-          <div className="preview-hero-top">
-            <span className={`project-mark ${projectColor}`}>{initials}</span>
-            <div className="preview-hero-details">
-              <div className="preview-badge-row">
-                <Badge tone={mode === "create" ? "neutral" : "success"}>
-                  {mode === "create" ? "Not published" : "Recruiting"}
-                </Badge>
-                <span className="preview-type-tag">{projectType}</span>
-              </div>
-              <h2>{projectName.trim() || "Untitled Project"}</h2>
-              {tagline && <p className="preview-tagline">{tagline}</p>}
+        {/* Scrollable Body */}
+        <div className="dark-preview-body">
+          {/* Hero Section */}
+          <div className="dark-preview-hero">
+            <div className="dark-preview-hero-icon-box">
+              <Sparkles size={24} className="dark-preview-sparkle-icon" />
             </div>
-          </div>
 
-          <div className="preview-quick-metrics">
-            <span>
-              <Users size={14} />
-              <strong>{currentMembers}</strong> / {maxCapacity} team members
-            </span>
-            <span>
-              <Briefcase size={14} />
-              <strong>{totalOpenings}</strong> open {totalOpenings === 1 ? "position" : "positions"}
-            </span>
-            <span>
-              <Clock size={14} />
-              <strong>{hours}</strong> hrs/week
-            </span>
-            <span>
-              <Calendar size={14} />
-              <strong>{duration}</strong>
-            </span>
-          </div>
-        </div>
-
-        {/* What are we building */}
-        <div className="preview-section-card panel">
-          <h3>What we&rsquo;re building</h3>
-          <div className="preview-story-text">
-            {description.trim() ? (
-              description.split("\n\n").map((para, i) => <p key={i}>{para}</p>)
-            ) : (
-              <p className="placeholder-text">No project description provided yet.</p>
-            )}
-          </div>
-        </div>
-
-        {/* Milestones / Goals */}
-        {goalsList.length > 0 && (
-          <div className="preview-section-card panel">
-            <h3>Key milestones & deliverables</h3>
-            <ul className="preview-goals-list">
-              {goalsList.map((goal, i) => (
-                <li key={i}>
-                  <Check size={14} className="goal-check" />
-                  <span>{goal}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
-
-        {/* Auto-synced Tech Stack */}
-        <div className="preview-section-card panel">
-          <div className="tech-stack-header">
-            <h3>Technology stack</h3>
-            <span className="auto-synced-pill">Auto-synced</span>
-          </div>
-          {allSkills.length > 0 ? (
-            <div className="preview-stack-chips">
-              {allSkills.map((s) => (
-                <span key={s.skill_id} className="preview-tech-chip">
-                  <SkillIcon name={s.name || s.skill_id || ""} size={14} />
-                  <span>{s.name}</span>
+            <div className="dark-preview-hero-info">
+              <div className="dark-preview-badge-row">
+                <span className="dark-preview-recruiting-badge">Recruiting</span>
+                <span className="dark-preview-category-text">
+                  {projectType || "AI & Machine Learning"}
                 </span>
-              ))}
-            </div>
-          ) : (
-            <p className="placeholder-text">
-              Add skills to recruitment positions to build your team stack.
-            </p>
-          )}
-        </div>
-
-        {/* Open Positions List */}
-        <div className="preview-section-card panel">
-          <h3>
-            Recruitment positions ({positionsList.length}{" "}
-            {positionsList.length === 1 ? "role" : "roles"} · {totalOpenings} openings)
-          </h3>
-          <div className="preview-positions-list">
-            {positionsList.map((pos) => (
-              <div key={pos.id} className="preview-position-item panel">
-                <div className="pos-item-top">
-                  <div className="pos-title-wrap">
-                    <h4>{pos.title || pos.role}</h4>
-                    <span className="role-archetype-tag">{pos.role}</span>
-                  </div>
-                  <div className="pos-badges-wrap">
-                    <Badge tone="blue">
-                      {pos.count} {pos.count === 1 ? "opening" : "openings"}
-                    </Badge>
-                    <Badge tone="neutral">{pos.level}</Badge>
-                  </div>
-                </div>
-
-                {pos.description && (
-                  <p className="pos-deliverables-text">{pos.description}</p>
-                )}
-
-                {/* Skills */}
-                <div className="pos-skills-breakdown">
-                  {pos.requiredSkills.length > 0 && (
-                    <div className="skills-subgroup">
-                      <span className="subgroup-label">Required skills:</span>
-                      <div className="chip-row">
-                        {pos.requiredSkills.map((sk) => (
-                          <span key={sk.skill_id} className="pos-skill-pill required">
-                            <SkillIcon name={sk.name || sk.skill_id || ""} size={14} />
-                            <span>{sk.name}</span>
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {pos.niceSkills.length > 0 && (
-                    <div className="skills-subgroup">
-                      <span className="subgroup-label">Nice to have:</span>
-                      <div className="chip-row">
-                        {pos.niceSkills.map((sk) => (
-                          <span key={sk.skill_id} className="pos-skill-pill nice">
-                            <SkillIcon name={sk.name || sk.skill_id || ""} size={14} />
-                            <span>{sk.name}</span>
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
               </div>
-            ))}
+
+              <h1 className="dark-preview-title">
+                {projectName.trim() || "AI Customer Support System"}
+              </h1>
+
+              <p className="dark-preview-tagline">
+                {tagline.trim() || "Real questions. Smarter answers."}
+              </p>
+            </div>
+          </div>
+
+          {/* Key Metrics 2x2 Grid */}
+          <div className="dark-preview-metrics-grid">
+            <div className="dark-preview-metric-item">
+              <div className="dark-preview-metric-label">
+                <Users size={14} />
+                <span>Team members</span>
+              </div>
+              <div className="dark-preview-metric-value">
+                {currentMembers} / {maxCapacity}
+              </div>
+            </div>
+
+            <div className="dark-preview-metric-item">
+              <div className="dark-preview-metric-label">
+                <Briefcase size={14} />
+                <span>Open positions</span>
+              </div>
+              <div className="dark-preview-metric-value">
+                {totalOpenings} {totalOpenings === 1 ? "opening" : "openings"}
+              </div>
+            </div>
+
+            <div className="dark-preview-metric-item">
+              <div className="dark-preview-metric-label">
+                <Clock size={14} />
+                <span>Commitment</span>
+              </div>
+              <div className="dark-preview-metric-value">
+                {hours || 10} hrs/week
+              </div>
+            </div>
+
+            <div className="dark-preview-metric-item">
+              <div className="dark-preview-metric-label">
+                <Calendar size={14} />
+                <span>Duration</span>
+              </div>
+              <div className="dark-preview-metric-value">
+                {duration || "3 months"}
+              </div>
+            </div>
+          </div>
+
+          <div className="dark-preview-divider" />
+
+          {/* What we're building */}
+          <div className="dark-preview-section">
+            <h2 className="dark-preview-section-title">What we&apos;re building</h2>
+            <div className="dark-preview-description-text">
+              {description.trim() ? (
+                description.split("\n\n").map((para, i) => <p key={i}>{para}</p>)
+              ) : (
+                <p>Build an AI-powered customer support platform using RAG and cloud services.</p>
+              )}
+            </div>
+          </div>
+
+          {/* Milestones & deliverables */}
+          {goalsList.length > 0 && (
+            <div className="dark-preview-section">
+              <h2 className="dark-preview-section-title">Milestones & deliverables</h2>
+              <ul className="dark-preview-goals-list">
+                {goalsList.map((goal, i) => (
+                  <li key={i} className="dark-preview-goal-item">
+                    <CheckCircle2 size={16} className="dark-preview-check-icon" />
+                    <span>{goal}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          <div className="dark-preview-divider" />
+
+          {/* Technology stack */}
+          <div className="dark-preview-section">
+            <div className="dark-preview-tech-header">
+              <h2 className="dark-preview-section-title">Technology stack</h2>
+              <span className="dark-preview-auto-synced-label">Auto-synced</span>
+            </div>
+
+            <div className="dark-preview-chips-wrap">
+              {allSkills.length > 0 ? (
+                allSkills.map((s) => (
+                  <span key={s.skill_id} className="dark-preview-skill-chip">
+                    <SkillIcon name={s.name || s.skill_id} size={14} />
+                    <span>{s.name}</span>
+                  </span>
+                ))
+              ) : (
+                <>
+                  <span className="dark-preview-skill-chip">.NET</span>
+                  <span className="dark-preview-skill-chip">AWS</span>
+                  <span className="dark-preview-skill-chip">PostgreSQL</span>
+                  <span className="dark-preview-skill-chip">Docker</span>
+                </>
+              )}
+            </div>
+          </div>
+
+          <div className="dark-preview-divider" />
+
+          {/* Recruitment positions */}
+          <div className="dark-preview-section">
+            <div className="dark-preview-positions-header">
+              <h2 className="dark-preview-section-title">Recruitment positions</h2>
+              <span className="dark-preview-roles-count-pill">
+                {positionsList.length} {positionsList.length === 1 ? "role" : "roles"} · {totalOpenings} openings
+              </span>
+            </div>
+
+            <div className="dark-preview-positions-list">
+              {positionsList.length > 0 ? (
+                positionsList.map((pos) => (
+                  <div key={pos.id} className="dark-preview-pos-card">
+                    <div className="dark-preview-pos-header">
+                      <h3 className="dark-preview-pos-title">
+                        {pos.title || pos.role}
+                      </h3>
+                      <span className="dark-preview-openings-pill">
+                        {pos.count} {pos.count === 1 ? "opening" : "openings"}
+                      </span>
+                    </div>
+
+                    <div className="dark-preview-pos-level">
+                      {pos.level || "Intermediate"}
+                    </div>
+
+                    {pos.description && (
+                      <p className="dark-preview-pos-desc">{pos.description}</p>
+                    )}
+
+                    {pos.requiredSkills.length > 0 && (
+                      <div className="dark-preview-pos-skills-group">
+                        <div className="dark-preview-pos-skills-label">Required skills</div>
+                        <div className="dark-preview-chips-wrap">
+                          {pos.requiredSkills.map((sk) => (
+                            <span key={sk.skill_id} className="dark-preview-skill-chip">
+                              <SkillIcon name={sk.name || sk.skill_id} size={13} />
+                              <span>{sk.name}</span>
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {pos.niceSkills.length > 0 && (
+                      <div className="dark-preview-pos-skills-group">
+                        <div className="dark-preview-pos-skills-label">Nice to have</div>
+                        <div className="dark-preview-chips-wrap">
+                          {pos.niceSkills.map((sk) => (
+                            <span key={sk.skill_id} className="dark-preview-skill-chip">
+                              <SkillIcon name={sk.name || sk.skill_id} size={13} />
+                              <span>{sk.name}</span>
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))
+              ) : (
+                <div className="dark-preview-pos-card">
+                  <div className="dark-preview-pos-header">
+                    <h3 className="dark-preview-pos-title">Backend Developer</h3>
+                    <span className="dark-preview-openings-pill">2 openings</span>
+                  </div>
+                  <div className="dark-preview-pos-level">Intermediate</div>
+                  <div className="dark-preview-pos-skills-group">
+                    <div className="dark-preview-pos-skills-label">Required skills</div>
+                    <div className="dark-preview-chips-wrap">
+                      <span className="dark-preview-skill-chip">.NET</span>
+                      <span className="dark-preview-skill-chip">AWS</span>
+                      <span className="dark-preview-skill-chip">PostgreSQL</span>
+                    </div>
+                  </div>
+                  <div className="dark-preview-pos-skills-group">
+                    <div className="dark-preview-pos-skills-label">Nice to have</div>
+                    <div className="dark-preview-chips-wrap">
+                      <span className="dark-preview-skill-chip">Docker</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Project Leader / Creator */}
+          <div className="dark-preview-leader-section">
+            <div className="dark-preview-leader-avatar">
+              {leaderInitial}
+            </div>
+            <div className="dark-preview-leader-info">
+              <div className="dark-preview-leader-name">{leaderName || "Nagi"}</div>
+              <div className="dark-preview-leader-role">Project creator · Peer mentor</div>
+            </div>
           </div>
         </div>
 
-        {/* Project Leader info */}
-        <div className="preview-leader-card panel">
-          <Avatar name={leaderName || "Leader"} color={projectColor} />
-          <div>
-            <strong>{leaderName || "Project Leader"}</strong>
-            <small>Project creator · Peer mentor</small>
-          </div>
-        </div>
-
-        {/* Footer */}
-        <div className="preview-dialog-footer">
-          <Button variant="secondary" onClick={onClose}>
+        {/* Fixed Footer */}
+        <div className="dark-preview-footer">
+          <span className="dark-preview-footer-note">
+            Preview only · Changes are not saved
+          </span>
+          <button
+            type="button"
+            className="dark-preview-back-btn"
+            onClick={onClose}
+          >
             Back to editor
-          </Button>
+          </button>
         </div>
       </div>
-    </Modal>
+    </div>
   )
 }
