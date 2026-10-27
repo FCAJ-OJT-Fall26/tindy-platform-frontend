@@ -2,7 +2,6 @@ import { useState, useEffect } from "react"
 import { Link, useLocation } from "react-router"
 import {
   Sparkles,
-  RotateCcw,
   Plus,
   Code2,
   Users,
@@ -221,39 +220,6 @@ export function LeaderDashboard() {
   )
   const pageItemsCount = currentProjects.length
 
-  const hasSimulated = projects.some((p) => p.id.startsWith("sim-proj-"))
-
-  const handleSimulateAddProject = () => {
-    const templateIndex = (managed.length - 1) % mockProjectTemplates.length
-    const template =
-      mockProjectTemplates[templateIndex >= 0 ? templateIndex : 0]
-    const timestamp = Date.now()
-    const newProject: Project = {
-      ...template,
-      id: `sim-proj-${timestamp}`,
-      name: `${template.name} #${managed.length}`,
-      leader: profile.name,
-      created: 1,
-      closing: 14,
-    }
-
-    setProjects((prev) => [...prev, newProject])
-    const newTotal = managed.length + 1
-    const newTotalPages = Math.ceil(newTotal / PROJECTS_PER_PAGE)
-    if (newTotalPages > totalPages) {
-      setCurrentPage(newTotalPages)
-    }
-    notify(
-      `Simulated project created: "${newProject.name}" (Total: ${newTotal})`,
-    )
-  }
-
-  const handleResetProjects = () => {
-    setProjects(initialProjects)
-    setCurrentPage(1)
-    notify("Reset projects back to default.")
-  }
-
   const handleDeleteProject = async (projectId: string, projectName: string) => {
     if (getStoredToken() && !projectId.startsWith("sim-proj-")) {
       try {
@@ -273,38 +239,10 @@ export function LeaderDashboard() {
         title="Great teams start here."
         description="Turn your next idea into a project. Find the people to bring it to life."
         action={
-          <div
-            style={{
-              display: "flex",
-              gap: "10px",
-              alignItems: "center",
-              flexWrap: "wrap",
-            }}
-          >
-            <button
-              className="btn btn-secondary"
-              onClick={handleSimulateAddProject}
-              title="Add a sample mock project to test auto-grid and pagination"
-            >
-              <Sparkles size={16} />
-              Simulate Add Project
-            </button>
-            {hasSimulated && (
-              <button
-                className="btn btn-ghost"
-                onClick={handleResetProjects}
-                style={{ fontSize: "12px", color: "var(--text-secondary)" }}
-                title="Reset back to default project"
-              >
-                <RotateCcw size={14} />
-                Reset
-              </button>
-            )}
-            <Link className="btn btn-primary" to="/create-project">
-              <Plus size={16} />
-              Create project
-            </Link>
-          </div>
+          <Link className="btn btn-primary" to="/create-project">
+            <Plus size={16} />
+            Create project
+          </Link>
         }
       />
       <section className="stats-grid">
@@ -343,67 +281,19 @@ export function LeaderDashboard() {
         title="Your projects"
         description="A clear picture of what’s moving forward."
         action={
-          <div
+          <span
             style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "8px",
-              flexWrap: "wrap",
+              fontSize: "12px",
+              background: "#f0f4fa",
+              color: "#3553b5",
+              fontWeight: 600,
+              padding: "4px 10px",
+              borderRadius: "6px",
+              border: "1px solid #dce6f6",
             }}
           >
-            <span
-              style={{
-                fontSize: "11px",
-                background: "#f0f4fa",
-                color: "#3553b5",
-                fontWeight: 600,
-                padding: "4px 9px",
-                borderRadius: "5px",
-                border: "1px solid #dce6f6",
-              }}
-            >
-              {managed.length === 0 && "0 projects"}
-              {managed.length === 1 && "1 project · Full width"}
-              {managed.length === 2 && "2 projects · 2 columns"}
-              {managed.length === 3 && "3 projects · 3 columns"}
-              {managed.length === 4 && "4 projects · 2×2 grid"}
-              {managed.length > 4 &&
-                `${managed.length} projects · Paginated (Max 4/page)`}
-            </span>
-            <button
-              className="btn btn-secondary"
-              style={{
-                fontSize: "11px",
-                padding: "6px 12px",
-                display: "inline-flex",
-                alignItems: "center",
-                gap: "5px",
-              }}
-              onClick={handleSimulateAddProject}
-              title="Add a sample mock project to test grid layout"
-            >
-              <Plus size={14} />
-              Simulate Add Project
-            </button>
-            {hasSimulated && (
-              <button
-                className="btn btn-ghost"
-                style={{
-                  fontSize: "11px",
-                  padding: "6px 10px",
-                  color: "var(--text-secondary)",
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: "4px",
-                }}
-                onClick={handleResetProjects}
-                title="Reset to default project"
-              >
-                <RotateCcw size={13} />
-                Reset
-              </button>
-            )}
-          </div>
+            {managed.length} {managed.length === 1 ? "project" : "projects"}
+          </span>
         }
       />
       {managed.length === 0 ? (
@@ -423,13 +313,10 @@ export function LeaderDashboard() {
           >
             No projects currently managed.
           </p>
-          <button
-            className="btn btn-primary"
-            onClick={handleSimulateAddProject}
-          >
+          <Link className="btn btn-primary" to="/create-project">
             <Plus size={16} />
-            Simulate Add Project
-          </button>
+            Create project
+          </Link>
         </div>
       ) : (
         <>
