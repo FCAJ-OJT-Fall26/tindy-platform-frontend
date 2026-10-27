@@ -10843,7 +10843,7 @@ button.text-link {
   left: 6px;
   width: calc((100% - 12px - 16px) / 3);
   background: #eff6ff;
-  border: 1px solid #bfdbfe;
+  border: none;
   border-radius: 10px;
   transition: transform 0.3s cubic-bezier(0.25, 1, 0.5, 1);
   pointer-events: none;
