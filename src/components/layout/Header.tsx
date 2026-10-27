@@ -10,26 +10,71 @@ interface HeaderProps {
   onOpenMobileMenu: () => void
 }
 
-function getBreadcrumbTitle(pathname: string): string {
+interface BreadcrumbInfo {
+  category: string
+  title: string
+}
+
+function getBreadcrumb(pathname: string): BreadcrumbInfo {
+  // 1. Settings & Account
+  if (pathname.startsWith("/settings")) {
+    return { category: "Account", title: "Settings" }
+  }
+  if (pathname === "/profile") {
+    return { category: "Account", title: "Your Profile" }
+  }
+  if (pathname.startsWith("/users/")) {
+    return { category: "Account", title: "Member Profile" }
+  }
+
+  // 2. Build Together
+  if (pathname === "/leader" || pathname.startsWith("/leader/")) {
+    return { category: "Build Together", title: "Leader Workspace" }
+  }
+  if (pathname === "/create-project") {
+    return { category: "Build Together", title: "Create Project" }
+  }
+  if (pathname.includes("/edit")) {
+    return { category: "Build Together", title: "Edit Project" }
+  }
+  if (pathname.startsWith("/ai")) {
+    return { category: "Build Together", title: "AI Studio" }
+  }
+  if (pathname.startsWith("/team")) {
+    return { category: "Build Together", title: "Team Workspace" }
+  }
+
+  // 3. Legal
+  if (pathname.includes("privacypolicy")) {
+    return { category: "Legal", title: "Privacy Policy" }
+  }
+  if (pathname.includes("termsofservice")) {
+    return { category: "Legal", title: "Terms of Service" }
+  }
+
+  // 4. Candidate & Project details
+  if (pathname.includes("/candidate/")) {
+    return { category: "Workspace", title: "Candidate Profile" }
+  }
+  if (pathname.includes("/project/")) {
+    return { category: "Workspace", title: "Project Details" }
+  }
+
+  // 5. Sidebar Workspace navigation items
   const matched = navItems.find((item) => item.to === pathname)
-  if (matched) return matched.label
-  if (pathname.includes("/candidate/")) return "Candidate Profile"
-  if (pathname.startsWith("/users/")) return "Member Profile"
-  if (pathname === "/profile") return "Your Profile"
-  if (pathname.includes("/project/")) return "Project Details"
-  if (pathname.includes("leader")) return "Leader Workspace"
-  if (pathname.includes("ai")) return "AI Studio"
-  if (pathname.includes("settings")) return "Settings"
-  if (pathname.includes("team")) return "Team Workspace"
-  if (pathname.includes("privacypolicy")) return "Privacy Policy"
-  if (pathname.includes("termsofservice")) return "Terms of Service"
-  return "Workspace"
+  if (matched) {
+    return { category: "Workspace", title: matched.label }
+  }
+
+  return { category: "Workspace", title: "Dashboard" }
 }
 
 export default function Header({ title, onOpenMobileMenu }: HeaderProps) {
   const { profile, read, ownerProfile } = useTindy()
   const location = useLocation()
-  const current = title || getBreadcrumbTitle(location.pathname)
+  const breadcrumb = getBreadcrumb(location.pathname)
+  const currentTitle = title || breadcrumb.title
+  const currentCategory = breadcrumb.category
 
   return (
     <header className="topbar">
@@ -41,9 +86,9 @@ export default function Header({ title, onOpenMobileMenu }: HeaderProps) {
         >
           <Menu size={20} />
         </button>
-        <span>Workspace</span>
+        <span>{currentCategory}</span>
         <ChevronRight size={12} />
-        <strong>{current}</strong>
+        <strong>{currentTitle}</strong>
       </div>
       <div className="topbar-actions">
         <Link

@@ -275,6 +275,10 @@ export default function SkillSelector({
   const activeSkills = new Map(
     allSkills.map((skill) => [skill.skill_id, skill]),
   )
+  const activeSkillsByName = useMemo(
+    () => new Map(allSkills.map((skill) => [skill.name.toLowerCase().trim(), skill])),
+    [allSkills],
+  )
   const selectedIds = new Set(selected.map((skill) => skill.skill_id))
   const unavailable =
     !catalogLoading &&
@@ -282,6 +286,7 @@ export default function SkillSelector({
     selected.some(
       (skill) =>
         !activeSkills.has(skill.skill_id) &&
+        !activeSkillsByName.has((skill.name || "").toLowerCase().trim()) &&
         (!allowInactiveSaved || !savedSkillsMap.has(skill.skill_id)),
     )
   const valid =
@@ -733,10 +738,14 @@ export default function SkillSelector({
                     savedSkillsMap.get(skill.skill_id)?.name ||
                     skill.name ||
                     `Saved skill ${index + 1}`
+                  const isAvailable =
+                    activeSkills.has(skill.skill_id) ||
+                    activeSkillsByName.has((skill.name || "").toLowerCase().trim()) ||
+                    savedSkillsMap.has(skill.skill_id)
                   const inactive =
                     !catalogLoading &&
                     !catalogError &&
-                    !activeSkills.has(skill.skill_id)
+                    !isAvailable
                   return (
                     <button
                       type="button"

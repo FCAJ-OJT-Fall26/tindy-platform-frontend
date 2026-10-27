@@ -260,6 +260,9 @@ export async function getProjectPositionsApi(
   projectId: string,
   signal?: AbortSignal,
 ): Promise<ProjectPositionDto[]> {
+  if (!isGuid(projectId)) {
+    return []
+  }
   const res = await apiRequest<ProjectPositionDto[]>(
     `${projectsBase}/${encodeURIComponent(projectId)}/positions`,
     {
@@ -280,6 +283,20 @@ export async function createProjectPositionApi(
   payload: CreatePositionRequest,
   signal?: AbortSignal,
 ): Promise<ProjectPositionDto> {
+  if (!isGuid(projectId)) {
+    return {
+      position_id: `pos-${Date.now()}`,
+      project_id: projectId,
+      role_id: payload.role_id,
+      title: payload.title,
+      description: payload.description,
+      required_count: payload.required_count,
+      filled_count: 0,
+      experience_level: payload.experience_level,
+      status: "open",
+      skills: [],
+    }
+  }
   const res = await apiRequest<ProjectPositionDto>(
     `${projectsBase}/${encodeURIComponent(projectId)}/positions`,
     {
@@ -301,6 +318,20 @@ export async function updateProjectPositionApi(
   payload: UpdatePositionRequest,
   signal?: AbortSignal,
 ): Promise<ProjectPositionDto> {
+  if (!isGuid(projectId)) {
+    return {
+      position_id: positionId,
+      project_id: projectId,
+      role_id: "role_frontend",
+      title: payload.title,
+      description: payload.description,
+      required_count: payload.required_count,
+      filled_count: 0,
+      experience_level: payload.experience_level,
+      status: payload.status,
+      skills: [],
+    }
+  }
   const res = await apiRequest<ProjectPositionDto>(
     `${projectsBase}/${encodeURIComponent(projectId)}/positions/${encodeURIComponent(positionId)}`,
     {
@@ -321,6 +352,7 @@ export async function deleteProjectPositionApi(
   positionId: string,
   signal?: AbortSignal,
 ): Promise<void> {
+  if (!isGuid(projectId)) return
   await apiRequest<unknown>(
     `${projectsBase}/${encodeURIComponent(projectId)}/positions/${encodeURIComponent(positionId)}`,
     {
@@ -340,6 +372,14 @@ export async function addPositionSkillApi(
   payload: AddPositionSkillRequest,
   signal?: AbortSignal,
 ): Promise<AddPositionSkillResponse> {
+  if (!isGuid(projectId)) {
+    return {
+      position_id: positionId,
+      skill_id: payload.skill_id,
+      skill_name: "Skill",
+      is_required: payload.is_required,
+    }
+  }
   const res = await apiRequest<AddPositionSkillResponse>(
     `${projectsBase}/${encodeURIComponent(projectId)}/positions/${encodeURIComponent(positionId)}/skills`,
     {
@@ -361,6 +401,7 @@ export async function removePositionSkillApi(
   skillId: string,
   signal?: AbortSignal,
 ): Promise<void> {
+  if (!isGuid(projectId)) return
   await apiRequest<unknown>(
     `${projectsBase}/${encodeURIComponent(projectId)}/positions/${encodeURIComponent(positionId)}/skills/${encodeURIComponent(skillId)}`,
     {

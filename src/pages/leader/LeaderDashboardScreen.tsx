@@ -10,6 +10,7 @@ import {
   FolderKanban,
   Trash2,
   MoreHorizontal,
+  SlidersHorizontal,
   ArrowRight,
   ArrowUpRight,
   ChevronLeft,
@@ -17,8 +18,9 @@ import {
 } from "lucide-react"
 import { useTindy, Project, initialProjects, initialCandidates } from "../../store"
 import { PageHeader, Stat, SectionHeading, Avatar, Badge } from "../../components/ui"
+import LeaderPositionManagerModal from "../../components/projects/LeaderPositionManagerModal"
 import { getStoredToken } from "../../services/apiClient"
-import { deleteProjectApi } from "../../services/projects.service"
+import { deleteProjectApi, toApiDifficulty } from "../../services/projects.service"
 
 export const mockProjectTemplates: Array<{
   name: string
@@ -183,6 +185,7 @@ export function LeaderDashboard() {
   } = useTindy()
 
   const [currentPage, setCurrentPage] = useState(1)
+  const [managingPositionProject, setManagingPositionProject] = useState<Project | null>(null)
   const PROJECTS_PER_PAGE = 4
 
   const managed = projects.filter(
@@ -426,18 +429,24 @@ export function LeaderDashboard() {
                   <span className={`project-mark ${project.color}`}>
                     {project.initials}
                   </span>
-                  <div>
-                    <Badge tone="success">RECRUITING</Badge>
+                  <div className="leader-project-info">
+                    <div className="leader-project-badge-row">
+                      <Badge tone="success">RECRUITING</Badge>
+                    </div>
                     <h2>{project.name}</h2>
                     <p title={project.description}>{project.description}</p>
                   </div>
-                  <div
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "4px",
-                    }}
-                  >
+                  <div className="leader-project-top-actions">
+                    <button
+                      type="button"
+                      className="icon-button"
+                      onClick={() => setManagingPositionProject(project)}
+                      title="Manage recruitment positions & skills"
+                      aria-label="Manage positions"
+                      style={{ color: "#6366f1" }}
+                    >
+                      <SlidersHorizontal size={16} />
+                    </button>
                     <button
                       className="icon-button"
                       onClick={() =>
@@ -607,6 +616,40 @@ export function LeaderDashboard() {
           </div>
         </section>
       </div>
+      {managingPositionProject && (
+        <LeaderPositionManagerModal
+          projectId={managingPositionProject.id}
+          projectName={managingPositionProject.name}
+          projectRole={managingPositionProject.role}
+          projectSkills={managingPositionProject.skills}
+          initialPositions={
+            managingPositionProject.openPositions?.map((op) => ({
+              position_id: op.positionId,
+              project_id: managingPositionProject.id,
+              role_id: op.role,
+              title: op.title,
+              description: op.description,
+              required_count: op.count,
+              filled_count: 0,
+              experience_level: toApiDifficulty(op.level),
+              status: "open" as const,
+              skills: [
+                ...op.requiredSkills.map((name) => ({
+                  skill_id: `skill-${name.toLowerCase().replace(/\s+/g, "_")}`,
+                  name,
+                  is_required: true,
+                })),
+                ...op.niceSkills.map((name) => ({
+                  skill_id: `skill-${name.toLowerCase().replace(/\s+/g, "_")}`,
+                  name,
+                  is_required: false,
+                })),
+              ],
+            }))
+          }
+          onClose={() => setManagingPositionProject(null)}
+        />
+      )}
     </>
   )
 }

@@ -35,7 +35,7 @@ export function SettingsScreen() {
   useEffect(() => {
     const handleScroll = () => {
       const sectionIds = ["account", "preferences", "privacy"]
-      const triggerY = 220
+      const triggerY = 160
 
       for (let i = sectionIds.length - 1; i >= 0; i--) {
         const el = document.getElementById(sectionIds[i])
@@ -60,7 +60,7 @@ export function SettingsScreen() {
     setActiveSection(id)
     const el = document.getElementById(id)
     if (el) {
-      const topOffset = 28
+      const topOffset = 85
       const elementPosition = el.getBoundingClientRect().top
       const offsetPosition = elementPosition + window.pageYOffset - topOffset
       window.scrollTo({
@@ -86,15 +86,15 @@ export function SettingsScreen() {
   return (
     <>
       <PageHeader
-        title="Your workspace, your way."
-        description="Manage your account and choose what keeps you in the loop."
+        title="Settings & Preferences"
+        description="Manage your account profile, notification preferences, and privacy controls."
       />
       <div className="settings-layout">
         <aside
           className="settings-sidebar"
           style={{
             position: "sticky",
-            top: "24px",
+            top: "85px",
             alignSelf: "start",
             height: "fit-content",
             zIndex: 20,

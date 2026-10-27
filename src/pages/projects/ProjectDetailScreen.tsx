@@ -8,10 +8,12 @@ import {
   Clock,
   FolderKanban,
   GraduationCap,
+  SlidersHorizontal,
   Sparkles,
   Users,
 } from "lucide-react"
 import { Avatar, Badge, Button, Chips, Modal, Score, ProjectSaveButton, SkipActionButton } from "../../components/ui"
+import LeaderPositionManagerModal from "../../components/projects/LeaderPositionManagerModal"
 import { useTindy } from "../../store"
 import {
   fromApiDifficulty,
@@ -57,6 +59,7 @@ export function ProjectDetailScreen() {
   const [remoteDetail, setRemoteDetail] = useState<ProjectDetailDto | null>(null)
   const explanation = useExplanation()
   const [interestModal, setInterestModal] = useState(false)
+  const [showPositionManager, setShowPositionManager] = useState(false)
 
   useEffect(() => {
     if (!id || !isGuid(id)) return
@@ -195,7 +198,27 @@ export function ProjectDetailScreen() {
           <section className="panel">
             <SectionHeading
               title="Open positions"
-              action={<Badge>{project.capacity - project.team} openings</Badge>}
+              action={
+                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                  <Badge>{project.capacity - project.team} openings</Badge>
+                  {isOwner && (
+                    <Button
+                      variant="secondary"
+                      onClick={() => setShowPositionManager(true)}
+                      style={{
+                        fontSize: "12px",
+                        padding: "5px 12px",
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: "5px",
+                      }}
+                    >
+                      <SlidersHorizontal size={14} />
+                      Manage roles
+                    </Button>
+                  )}
+                </div>
+              }
             />
             {remoteDetail?.positions?.length
               ? remoteDetail.positions.map((pos) => {
@@ -209,10 +232,29 @@ export function ProjectDetailScreen() {
                   return (
                     <div className="position-card" key={pos.position_id}>
                       <div className="section-heading">
-                        <h3>{pos.title}</h3>
-                        <Badge tone="blue">
-                          {openCount} {openCount === 1 ? "position" : "positions"}
-                        </Badge>
+                        <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+                          <h3>{pos.title}</h3>
+                          {pos.status === "open" && <Badge tone="success">Open</Badge>}
+                          {pos.status === "filled" && <Badge tone="blue">Filled</Badge>}
+                          {pos.status === "closed" && <Badge tone="neutral">Closed</Badge>}
+                        </div>
+                        <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                          <Badge tone="blue">
+                            {openCount} {openCount === 1 ? "position" : "positions"}
+                          </Badge>
+                          {isOwner && (
+                            <button
+                              type="button"
+                              className="icon-button"
+                              title="Manage recruitment for this role"
+                              aria-label="Manage recruitment for this role"
+                              onClick={() => setShowPositionManager(true)}
+                              style={{ padding: "4px" }}
+                            >
+                              <SlidersHorizontal size={14} />
+                            </button>
+                          )}
+                        </div>
                       </div>
                       <p>
                         {pos.description ||
@@ -464,6 +506,21 @@ export function ProjectDetailScreen() {
             </Button>
           </div>
         </Modal>
+      )}
+      {showPositionManager && (
+        <LeaderPositionManagerModal
+          projectId={project.id}
+          projectName={project.name}
+          initialPositions={remoteDetail?.positions}
+          onClose={() => setShowPositionManager(false)}
+          onPositionsChanged={() => {
+            if (id && isGuid(id)) {
+              getProjectByIdApi(id)
+                .then((dto) => setRemoteDetail(dto))
+                .catch(() => {})
+            }
+          }}
+        />
       )}
     </>
   )
