@@ -253,25 +253,60 @@ export function ProjectForm({ mode, initialProject }: ProjectFormProps) {
     }
   }
 
+  // Handle keydown for number inputs:
+  // 1. Replaces default '0' immediately when user types 1-9
+  // 2. Prevents leading zeros ('00')
+  // 3. Blocks exponents ('e', 'E') and signs ('+', '-')
+  const handleNumberKeyDown = (
+    e: React.KeyboardEvent<HTMLInputElement>,
+    setter: (val: number) => void,
+    max = 999,
+  ) => {
+    if (["e", "E", "+", "-"].includes(e.key)) {
+      e.preventDefault()
+      return
+    }
+
+    const currentVal = e.currentTarget.value
+    if (/^[1-9]$/.test(e.key) && (currentVal === "0" || currentVal === "")) {
+      e.preventDefault()
+      const val = Math.min(max, parseInt(e.key, 10))
+      setter(val)
+      e.currentTarget.value = String(val)
+      handleFieldChange()
+      return
+    }
+
+    if (e.key === "0" && (currentVal === "0" || currentVal === "")) {
+      e.preventDefault()
+    }
+  }
+
   // Handle number input: defaults to 0 when cleared, replaces 0 with the first typed digit
   const handleNumberInput = (
-    rawVal: string,
+    e: React.ChangeEvent<HTMLInputElement>,
     setter: (val: number) => void,
     max = 999,
   ) => {
     handleFieldChange()
+    const rawVal = e.target.value
     if (rawVal === "" || rawVal === "-") {
       setter(0)
+      e.target.value = "0"
       return
     }
     // Remove leading zeros so if user types over "0", e.g. "05" -> 5
-    const clean = rawVal.replace(/^0+(?=\d)/, "")
-    const num = parseInt(clean, 10)
-    if (isNaN(num)) {
+    const digits = rawVal.replace(/\D/g, "")
+    if (!digits || digits === "0") {
       setter(0)
-    } else {
-      setter(Math.min(max, Math.max(0, num)))
+      e.target.value = "0"
+      return
     }
+    const clean = digits.replace(/^0+/, "")
+    const num = parseInt(clean || "0", 10)
+    const finalVal = Math.min(max, isNaN(num) ? 0 : num)
+    setter(finalVal)
+    e.target.value = String(finalVal)
   }
 
   // Total open positions across all roles
@@ -1125,8 +1160,14 @@ export function ProjectForm({ mode, initialProject }: ProjectFormProps) {
                         onFocus={(e) => {
                           if (e.target.value === "0") e.target.select()
                         }}
+                        onMouseUp={(e) => {
+                          if (e.currentTarget.value === "0") e.currentTarget.select()
+                        }}
+                        onKeyDown={(e) => {
+                          handleNumberKeyDown(e, setMembers, 20)
+                        }}
                         onChange={(e) => {
-                          handleNumberInput(e.target.value, setMembers, 20)
+                          handleNumberInput(e, setMembers, 20)
                         }}
                       />
                     </div>
@@ -1351,9 +1392,19 @@ export function ProjectForm({ mode, initialProject }: ProjectFormProps) {
                           onFocus={(e) => {
                             if (e.target.value === "0") e.target.select()
                           }}
+                          onMouseUp={(e) => {
+                            if (e.currentTarget.value === "0") e.currentTarget.select()
+                          }}
+                          onKeyDown={(e) => {
+                            handleNumberKeyDown(
+                              e,
+                              (val) => handleUpdatePosition(currentPosIndex, { count: val }),
+                              10,
+                            )
+                          }}
                           onChange={(e) => {
                             handleNumberInput(
-                              e.target.value,
+                              e,
                               (val) => handleUpdatePosition(currentPosIndex, { count: val }),
                               10,
                             )
@@ -1547,8 +1598,14 @@ export function ProjectForm({ mode, initialProject }: ProjectFormProps) {
                       onFocus={(e) => {
                         if (e.target.value === "0") e.target.select()
                       }}
+                      onMouseUp={(e) => {
+                        if (e.currentTarget.value === "0") e.currentTarget.select()
+                      }}
+                      onKeyDown={(e) => {
+                        handleNumberKeyDown(e, setHours, 40)
+                      }}
                       onChange={(e) => {
-                        handleNumberInput(e.target.value, setHours, 40)
+                        handleNumberInput(e, setHours, 40)
                       }}
                       required
                     />
@@ -1571,8 +1628,14 @@ export function ProjectForm({ mode, initialProject }: ProjectFormProps) {
                       onFocus={(e) => {
                         if (e.target.value === "0") e.target.select()
                       }}
+                      onMouseUp={(e) => {
+                        if (e.currentTarget.value === "0") e.currentTarget.select()
+                      }}
+                      onKeyDown={(e) => {
+                        handleNumberKeyDown(e, setDurationMonths, 36)
+                      }}
                       onChange={(e) => {
-                        handleNumberInput(e.target.value, setDurationMonths, 36)
+                        handleNumberInput(e, setDurationMonths, 36)
                       }}
                       required
                     />
