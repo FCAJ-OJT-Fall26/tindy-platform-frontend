@@ -20,6 +20,16 @@ export type Project = {
   factors: number[]
   goals: string[]
   gap: string[]
+  openPositions?: Array<{
+    positionId: string
+    role: string
+    title: string
+    count: number
+    level: string
+    description?: string
+    requiredSkills: string[]
+    niceSkills: string[]
+  }>
 }
 export const factors = [
   { name: "Technical skills", weight: 40 },

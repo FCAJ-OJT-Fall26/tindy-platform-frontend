@@ -239,41 +239,77 @@ export function ProjectDetailScreen() {
                     </div>
                   )
                 })
-              : [
-                  project.role,
-                  project.role === "Frontend Developer"
-                    ? "Backend Developer"
-                    : "Frontend Developer",
-                ].map((role, index) => (
-                  <div className="position-card" key={role}>
-                    <div className="section-heading">
-                      <h3>{role}</h3>
-                      <Badge tone="blue">1 position</Badge>
+              : project.openPositions?.length
+                ? project.openPositions.map((pos) => (
+                    <div className="position-card" key={pos.positionId}>
+                      <div className="section-heading">
+                        <h3>{pos.title}</h3>
+                        <Badge tone="blue">
+                          {pos.count} {pos.count === 1 ? "position" : "positions"}
+                        </Badge>
+                      </div>
+                      <p>
+                        {pos.description ||
+                          "Help build our next release with an ambitious, supportive team."}
+                      </p>
+                      <Chips
+                        items={
+                          pos.requiredSkills.length
+                            ? pos.requiredSkills
+                            : project.skills.slice(0, 3)
+                        }
+                      />
+                      <div className="position-meta">
+                        <span>
+                          <Clock size={13} />
+                          {project.hours} hrs/week
+                        </span>
+                        <span>{pos.level}</span>
+                      </div>
+                      <small>
+                        Nice to have:{" "}
+                        {(pos.niceSkills.length ? pos.niceSkills : project.gap).join(
+                          ", ",
+                        ) || "None"}{" "}
+                        · Collaborative development
+                      </small>
                     </div>
-                    <p>
-                      Help build our next release with an ambitious, supportive
-                      team.
-                    </p>
-                    <Chips
-                      items={
-                        index
-                          ? ["React", "TypeScript", "Git"]
-                          : project.requiredSkills || project.skills.slice(0, 3)
-                      }
-                    />
-                    <div className="position-meta">
-                      <span>
-                        <Clock size={13} />
-                        {project.hours} hrs/week
-                      </span>
-                      <span>{project.difficulty}</span>
+                  ))
+                : [
+                    project.role,
+                    project.role === "Frontend Developer"
+                      ? "Backend Developer"
+                      : "Frontend Developer",
+                  ].map((role, index) => (
+                    <div className="position-card" key={role}>
+                      <div className="section-heading">
+                        <h3>{role}</h3>
+                        <Badge tone="blue">1 position</Badge>
+                      </div>
+                      <p>
+                        Help build our next release with an ambitious, supportive
+                        team.
+                      </p>
+                      <Chips
+                        items={
+                          index
+                            ? ["React", "TypeScript", "Git"]
+                            : project.requiredSkills || project.skills.slice(0, 3)
+                        }
+                      />
+                      <div className="position-meta">
+                        <span>
+                          <Clock size={13} />
+                          {project.hours} hrs/week
+                        </span>
+                        <span>{project.difficulty}</span>
+                      </div>
+                      <small>
+                        Nice to have: {project.gap.join(", ")} · Collaborative
+                        development
+                      </small>
                     </div>
-                    <small>
-                      Nice to have: {project.gap.join(", ")} · Collaborative
-                      development
-                    </small>
-                  </div>
-                ))}
+                  ))}
           </section>
           <section className="panel">
             <SectionHeading

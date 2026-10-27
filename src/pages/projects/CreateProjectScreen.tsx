@@ -7,6 +7,8 @@ import {
   FileText,
   Check,
   Info,
+  Plus,
+  Trash2,
 } from "lucide-react"
 import { useTindy, Project } from "../../store"
 import { PageHeader, Button } from "../../components/ui"
@@ -21,6 +23,17 @@ import type { CatalogSkill, ProfessionalRole, SelectedSkill } from "../../types/
 import SkillSelector from "../../components/onboarding/SkillSelector"
 import SkillIcon from "../../components/onboarding/SkillIcon"
 
+export interface FormPositionItem {
+  id: string
+  role: string
+  title: string
+  description: string
+  count: number
+  level: string
+  requiredSkills: SelectedSkill[]
+  niceSkills: SelectedSkill[]
+}
+
 export function CreateProject() {
   const { id } = useParams()
   const { projects, setProjects, profile, notify } = useTindy()
@@ -30,22 +43,28 @@ export function CreateProject() {
   const [name, setName] = useState(existing?.name || "")
   const [tagline, setTagline] = useState(existing?.tagline || "")
   const [goals, setGoals] = useState(existing?.goals.join("\n") || "")
-  const [role, setRole] = useState(existing?.role || "Backend Developer")
   const [hours, setHours] = useState(existing?.hours || 10)
   const [duration, setDuration] = useState(existing?.duration || "3 months")
   const [type, setType] = useState(existing?.type || "AI & Machine Learning")
   const [members, setMembers] = useState(existing?.team || 1)
-  const [positions, setPositions] = useState(
-    existing ? existing.capacity - existing.team : 2,
-  )
-  const [level, setLevel] = useState(existing?.difficulty || "Intermediate")
   const [confirmed, setConfirmed] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [catalogRoles, setCatalogRoles] = useState<ProfessionalRole[]>([])
   const [catalogSkills, setCatalogSkills] = useState<CatalogSkill[]>([])
 
-  const [selectedRequired, setSelectedRequired] = useState<SelectedSkill[]>([])
-  const [selectedNice, setSelectedNice] = useState<SelectedSkill[]>([])
+  const [positionsList, setPositionsList] = useState<FormPositionItem[]>([
+    {
+      id: "pos-1",
+      role: existing?.role || "Backend Developer",
+      title: existing?.role || "Backend Developer",
+      description: "",
+      count: existing ? Math.max(1, existing.capacity - existing.team) : 2,
+      level: existing?.difficulty || "Intermediate",
+      requiredSkills: [],
+      niceSkills: [],
+    },
+  ])
+  const [activePosIndex, setActivePosIndex] = useState(0)
   const [skillMode, setSkillMode] = useState<"required" | "nice">("required")
   const initializedSkillsRef = useRef(false)
 
@@ -76,12 +95,34 @@ export function CreateProject() {
       }
     }
 
-    if (existing) {
+    if (existing?.openPositions?.length) {
+      const mapped: FormPositionItem[] = existing.openPositions.map((p, idx) => ({
+        id: p.positionId || `pos-${idx + 1}`,
+        role: p.role,
+        title: p.title || p.role,
+        description: p.description || "",
+        count: p.count || 1,
+        level: p.level || "Intermediate",
+        requiredSkills: (p.requiredSkills || []).map(findSkill),
+        niceSkills: (p.niceSkills || []).map(findSkill),
+      }))
+      setPositionsList(mapped)
+    } else if (existing) {
       const reqNames =
         existing.requiredSkills || existing.skills.slice(0, 3) || []
       const niceNames = existing.gap || []
-      setSelectedRequired(reqNames.map(findSkill))
-      setSelectedNice(niceNames.map(findSkill))
+      setPositionsList([
+        {
+          id: "pos-1",
+          role: existing.role || "Backend Developer",
+          title: existing.role || "Backend Developer",
+          description: "",
+          count: Math.max(1, existing.capacity - existing.team),
+          level: existing.difficulty || "Intermediate",
+          requiredSkills: reqNames.map(findSkill),
+          niceSkills: niceNames.map(findSkill),
+        },
+      ])
     } else {
       const defaultReq = [".NET", "PostgreSQL", "C#"]
       const defaultNice = ["Docker", "AWS"]
@@ -101,60 +142,101 @@ export function CreateProject() {
           skill_id: s.skill_id,
           name: s.name,
         }))
-      if (reqMatches.length > 0) setSelectedRequired(reqMatches)
-      if (niceMatches.length > 0) setSelectedNice(niceMatches)
+      setPositionsList([
+        {
+          id: "pos-1",
+          role: "Backend Developer",
+          title: "Backend Developer",
+          description: "Build scalable backend APIs and cloud services.",
+          count: 2,
+          level: "Intermediate",
+          requiredSkills: reqMatches,
+          niceSkills: niceMatches,
+        },
+      ])
     }
   }, [catalogSkills, existing])
 
-  const handleRequiredChange = (newSkills: SelectedSkill[]) => {
-    setSelectedRequired(newSkills)
-    const newIds = new Set(newSkills.map((s) => s.skill_id))
-    setSelectedNice((prev) => prev.filter((s) => !newIds.has(s.skill_id)))
-  }
+  const currentPos =
+    positionsList[activePosIndex] ||
+    positionsList[0] || {
+      id: "pos-fallback",
+      role: "Backend Developer",
+      title: "Backend Developer",
+      description: "",
+      count: 1,
+      level: "Intermediate",
+      requiredSkills: [],
+      niceSkills: [],
+    }
 
-  const handleNiceChange = (newSkills: SelectedSkill[]) => {
-    setSelectedNice(newSkills)
-    const newIds = new Set(newSkills.map((s) => s.skill_id))
-    setSelectedRequired((prev) => prev.filter((s) => !newIds.has(s.skill_id)))
-  }
-
-  const moveToNice = (skill: SelectedSkill) => {
-    setSelectedRequired((prev) =>
-      prev.filter((s) => s.skill_id !== skill.skill_id),
+  const updateActivePosition = (patch: Partial<FormPositionItem>) => {
+    setPositionsList((prev) =>
+      prev.map((pos, idx) =>
+        idx === activePosIndex ? { ...pos, ...patch } : pos,
+      ),
     )
-    setSelectedNice((prev) => [
-      ...prev.filter((s) => s.skill_id !== skill.skill_id),
-      skill,
-    ])
   }
 
-  const moveToRequired = (skill: SelectedSkill) => {
-    setSelectedNice((prev) =>
-      prev.filter((s) => s.skill_id !== skill.skill_id),
-    )
-    setSelectedRequired((prev) => [
-      ...prev.filter((s) => s.skill_id !== skill.skill_id),
-      skill,
-    ])
+  const handleAddPosition = () => {
+    const candidateRoles = [
+      "Frontend Developer",
+      "Backend Developer",
+      "Full-stack Developer",
+      "UI/UX Designer",
+      "AI Engineer",
+      "Mobile Developer",
+      "Cloud Engineer",
+      "DevOps Engineer",
+      "QA / Tester",
+    ]
+    const nextRole =
+      candidateRoles.find((r) => !positionsList.some((p) => p.role === r)) ||
+      `Developer ${positionsList.length + 1}`
+
+    const newPos: FormPositionItem = {
+      id: `pos-${Date.now()}`,
+      role: nextRole,
+      title: nextRole,
+      description: "",
+      count: 1,
+      level: "Intermediate",
+      requiredSkills: [],
+      niceSkills: [],
+    }
+    setPositionsList((prev) => [...prev, newPos])
+    setActivePosIndex(positionsList.length)
+    notify(`Added new position: "${nextRole}"`)
   }
 
-  const removeRequired = (skillId: string) => {
-    setSelectedRequired((prev) => prev.filter((s) => s.skill_id !== skillId))
+  const handleRemovePosition = (indexToRemove: number) => {
+    if (positionsList.length <= 1) {
+      notify("A project must have at least one position.")
+      return
+    }
+    const targetName =
+      positionsList[indexToRemove]?.title ||
+      positionsList[indexToRemove]?.role ||
+      "position"
+    setPositionsList((prev) => prev.filter((_, idx) => idx !== indexToRemove))
+    if (activePosIndex >= indexToRemove && activePosIndex > 0) {
+      setActivePosIndex((prev) => prev - 1)
+    }
+    notify(`Removed position: "${targetName}"`)
   }
 
-  const removeNice = (skillId: string) => {
-    setSelectedNice((prev) => prev.filter((s) => s.skill_id !== skillId))
-  }
+  const totalAvailablePositions = useMemo(() => {
+    return positionsList.reduce((acc, p) => acc + (Number(p.count) || 1), 0)
+  }, [positionsList])
 
-  const allSelectedSkills = useMemo(() => {
-    const list = [...selectedRequired, ...selectedNice]
-    const seen = new Set<string>()
-    return list.filter((s) => {
-      if (seen.has(s.skill_id)) return false
-      seen.add(s.skill_id)
-      return true
-    })
-  }, [selectedRequired, selectedNice])
+  const allProjectSkills = useMemo(() => {
+    const map = new Map<string, SelectedSkill>()
+    for (const pos of positionsList) {
+      for (const s of pos.requiredSkills) map.set(s.skill_id, s)
+      for (const s of pos.niceSkills) map.set(s.skill_id, s)
+    }
+    return Array.from(map.values())
+  }, [positionsList])
 
   return (
     <>
@@ -175,42 +257,37 @@ export function CreateProject() {
             event.preventDefault()
             if (submitting) return
 
-            if (selectedRequired.length === 0) {
-              notify("Please select at least 1 required skill from the catalog")
+            const missingSkillPos = positionsList.find(
+              (p) => p.requiredSkills.length === 0,
+            )
+            if (missingSkillPos) {
+              notify(
+                `Please select at least 1 required skill for "${missingSkillPos.title || missingSkillPos.role}".`,
+              )
+              const targetIdx = positionsList.indexOf(missingSkillPos)
+              if (targetIdx >= 0) setActivePosIndex(targetIdx)
               return
             }
 
             setSubmitting(true)
 
-            const requiredList: string[] = selectedRequired.map(
-              (s) => s.name || s.skill_id,
-            )
-            const niceList: string[] = selectedNice.map(
-              (s) => s.name || s.skill_id,
-            )
             const goalList = goals.split("\n").filter(Boolean)
-            const stackList: string[] = allSelectedSkills.map(
-              (s) => s.name || s.skill_id,
-            )
+            const stackList = allProjectSkills.map((s) => s.name || s.skill_id)
 
             let finalProjectId = existing?.id || `project-${Date.now()}`
 
             if (getStoredToken()) {
               try {
-                const matchedRole = catalogRoles.find(
-                  (r) => r.name.toLowerCase() === role.toLowerCase(),
-                )
-
                 if (existing) {
                   await updateProjectApi(existing.id, {
                     name,
                     tagline: tagline.trim() || undefined,
                     description: jd,
                     category: type,
-                    difficulty_level: toApiDifficulty(level),
+                    difficulty_level: toApiDifficulty(currentPos.level),
                     expected_commitment_hours: hours,
                     duration,
-                    max_team_capacity: members + positions,
+                    max_team_capacity: members + totalAvailablePositions,
                     color_theme: existing.color || "indigo",
                     goals: goalList,
                   })
@@ -220,34 +297,38 @@ export function CreateProject() {
                     tagline: tagline.trim() || undefined,
                     description: jd,
                     category: type,
-                    difficulty_level: toApiDifficulty(level),
+                    difficulty_level: toApiDifficulty(currentPos.level),
                     expected_commitment_hours: hours,
                     duration,
                     initial_team_size: members,
-                    max_team_capacity: members + positions,
+                    max_team_capacity: members + totalAvailablePositions,
                     color_theme: "indigo",
                     recruitment_closing_days: 14,
                     goals: goalList,
-                    positions: [
-                      {
+                    positions: positionsList.map((pos) => {
+                      const matchedRole = catalogRoles.find(
+                        (r) => r.name.toLowerCase() === pos.role.toLowerCase(),
+                      )
+                      return {
                         role_id:
                           matchedRole?.professional_role_id ||
-                          `role_${role.toLowerCase().replace(/[^a-z0-9]+/g, "_")}`,
-                        title: role,
-                        required_count: positions,
-                        experience_level: toApiDifficulty(level),
+                          `role_${pos.role.toLowerCase().replace(/[^a-z0-9]+/g, "_")}`,
+                        title: pos.title || pos.role,
+                        required_count: pos.count,
+                        experience_level: toApiDifficulty(pos.level),
+                        description: pos.description.trim() || undefined,
                         skills: [
-                          ...selectedRequired.map((s) => ({
+                          ...pos.requiredSkills.map((s) => ({
                             skill_id: s.skill_id,
                             is_required: true,
                           })),
-                          ...selectedNice.map((s) => ({
+                          ...pos.niceSkills.map((s) => ({
                             skill_id: s.skill_id,
                             is_required: false,
                           })),
                         ],
-                      },
-                    ],
+                      }
+                    }),
                   })
                   if (created?.project_id) {
                     finalProjectId = created.project_id
@@ -258,6 +339,7 @@ export function CreateProject() {
               }
             }
 
+            const primaryPos = positionsList[0]
             const project: Project = {
               id: finalProjectId,
               name,
@@ -265,12 +347,12 @@ export function CreateProject() {
               description: jd,
               type,
               skills: stackList,
-              role,
+              role: primaryPos?.title || primaryPos?.role || "Developer",
               hours,
               duration,
-              difficulty: level,
+              difficulty: primaryPos?.level || "Intermediate",
               team: members,
-              capacity: members + positions,
+              capacity: members + totalAvailablePositions,
               leader: profile.name,
               initials: name
                 .split(" ")
@@ -283,8 +365,20 @@ export function CreateProject() {
               closing: 14,
               factors: existing?.factors || [80, 85, 100, 75, 100],
               goals: goalList,
-              requiredSkills: requiredList,
-              gap: niceList,
+              requiredSkills:
+                primaryPos?.requiredSkills.map((s) => s.name || s.skill_id) ||
+                [],
+              gap: primaryPos?.niceSkills.map((s) => s.name || s.skill_id) || [],
+              openPositions: positionsList.map((p) => ({
+                positionId: p.id,
+                role: p.role,
+                title: p.title || p.role,
+                count: p.count,
+                level: p.level,
+                description: p.description,
+                requiredSkills: p.requiredSkills.map((s) => s.name || s.skill_id),
+                niceSkills: p.niceSkills.map((s) => s.name || s.skill_id),
+              })),
             }
             setProjects((old) =>
               existing
@@ -346,11 +440,14 @@ export function CreateProject() {
               variant="secondary"
               disabled={!name.trim()}
               onClick={() => {
-                const stackText = allSelectedSkills
+                const stackText = allProjectSkills
                   .map((s) => s.name)
                   .join(", ")
+                const rolesText = positionsList
+                  .map((p) => `${p.count} ${p.title || p.role}`)
+                  .join(", ")
                 setJd(
-                  `${name} is a collaborative FCAJ project focused on ${type.toLowerCase()}. Our goal is to build a practical, user-centered solution using ${stackText || "a modern technology stack"}. We’re looking for a ${role} to help design, develop, and deploy the product. You’ll work alongside a supportive student team and contribute ${hours} hours per week over ${duration}.`,
+                  `${name} is a collaborative FCAJ project focused on ${type.toLowerCase()}. Our goal is to build a practical, user-centered solution using ${stackText || "a modern technology stack"}. We’re looking for ${rolesText || "teammates"} to help design, develop, and deploy the product. You’ll work alongside a supportive student team and contribute ${hours} hours per week over ${duration}.`,
                 )
                 setConfirmed(false)
                 notify("Demo JD generated · Please review before publishing")
@@ -391,12 +488,12 @@ export function CreateProject() {
             <div className="field">
               <span>
                 Technology stack{" "}
-                <small>(Auto-synced from skills selected below)</small>
+                <small>(Auto-synced from all positions below)</small>
               </span>
               <div className="tech-stack-readonly-display">
-                {allSelectedSkills.length > 0 ? (
+                {allProjectSkills.length > 0 ? (
                   <div className="tech-stack-chips">
-                    {allSelectedSkills.map((skill) => (
+                    {allProjectSkills.map((skill) => (
                       <span key={skill.skill_id} className="tech-stack-pill">
                         <SkillIcon name={skill.name || ""} size={13} />
                         {skill.name || "Skill"}
@@ -411,13 +508,15 @@ export function CreateProject() {
               </div>
             </div>
           </div>
+
           <div className="form-section-heading">
             <span>02</span>
             <div>
               <h2>The people & the fit</h2>
-              <p>Define the roles, not just the tools.</p>
+              <p>Define the positions you are recruiting for your team.</p>
             </div>
           </div>
+
           <div className="form-grid">
             <label className="field">
               Current team members
@@ -430,225 +529,435 @@ export function CreateProject() {
                 onChange={(event) => setMembers(Number(event.target.value))}
               />
             </label>
-            <label className="field">
-              Available positions
-              <input
-                type="number"
-                min="1"
-                max="20"
-                required
-                value={positions}
-                onChange={(event) => setPositions(Number(event.target.value))}
-              />
-            </label>
-            <label className="field">
-              Required role
-              <select
-                value={role}
-                onChange={(event) => setRole(event.target.value)}
-              >
-                {[
-                  "Backend Developer",
-                  "Frontend Developer",
-                  "Full-stack Developer",
-                  "AI Engineer",
-                  "Cloud Engineer",
-                  "UI/UX Designer",
-                ].map((item) => (
-                  <option key={item}>{item}</option>
-                ))}
-              </select>
-            </label>
-            <label className="field">
-              Experience level
-              <select
-                value={level}
-                onChange={(event) => setLevel(event.target.value)}
-              >
-                <option>Beginner-friendly</option>
-                <option>Intermediate</option>
-                <option>Advanced</option>
-              </select>
-            </label>
+            <div className="field">
+              <span>
+                Total open positions{" "}
+                <small>(Auto-calculated across all positions)</small>
+              </span>
+              <div className="readonly-metric-box">
+                <strong>{totalAvailablePositions}</strong>
+                <span>
+                  openings across {positionsList.length} role
+                  {positionsList.length > 1 ? "s" : ""}
+                </span>
+              </div>
+            </div>
           </div>
 
-          <div className="project-skills-manager">
-            <div className="skill-category-tabs-header">
-              <div>
-                <h3
-                  style={{
-                    fontSize: "14px",
-                    fontWeight: 600,
-                    margin: "0 0 4px",
-                  }}
-                >
-                  Technical skills catalog
-                </h3>
-                <p className="muted" style={{ fontSize: "11px", margin: 0 }}>
-                  Choose directly from the verified catalog. Plain text entry is disabled.
-                </p>
-              </div>
-              <div className="skill-mode-toggle">
-                <button
-                  type="button"
-                  className={`skill-mode-btn ${
-                    skillMode === "required" ? "active required-active" : ""
-                  }`}
-                  onClick={() => setSkillMode("required")}
-                >
-                  <span className="mode-indicator required-dot" />
-                  Required skills
-                  <span className="mode-count">{selectedRequired.length}</span>
-                </button>
-                <button
-                  type="button"
-                  className={`skill-mode-btn ${
-                    skillMode === "nice" ? "active nice-active" : ""
-                  }`}
-                  onClick={() => setSkillMode("nice")}
-                >
-                  <span className="mode-indicator nice-dot" />
-                  Nice-to-have skills
-                  <span className="mode-count">{selectedNice.length}</span>
-                </button>
-              </div>
-            </div>
-
-            <div className="skill-selector-wrapper">
-              <SkillSelector
-                key={skillMode}
-                selected={
-                  skillMode === "required" ? selectedRequired : selectedNice
-                }
-                onChange={
-                  skillMode === "required"
-                    ? handleRequiredChange
-                    : handleNiceChange
-                }
-                min={skillMode === "required" ? 1 : 0}
-                max={20}
-                selectedHeading={
-                  skillMode === "required"
-                    ? `Selected required skills (${selectedRequired.length})`
-                    : `Selected nice-to-have skills (${selectedNice.length})`
-                }
-                subtitle={
-                  skillMode === "required"
-                    ? "Choose mandatory technical skills applicants must possess for this role."
-                    : "Choose optional or nice-to-have skills for this role."
-                }
-              />
-            </div>
-
-            <div className="skills-overview-container">
-              <div className="skills-overview-column">
-                <div className="skills-overview-header">
-                  <span
-                    style={{
-                      background: "#eef3ff",
-                      color: "#1d40a0",
-                      border: "1px solid #c9dafb",
-                      fontWeight: 700,
-                      fontSize: "11px",
-                      padding: "3px 8px",
-                      borderRadius: "4px",
-                    }}
-                  >
-                    REQUIRED ({selectedRequired.length})
-                  </span>
-                  <small className="muted">Mandatory qualifications</small>
-                </div>
-                <div className="skills-overview-chips">
-                  {selectedRequired.length > 0 ? (
-                    selectedRequired.map((s) => (
-                      <span
-                        key={s.skill_id}
-                        className="overview-chip chip-required"
-                      >
-                        <SkillIcon name={s.name || ""} size={13} />
-                        <span className="chip-label">{s.name || s.skill_id}</span>
-                        <button
-                          type="button"
-                          className="chip-action-btn"
-                          title="Move to Nice-to-have"
-                          onClick={() => moveToNice(s)}
-                        >
-                          ⇄
-                        </button>
-                        <button
-                          type="button"
-                          className="chip-remove-btn"
-                          title="Remove skill"
-                          onClick={() => removeRequired(s.skill_id)}
+          {/* Option A: Position Tabs */}
+          <div className="position-tabs-container">
+            <div className="position-tabs-header">
+              <div className="position-tabs-list">
+                {positionsList.map((pos, idx) => {
+                  const isActive = idx === activePosIndex
+                  return (
+                    <button
+                      key={pos.id}
+                      type="button"
+                      className={`position-tab ${isActive ? "active" : ""}`}
+                      onClick={() => setActivePosIndex(idx)}
+                    >
+                      <span className="pos-tab-badge">{pos.count}</span>
+                      <span className="pos-tab-title">
+                        {pos.title || pos.role}
+                      </span>
+                      {positionsList.length > 1 && (
+                        <span
+                          className="pos-tab-close"
+                          title="Delete position"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handleRemovePosition(idx)
+                          }}
                         >
                           ×
-                        </button>
-                      </span>
-                    ))
-                  ) : (
-                    <span
-                      className="muted"
-                      style={{ fontSize: "12px", fontStyle: "italic" }}
-                    >
-                      No required skills selected yet. Select at least 1 skill
-                      above.
+                        </span>
+                      )}
+                    </button>
+                  )
+                })}
+              </div>
+              <button
+                type="button"
+                className="btn btn-secondary add-position-btn"
+                onClick={handleAddPosition}
+              >
+                <Plus size={14} />
+                <span>Add another position</span>
+              </button>
+            </div>
+
+            {/* Position Editor Card */}
+            <div className="position-editor-card">
+              <div className="position-editor-header">
+                <div>
+                  <h3>
+                    {currentPos.title || currentPos.role}
+                    <span className="position-badge-num">
+                      Position {activePosIndex + 1} of {positionsList.length}
                     </span>
-                  )}
+                  </h3>
+                  <p
+                    className="muted"
+                    style={{ fontSize: "11px", margin: "2px 0 0" }}
+                  >
+                    Configure requirements, headcount, and specific skills for
+                    this position.
+                  </p>
                 </div>
+                {positionsList.length > 1 && (
+                  <button
+                    type="button"
+                    className="btn btn-ghost"
+                    style={{
+                      color: "#d9534f",
+                      fontSize: "12px",
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: "4px",
+                    }}
+                    onClick={() => handleRemovePosition(activePosIndex)}
+                  >
+                    <Trash2 size={14} />
+                    <span>Delete this position</span>
+                  </button>
+                )}
               </div>
 
-              <div className="skills-overview-column">
-                <div className="skills-overview-header">
-                  <span
-                    style={{
-                      background: "#eafaf6",
-                      color: "#0b6858",
-                      border: "1px solid #c1ece0",
-                      fontWeight: 700,
-                      fontSize: "11px",
-                      padding: "3px 8px",
-                      borderRadius: "4px",
+              <div className="form-grid">
+                <label className="field">
+                  Required role
+                  <select
+                    value={currentPos.role}
+                    onChange={(event) => {
+                      const newRole = event.target.value
+                      updateActivePosition({
+                        role: newRole,
+                        title:
+                          currentPos.title === currentPos.role
+                            ? newRole
+                            : currentPos.title,
+                      })
                     }}
                   >
-                    NICE-TO-HAVE ({selectedNice.length})
-                  </span>
-                  <small className="muted">Preferred / bonus skills</small>
-                </div>
-                <div className="skills-overview-chips">
-                  {selectedNice.length > 0 ? (
-                    selectedNice.map((s) => (
-                      <span
-                        key={s.skill_id}
-                        className="overview-chip chip-nice"
-                      >
-                        <SkillIcon name={s.name || ""} size={13} />
-                        <span className="chip-label">{s.name || s.skill_id}</span>
-                        <button
-                          type="button"
-                          className="chip-action-btn"
-                          title="Move to Required"
-                          onClick={() => moveToRequired(s)}
-                        >
-                          ⇄
-                        </button>
-                        <button
-                          type="button"
-                          className="chip-remove-btn"
-                          title="Remove skill"
-                          onClick={() => removeNice(s.skill_id)}
-                        >
-                          ×
-                        </button>
-                      </span>
-                    ))
-                  ) : (
-                    <span
-                      className="muted"
-                      style={{ fontSize: "12px", fontStyle: "italic" }}
+                    {[
+                      "Backend Developer",
+                      "Frontend Developer",
+                      "Full-stack Developer",
+                      "AI Engineer",
+                      "Mobile Developer",
+                      "Cloud Engineer",
+                      "DevOps Engineer",
+                      "UI/UX Designer",
+                      "Data Analyst",
+                      "QA / Tester",
+                    ].map((item) => (
+                      <option key={item}>{item}</option>
+                    ))}
+                  </select>
+                </label>
+                <label className="field">
+                  Job title <small>Custom role title</small>
+                  <input
+                    placeholder="e.g. Lead Frontend Engineer"
+                    value={currentPos.title}
+                    onChange={(event) =>
+                      updateActivePosition({ title: event.target.value })
+                    }
+                  />
+                </label>
+              </div>
+
+              <div className="form-grid">
+                <label className="field">
+                  Number of openings
+                  <input
+                    type="number"
+                    min="1"
+                    max="10"
+                    required
+                    value={currentPos.count}
+                    onChange={(event) =>
+                      updateActivePosition({
+                        count: Math.max(1, Number(event.target.value)),
+                      })
+                    }
+                  />
+                </label>
+                <label className="field">
+                  Experience level
+                  <select
+                    value={currentPos.level}
+                    onChange={(event) =>
+                      updateActivePosition({ level: event.target.value })
+                    }
+                  >
+                    <option>Beginner-friendly</option>
+                    <option>Intermediate</option>
+                    <option>Advanced</option>
+                  </select>
+                </label>
+              </div>
+
+              <label className="field">
+                Specific tasks & deliverables{" "}
+                <small>What will they actually build with these tools?</small>
+                <textarea
+                  rows={2}
+                  placeholder="e.g. Build responsive SaaS dashboard, integrate REST APIs, and optimize mobile web performance."
+                  value={currentPos.description}
+                  onChange={(event) =>
+                    updateActivePosition({ description: event.target.value })
+                  }
+                />
+              </label>
+
+              {/* Position Skills Manager */}
+              <div className="project-skills-manager">
+                <div className="skill-category-tabs-header">
+                  <div>
+                    <h4
+                      style={{
+                        fontSize: "13px",
+                        fontWeight: 600,
+                        margin: "0 0 4px",
+                      }}
                     >
-                      No nice-to-have skills selected (Optional).
-                    </span>
-                  )}
+                      Technical skills for:{" "}
+                      <strong style={{ color: "#3553b5" }}>
+                        {currentPos.title || currentPos.role}
+                      </strong>
+                    </h4>
+                    <p className="muted" style={{ fontSize: "11px", margin: 0 }}>
+                      Select the required and nice-to-have skills specifically
+                      for this position.
+                    </p>
+                  </div>
+                  <div className="skill-mode-toggle">
+                    <button
+                      type="button"
+                      className={`skill-mode-btn ${
+                        skillMode === "required" ? "active required-active" : ""
+                      }`}
+                      onClick={() => setSkillMode("required")}
+                    >
+                      <span className="mode-indicator required-dot" />
+                      Required skills
+                      <span className="mode-count">
+                        {currentPos.requiredSkills.length}
+                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      className={`skill-mode-btn ${
+                        skillMode === "nice" ? "active nice-active" : ""
+                      }`}
+                      onClick={() => setSkillMode("nice")}
+                    >
+                      <span className="mode-indicator nice-dot" />
+                      Nice-to-have skills
+                      <span className="mode-count">
+                        {currentPos.niceSkills.length}
+                      </span>
+                    </button>
+                  </div>
+                </div>
+
+                <div className="skill-selector-wrapper">
+                  <SkillSelector
+                    key={`${currentPos.id}-${skillMode}`}
+                    selected={
+                      skillMode === "required"
+                        ? currentPos.requiredSkills
+                        : currentPos.niceSkills
+                    }
+                    onChange={(newSkills) => {
+                      if (skillMode === "required") {
+                        const newIds = new Set(newSkills.map((s) => s.skill_id))
+                        updateActivePosition({
+                          requiredSkills: newSkills,
+                          niceSkills: currentPos.niceSkills.filter(
+                            (s) => !newIds.has(s.skill_id),
+                          ),
+                        })
+                      } else {
+                        const newIds = new Set(newSkills.map((s) => s.skill_id))
+                        updateActivePosition({
+                          niceSkills: newSkills,
+                          requiredSkills: currentPos.requiredSkills.filter(
+                            (s) => !newIds.has(s.skill_id),
+                          ),
+                        })
+                      }
+                    }}
+                    min={skillMode === "required" ? 1 : 0}
+                    max={15}
+                    selectedHeading={
+                      skillMode === "required"
+                        ? `Required skills for ${currentPos.title || currentPos.role} (${currentPos.requiredSkills.length})`
+                        : `Nice-to-have skills for ${currentPos.title || currentPos.role} (${currentPos.niceSkills.length})`
+                    }
+                    subtitle={
+                      skillMode === "required"
+                        ? `Choose mandatory skills candidates must have for this ${currentPos.role} role.`
+                        : `Choose bonus or optional skills for this ${currentPos.role} role.`
+                    }
+                  />
+                </div>
+
+                <div className="skills-overview-container">
+                  <div className="skills-overview-column">
+                    <div className="skills-overview-header">
+                      <span
+                        style={{
+                          background: "#eef3ff",
+                          color: "#1d40a0",
+                          border: "1px solid #c9dafb",
+                          fontWeight: 700,
+                          fontSize: "11px",
+                          padding: "3px 8px",
+                          borderRadius: "4px",
+                        }}
+                      >
+                        REQUIRED ({currentPos.requiredSkills.length})
+                      </span>
+                      <small className="muted">Mandatory qualifications</small>
+                    </div>
+                    <div className="skills-overview-chips">
+                      {currentPos.requiredSkills.length > 0 ? (
+                        currentPos.requiredSkills.map((s) => (
+                          <span
+                            key={s.skill_id}
+                            className="overview-chip chip-required"
+                          >
+                            <SkillIcon name={s.name || ""} size={13} />
+                            <span className="chip-label">
+                              {s.name || s.skill_id}
+                            </span>
+                            <button
+                              type="button"
+                              className="chip-action-btn"
+                              title="Move to Nice-to-have"
+                              onClick={() => {
+                                updateActivePosition({
+                                  requiredSkills:
+                                    currentPos.requiredSkills.filter(
+                                      (x) => x.skill_id !== s.skill_id,
+                                    ),
+                                  niceSkills: [
+                                    ...currentPos.niceSkills.filter(
+                                      (x) => x.skill_id !== s.skill_id,
+                                    ),
+                                    s,
+                                  ],
+                                })
+                              }}
+                            >
+                              ⇄
+                            </button>
+                            <button
+                              type="button"
+                              className="chip-remove-btn"
+                              title="Remove skill"
+                              onClick={() => {
+                                updateActivePosition({
+                                  requiredSkills:
+                                    currentPos.requiredSkills.filter(
+                                      (x) => x.skill_id !== s.skill_id,
+                                    ),
+                                })
+                              }}
+                            >
+                              ×
+                            </button>
+                          </span>
+                        ))
+                      ) : (
+                        <span
+                          className="muted"
+                          style={{ fontSize: "12px", fontStyle: "italic" }}
+                        >
+                          No required skills selected yet. Select at least 1 skill
+                          above.
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="skills-overview-column">
+                    <div className="skills-overview-header">
+                      <span
+                        style={{
+                          background: "#eafaf6",
+                          color: "#0b6858",
+                          border: "1px solid #c1ece0",
+                          fontWeight: 700,
+                          fontSize: "11px",
+                          padding: "3px 8px",
+                          borderRadius: "4px",
+                        }}
+                      >
+                        NICE-TO-HAVE ({currentPos.niceSkills.length})
+                      </span>
+                      <small className="muted">Preferred / bonus skills</small>
+                    </div>
+                    <div className="skills-overview-chips">
+                      {currentPos.niceSkills.length > 0 ? (
+                        currentPos.niceSkills.map((s) => (
+                          <span
+                            key={s.skill_id}
+                            className="overview-chip chip-nice"
+                          >
+                            <SkillIcon name={s.name || ""} size={13} />
+                            <span className="chip-label">
+                              {s.name || s.skill_id}
+                            </span>
+                            <button
+                              type="button"
+                              className="chip-action-btn"
+                              title="Move to Required"
+                              onClick={() => {
+                                updateActivePosition({
+                                  niceSkills: currentPos.niceSkills.filter(
+                                    (x) => x.skill_id !== s.skill_id,
+                                  ),
+                                  requiredSkills: [
+                                    ...currentPos.requiredSkills.filter(
+                                      (x) => x.skill_id !== s.skill_id,
+                                    ),
+                                    s,
+                                  ],
+                                })
+                              }}
+                            >
+                              ⇄
+                            </button>
+                            <button
+                              type="button"
+                              className="chip-remove-btn"
+                              title="Remove skill"
+                              onClick={() => {
+                                updateActivePosition({
+                                  niceSkills: currentPos.niceSkills.filter(
+                                    (x) => x.skill_id !== s.skill_id,
+                                  ),
+                                })
+                              }}
+                            >
+                              ×
+                            </button>
+                          </span>
+                        ))
+                      ) : (
+                        <span
+                          className="muted"
+                          style={{ fontSize: "12px", fontStyle: "italic" }}
+                        >
+                          No nice-to-have skills selected (Optional).
+                        </span>
+                      )}
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -739,3 +1048,4 @@ export function CreateProject() {
 }
 
 export default CreateProject
+
