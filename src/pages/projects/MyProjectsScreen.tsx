@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react"
-import { Link, useLocation, useSearchParams } from "react-router"
+import { useEffect, useState, useMemo } from "react"
+import { Link, useSearchParams } from "react-router"
 import {
   ArrowRight,
   ArrowUpRight,
@@ -8,6 +8,11 @@ import {
   FolderKanban,
   Mail,
   Users,
+  Send,
+  Bookmark,
+  Crown,
+  CheckCircle2,
+  Sparkles,
 } from "lucide-react"
 import { Badge, Button, EmptyState, Modal, PageHeader, ProjectCard } from "../../components/ui"
 import type { Project } from "../../data"
@@ -15,6 +20,125 @@ import { getStoredToken } from "../../services/apiClient"
 import { getMyProjectsApi } from "../../services/projects.service"
 import { useTindy } from "../../store"
 import { useExplanation } from "../../utils/useExplanation"
+
+export type TabKey = "Interested" | "Saved" | "Invited" | "Active" | "Leading" | "Completed"
+export type StageId = "all" | "pipeline" | "teams" | "completed"
+
+interface StageGroup {
+  id: StageId
+  stageNumber: string
+  label: string
+  tabs: TabKey[]
+}
+
+const STAGE_GROUPS: StageGroup[] = [
+  {
+    id: "pipeline",
+    stageNumber: "Stage 1",
+    label: "Opportunity Pipeline",
+    tabs: ["Interested", "Saved", "Invited"],
+  },
+  {
+    id: "teams",
+    stageNumber: "Stage 2",
+    label: "Active Collaboration",
+    tabs: ["Active", "Leading"],
+  },
+  {
+    id: "completed",
+    stageNumber: "Stage 3",
+    label: "Portfolio & Shipped",
+    tabs: ["Completed"],
+  },
+]
+
+interface TabConfig {
+  key: TabKey
+  label: string
+  stageId: StageId
+  stageLabel: string
+  icon: typeof Send
+  description: string
+  emptyTitle: string
+  emptyDescription: string
+  emptyActionText: string
+  emptyActionTo: string
+}
+
+const TAB_CONFIGS: Record<TabKey, TabConfig> = {
+  Interested: {
+    key: "Interested",
+    label: "Interested",
+    stageId: "pipeline",
+    stageLabel: "Opportunity Pipeline",
+    icon: Send,
+    description: "Applications and interest sent · Awaiting project leaders to review your profile.",
+    emptyTitle: "No applications sent yet.",
+    emptyDescription: "Explore projects matching your skills on the Discovery feed and swipe right to submit interest.",
+    emptyActionText: "Discover projects",
+    emptyActionTo: "/discover",
+  },
+  Saved: {
+    key: "Saved",
+    label: "Saved",
+    stageId: "pipeline",
+    stageLabel: "Opportunity Pipeline",
+    icon: Bookmark,
+    description: "Bookmarked opportunities · Saved to evaluate requirements or apply when you are ready.",
+    emptyTitle: "You haven't saved any projects yet.",
+    emptyDescription: "Save projects that catch your eye during discovery. You can always come back to review them.",
+    emptyActionText: "Discover projects",
+    emptyActionTo: "/discover",
+  },
+  Invited: {
+    key: "Invited",
+    label: "Invited",
+    stageId: "pipeline",
+    stageLabel: "Opportunity Pipeline",
+    icon: Mail,
+    description: "Direct invitations received · Project leaders who reviewed your profile and want you on their team.",
+    emptyTitle: "No pending invitations.",
+    emptyDescription: "When a project leader invites you to their team, the invitation and role commitment will appear here.",
+    emptyActionText: "Discover projects",
+    emptyActionTo: "/discover",
+  },
+  Active: {
+    key: "Active",
+    label: "Active",
+    stageId: "teams",
+    stageLabel: "Active Collaboration",
+    icon: Users,
+    description: "In-flight team projects · Active sprints and workspace collaboration where you are a confirmed member.",
+    emptyTitle: "No active projects yet.",
+    emptyDescription: "Once your application is approved or you accept an invitation, your active team projects will show here.",
+    emptyActionText: "Find teams to join",
+    emptyActionTo: "/discover",
+  },
+  Leading: {
+    key: "Leading",
+    label: "Leading",
+    stageId: "teams",
+    stageLabel: "Active Collaboration",
+    icon: Crown,
+    description: "Projects led by you · Manage candidate applications and team progress in Leader Workspace.",
+    emptyTitle: "No projects led by you yet.",
+    emptyDescription: "Ready to launch your own venture? Create a project in Leader Workspace to assemble teammates.",
+    emptyActionText: "Go to Leader Workspace",
+    emptyActionTo: "/leader",
+  },
+  Completed: {
+    key: "Completed",
+    label: "Completed",
+    stageId: "completed",
+    stageLabel: "Portfolio & Shipped",
+    icon: CheckCircle2,
+    description: "Delivered & shipped projects · Preserved in your portfolio to showcase demonstrated capabilities.",
+    emptyTitle: "No completed projects yet.",
+    emptyDescription: "Finished projects will be preserved here as part of your team track record and verifiable experience.",
+    emptyActionText: "Discover new projects",
+    emptyActionTo: "/discover",
+  },
+}
 
 function Cards({ projects, status }: { projects: Project[]; status?: string }) {
   const { saved, toggleSave } = useTindy()
@@ -52,20 +176,23 @@ export function MyProjectsScreen() {
     setActive,
     notify,
   } = useTindy()
-  const location = useLocation()
+
   const [params, setParams] = useSearchParams()
-  const tab =
-    params.get("tab") ||
-    (location.pathname === "/saved"
-      ? "Saved"
-      : location.pathname === "/interests"
-        ? "Interested"
-        : "Active")
+  const rawTab = params.get("tab")
+  const validTabs: TabKey[] = ["Interested", "Saved", "Invited", "Active", "Leading", "Completed"]
+  const tab: TabKey = validTabs.includes(rawTab as TabKey)
+    ? (rawTab as TabKey)
+    : "Active"
+
   const [invitation, setInvitation] = useState<Project | null>(null)
   const [remoteLeadingIds, setRemoteLeadingIds] = useState<string[]>([])
   const [pendingApplicantsByProject, setPendingApplicantsByProject] = useState<
     Record<string, number>
   >({})
+
+  // Determine active stage group based on current tab
+  const currentTabConfig = TAB_CONFIGS[tab] || TAB_CONFIGS.Active
+  const activeStageId: StageId = currentTabConfig.stageId
 
   useEffect(() => {
     if (!getStoredToken()) return
@@ -159,16 +286,20 @@ export function MyProjectsScreen() {
     return () => controller.abort()
   }, [profile.name, setActive, setProjects])
 
-  const leadingIds = Array.from(
-    new Set([
-      ...remoteLeadingIds,
-      ...projects
-        .filter((p) => p.id === "cloud-desk" || (profile.name && p.leader === profile.name))
-        .map((p) => p.id),
-    ]),
+  const leadingIds = useMemo(
+    () =>
+      Array.from(
+        new Set([
+          ...remoteLeadingIds,
+          ...projects
+            .filter((p) => p.id === "cloud-desk" || (profile.name && p.leader === profile.name))
+            .map((p) => p.id),
+        ]),
+      ),
+    [projects, remoteLeadingIds, profile.name]
   )
 
-  const statuses: Record<string, string[]> = {
+  const statuses: Record<TabKey, string[]> = {
     Interested: interested,
     Saved: saved,
     Invited: invited,
@@ -176,43 +307,155 @@ export function MyProjectsScreen() {
     Leading: leadingIds,
     Completed: completed,
   }
+
   const selected = projects.filter((project) =>
-    statuses[tab]?.includes(project.id),
+    statuses[tab]?.includes(project.id)
   )
+
+  // Calculate totals for each stage group
+  const stageCounts = useMemo(() => {
+    return {
+      pipeline: interested.length + saved.length + invited.length,
+      teams: active.length + leadingIds.length,
+      completed: completed.length,
+    }
+  }, [interested.length, saved.length, invited.length, active.length, leadingIds.length, completed.length])
+
+  const totalPendingApplicants = Object.values(pendingApplicantsByProject).reduce(
+    (a, b) => a + b,
+    0
+  )
+
   return (
     <>
       <PageHeader
-        title={
-          location.pathname === "/interests" ? "My interests" : "My projects"
-        }
-        description="From the first spark of interest to the projects you ship."
+        title="My projects"
+        description="Track your complete matching journey — from expressing interest to active team collaboration and shipped deliverables."
         action={
           <Link to="/discover" className="btn btn-secondary">
             Discover projects <ArrowUpRight size={15} />
           </Link>
         }
       />
-      <div className="status-tabs">
-        {Object.entries(statuses).map(([status, ids]) => (
-          <button
-            key={status}
-            onClick={() => setParams({ tab: status })}
-            className={tab === status ? "active" : ""}
-          >
-            {status}
-            <span>{ids.length}</span>
-          </button>
-        ))}
+
+      <div className="matching-journey-wrapper">
+        {/* Stage Overview Chips */}
+        <div className="matching-journey-stages" role="navigation" aria-label="Journey stages">
+          {STAGE_GROUPS.map((group) => {
+            const isCurrentStage = activeStageId === group.id
+            const count = stageCounts[group.id as keyof typeof stageCounts]
+            return (
+              <button
+                key={group.id}
+                type="button"
+                className={`matching-stage-pill ${isCurrentStage ? "active" : ""}`}
+                onClick={() => setParams({ tab: group.tabs[0] })}
+                title={`Jump to ${group.label}`}
+              >
+                <span className="stage-num">{group.stageNumber}</span>
+                <span>{group.label}</span>
+                <span className="stage-count">({count})</span>
+              </button>
+            )
+          })}
+        </div>
+
+        {/* 6 Tabs Grouped in Matching Journey Sequence */}
+        <div className="journey-tabs-bar" role="tablist" aria-label="Project tabs">
+          {STAGE_GROUPS.map((group, groupIdx) => (
+            <div key={group.id} style={{ display: "contents" }}>
+              {groupIdx > 0 && <span className="journey-tab-sep" aria-hidden="true" />}
+              {group.tabs.map((tabKey) => {
+                const config = TAB_CONFIGS[tabKey]
+                const Icon = config.icon
+                const count = statuses[tabKey]?.length || 0
+                const isActive = tab === tabKey
+                const hasPendingApplicants = tabKey === "Leading" && totalPendingApplicants > 0
+                const hasPendingInvitations = tabKey === "Invited" && invited.length > 0
+
+                return (
+                  <button
+                    key={tabKey}
+                    role="tab"
+                    aria-selected={isActive}
+                    onClick={() => setParams({ tab: tabKey })}
+                    className={`journey-tab-item ${isActive ? "active" : ""}`}
+                  >
+                    <Icon className="tab-icon" />
+                    <span>{config.label}</span>
+                    <span className="tab-count-badge">{count}</span>
+                    {hasPendingInvitations && <span className="journey-tab-pulse-dot" title="Pending invitations" />}
+                    {hasPendingApplicants && (
+                      <span
+                        style={{
+                          fontSize: "10px",
+                          fontWeight: 700,
+                          background: "#fee2e2",
+                          color: "#dc2626",
+                          padding: "1px 5px",
+                          borderRadius: "9999px",
+                          marginLeft: "2px",
+                        }}
+                        title={`${totalPendingApplicants} applicants waiting`}
+                      >
+                        +{totalPendingApplicants}
+                      </span>
+                    )}
+                  </button>
+                )
+              })}
+            </div>
+          ))}
+        </div>
+
+        {/* Contextual Description Banner */}
+        <div className="journey-tab-context-bar">
+          <div className="journey-tab-context-left">
+            <span
+              className={`journey-tab-context-badge ${
+                currentTabConfig.stageId === "pipeline"
+                  ? "pipeline"
+                  : currentTabConfig.stageId === "teams"
+                  ? "active-team"
+                  : "shipped"
+              }`}
+            >
+              {currentTabConfig.stageLabel}
+            </span>
+            <span>{currentTabConfig.description}</span>
+          </div>
+
+          <div className="journey-tab-context-right">
+            {tab === "Leading" && (
+              <Link
+                to="/leader"
+                className="btn btn-secondary"
+                style={{ padding: "4px 10px", fontSize: "12px", height: "auto" }}
+              >
+                Leader Workspace <ArrowUpRight size={13} />
+              </Link>
+            )}
+            {tab === "Interested" && (
+              <Link
+                to="/discover"
+                className="btn btn-secondary"
+                style={{ padding: "4px 10px", fontSize: "12px", height: "auto" }}
+              >
+                Swipe more projects <Sparkles size={13} />
+              </Link>
+            )}
+          </div>
+        </div>
       </div>
+
       <div key={tab} className="tab-pane-transition">
         {selected.length ? (
           <>
             {tab === "Invited" && (
-              <div className="info-banner">
+              <div className="info-banner" style={{ marginBottom: "20px" }}>
                 <Mail size={18} />
                 <span>
-                  A team is ready to welcome you. Review the invitation to see the
-                  role and commitment.
+                  A team is ready to welcome you. Review the invitation to see the role and commitment.
                 </span>
               </div>
             )}
@@ -222,51 +465,39 @@ export function MyProjectsScreen() {
                 tab === "Interested"
                   ? "Interest sent · Waiting for project leader"
                   : tab === "Active"
-                    ? "You’re on the team"
-                    : tab === "Leading"
-                      ? Object.values(pendingApplicantsByProject).some((c) => c > 0)
-                        ? `Project leader · ${Object.values(pendingApplicantsByProject).reduce((a, b) => a + b, 0)} pending applicants`
-                        : "You’re leading this project"
-                      : tab === "Completed"
-                        ? "Project completed"
-                        : undefined
+                  ? "You’re on the team"
+                  : tab === "Leading"
+                  ? totalPendingApplicants > 0
+                    ? `Project leader · ${totalPendingApplicants} pending applicants`
+                    : "You’re leading this project"
+                  : tab === "Completed"
+                  ? "Project completed"
+                  : undefined
               }
             />
             {tab === "Invited" &&
               selected.map((project) => (
-                <div className="invitation-bar" key={project.id}>
+                <div className="invitation-bar" key={project.id} style={{ marginTop: "16px" }}>
                   <span>
-                    <strong>{project.leader}</strong> invited you to{" "}
-                    <strong>{project.name}</strong>
+                    <strong>{project.leader}</strong> invited you to <strong>{project.name}</strong>
                   </span>
-                  <Button onClick={() => setInvitation(project)}>
-                    Review invitation
-                  </Button>
+                  <Button onClick={() => setInvitation(project)}>Review invitation</Button>
                 </div>
               ))}
           </>
         ) : (
           <EmptyState
-            title={
-              tab === "Saved"
-                ? "You haven't saved any projects yet."
-                : tab === "Interested"
-                  ? "Your next project is out there."
-                  : `No ${tab.toLowerCase()} projects yet.`
-            }
-            description={
-              tab === "Saved"
-                ? "Save a project that catches your eye. You can always come back to it."
-                : "Discover projects that fit your skills and take the next step."
-            }
+            title={currentTabConfig.emptyTitle}
+            description={currentTabConfig.emptyDescription}
             action={
-              <Link to="/discover" className="btn btn-primary">
-                Discover projects <ArrowRight size={15} />
+              <Link to={currentTabConfig.emptyActionTo} className="btn btn-primary">
+                {currentTabConfig.emptyActionText} <ArrowRight size={15} />
               </Link>
             }
           />
         )}
-      </div>{" "}
+      </div>
+
       {invitation && (
         <Modal title="Team invitation" onClose={() => setInvitation(null)}>
           <Badge tone="success">YOU’RE INVITED</Badge>
@@ -292,9 +523,7 @@ export function MyProjectsScreen() {
             <Button
               variant="secondary"
               onClick={() => {
-                setInvited((old) =>
-                  old.filter((item) => item !== invitation.id),
-                )
+                setInvited((old) => old.filter((item) => item !== invitation.id))
                 setInvitation(null)
                 notify("Invitation declined")
               }}
@@ -304,9 +533,7 @@ export function MyProjectsScreen() {
             <Button
               onClick={() => {
                 setActive((old) => [...new Set([...old, invitation.id])])
-                setInvited((old) =>
-                  old.filter((item) => item !== invitation.id),
-                )
+                setInvited((old) => old.filter((item) => item !== invitation.id))
                 setInvitation(null)
                 notify("Welcome to the team!")
                 setParams({ tab: "Active" })
@@ -320,5 +547,6 @@ export function MyProjectsScreen() {
     </>
   )
 }
+
 export { MyProjectsScreen as MyProjects }
 export default MyProjectsScreen

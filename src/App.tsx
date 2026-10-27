@@ -1,4 +1,4 @@
-import { createBrowserRouter, RouterProvider } from "react-router"
+import { createBrowserRouter, RouterProvider, Navigate } from "react-router"
 import { TindyProvider } from "./store"
 import { Layout } from "./components/layout"
 import RequireAuth from "./components/auth/RequireAuth"
@@ -35,8 +35,8 @@ const router = createBrowserRouter([
         children: [
           { index: true, Component: Dashboard },
           { path: "discover", Component: SwipeDiscoveryView },
-          { path: "interests", Component: MyProjects },
-          { path: "saved", Component: MyProjects },
+          { path: "interests", element: <Navigate to="/projects?tab=Interested" replace /> },
+          { path: "saved", element: <Navigate to="/projects?tab=Saved" replace /> },
           { path: "projects", Component: MyProjects },
           { path: "candidates", Component: Candidates },
           { path: "candidate/:id", Component: CandidateDetail },

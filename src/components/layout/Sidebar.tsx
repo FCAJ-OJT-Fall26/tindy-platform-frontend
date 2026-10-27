@@ -22,7 +22,6 @@ import { useTindy } from "../../store"
 export const navItems = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard },
   { to: "/discover", label: "Discover Projects", icon: Compass },
-  { to: "/interests", label: "My Interests", icon: Bookmark },
   { to: "/projects", label: "My Projects", icon: FolderKanban },
   { to: "/candidates", label: "Candidates", icon: Users },
   { to: "/messages", label: "Messages", icon: MessageSquare },
