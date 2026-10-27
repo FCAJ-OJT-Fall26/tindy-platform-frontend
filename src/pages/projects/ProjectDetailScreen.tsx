@@ -16,6 +16,7 @@ import { useTindy } from "../../store"
 import {
   fromApiDifficulty,
   getProjectByIdApi,
+  isGuid,
   mapProjectDetailToUiProject,
 } from "../../services/projects.service"
 import type { ProjectDetailDto } from "../../types/project"
@@ -58,7 +59,7 @@ export function ProjectDetailScreen() {
   const [interestModal, setInterestModal] = useState(false)
 
   useEffect(() => {
-    if (!id) return
+    if (!id || !isGuid(id)) return
     const controller = new AbortController()
     getProjectByIdApi(id, controller.signal)
       .then((dto) => {

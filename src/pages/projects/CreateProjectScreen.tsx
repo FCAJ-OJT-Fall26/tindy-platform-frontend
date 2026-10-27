@@ -16,6 +16,7 @@ import { getStoredToken } from "../../services/apiClient"
 import { getProfessionalRolesApi, getSkillsApi } from "../../services/catalog.service"
 import {
   createProjectApi,
+  isGuid,
   toApiDifficulty,
   updateProjectApi,
 } from "../../services/projects.service"
@@ -276,9 +277,32 @@ export function CreateProject() {
 
             let finalProjectId = existing?.id || `project-${Date.now()}`
 
+            const resolveRoleGuid = (roleName: string): string => {
+              const matched = catalogRoles.find(
+                (r) => r.name.toLowerCase() === roleName.toLowerCase(),
+              )
+              if (matched?.professional_role_id && isGuid(matched.professional_role_id)) {
+                return matched.professional_role_id
+              }
+              const firstValid = catalogRoles.find((r) => isGuid(r.professional_role_id))
+              return firstValid?.professional_role_id || "e8e72cb0-e5b2-515a-92b3-1abf59733d97"
+            }
+
+            const resolveSkillGuid = (s: SelectedSkill): string => {
+              if (isGuid(s.skill_id)) return s.skill_id
+              const matched = catalogSkills.find(
+                (cs) => cs.name.toLowerCase() === (s.name || "").toLowerCase(),
+              )
+              if (matched?.skill_id && isGuid(matched.skill_id)) {
+                return matched.skill_id
+              }
+              const firstValid = catalogSkills.find((cs) => isGuid(cs.skill_id))
+              return firstValid?.skill_id || "e0027d9c-48c9-5496-8904-658b13776f4c"
+            }
+
             if (getStoredToken()) {
               try {
-                if (existing) {
+                if (existing && isGuid(existing.id)) {
                   await updateProjectApi(existing.id, {
                     name,
                     tagline: tagline.trim() || undefined,
@@ -305,37 +329,30 @@ export function CreateProject() {
                     color_theme: "indigo",
                     recruitment_closing_days: 14,
                     goals: goalList,
-                    positions: positionsList.map((pos) => {
-                      const matchedRole = catalogRoles.find(
-                        (r) => r.name.toLowerCase() === pos.role.toLowerCase(),
-                      )
-                      return {
-                        role_id:
-                          matchedRole?.professional_role_id ||
-                          `role_${pos.role.toLowerCase().replace(/[^a-z0-9]+/g, "_")}`,
-                        title: pos.title || pos.role,
-                        required_count: pos.count,
-                        experience_level: toApiDifficulty(pos.level),
-                        description: pos.description.trim() || undefined,
-                        skills: [
-                          ...pos.requiredSkills.map((s) => ({
-                            skill_id: s.skill_id,
-                            is_required: true,
-                          })),
-                          ...pos.niceSkills.map((s) => ({
-                            skill_id: s.skill_id,
-                            is_required: false,
-                          })),
-                        ],
-                      }
-                    }),
+                    positions: positionsList.map((pos) => ({
+                      role_id: resolveRoleGuid(pos.role),
+                      title: pos.title || pos.role,
+                      required_count: pos.count,
+                      experience_level: toApiDifficulty(pos.level),
+                      description: pos.description.trim() || undefined,
+                      skills: [
+                        ...pos.requiredSkills.map((s) => ({
+                          skill_id: resolveSkillGuid(s),
+                          is_required: true,
+                        })),
+                        ...pos.niceSkills.map((s) => ({
+                          skill_id: resolveSkillGuid(s),
+                          is_required: false,
+                        })),
+                      ],
+                    })),
                   })
                   if (created?.project_id) {
                     finalProjectId = created.project_id
                   }
                 }
-              } catch {
-                // Keep local state working when backend is offline in prototype mode
+              } catch (err) {
+                console.warn("Backend sync failed; using local state fallback:", err)
               }
             }
 

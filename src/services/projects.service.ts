@@ -30,6 +30,11 @@ function optionalAuthHeaders(): Record<string, string> {
   return token ? { Authorization: `Bearer ${token}` } : {}
 }
 
+export function isGuid(value?: string | null): boolean {
+  if (!value) return false
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value.trim())
+}
+
 export function toApiDifficulty(uiDifficulty: string): ProjectDifficultyLevel {
   const normalized = uiDifficulty.trim().toLowerCase()
   if (normalized.includes("beginner")) return "beginner_friendly"
