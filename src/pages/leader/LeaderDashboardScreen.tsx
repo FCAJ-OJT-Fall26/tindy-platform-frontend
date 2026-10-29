@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Link, useLocation } from "react-router"
 import {
   Sparkles,
@@ -14,168 +14,16 @@ import {
   ChevronLeft,
   ChevronRight,
 } from "lucide-react"
-import { useTindy, Project, initialProjects, initialCandidates } from "../../store"
+import { useTindy, Project, initialCandidates } from "../../store"
 import { PageHeader, Stat, SectionHeading, Avatar, Badge } from "../../components/ui"
 import LeaderPositionManagerModal from "../../components/projects/LeaderPositionManagerModal"
 import { SaveSuccessModal } from "../../components/projects/SaveSuccessModal"
-import { getStoredToken } from "../../services/apiClient"
-import { deleteProjectApi, toApiDifficulty } from "../../services/projects.service"
-
-export const mockProjectTemplates: Array<{
-  name: string
-  description: string
-  type: string
-  skills: string[]
-  role: string
-  hours: number
-  duration: string
-  difficulty: "Beginner-friendly" | "Intermediate" | "Advanced"
-  team: number
-  capacity: number
-  initials: string
-  color: string
-  factors: number[]
-  goals: string[]
-  gap: string[]
-}> = [
-  {
-    name: "CloudGuard Security Hub",
-    description:
-      "Make cloud security accessible. Detect, investigate, and respond to threats with an intelligent AWS dashboard.",
-    type: "Cloud & DevOps",
-    skills: ["AWS", "Python", "CloudWatch", "Lambda"],
-    role: "Cloud Engineer",
-    hours: 10,
-    duration: "3 months",
-    difficulty: "Intermediate",
-    team: 2,
-    capacity: 4,
-    initials: "CG",
-    color: "amber",
-    factors: [85, 90, 80, 65, 100],
-    goals: [
-      "Monitor cloud environments for unusual activity.",
-      "Automate actionable security notifications.",
-      "Develop a clear dashboard for incident response.",
-    ],
-    gap: ["EventBridge", "GuardDuty"],
-  },
-  {
-    name: "EcoTrack Carbon Footprint",
-    description:
-      "Help students measure and lower their daily carbon footprint with habit nudges, gamified challenges, and community leaderboards.",
-    type: "Sustainability",
-    skills: ["React Native", "TypeScript", "Node.js", "MongoDB"],
-    role: "Mobile Developer",
-    hours: 8,
-    duration: "4 months",
-    difficulty: "Intermediate",
-    team: 3,
-    capacity: 5,
-    initials: "ET",
-    color: "teal",
-    factors: [90, 85, 90, 75, 100],
-    goals: [
-      "Track daily transport and meal choices.",
-      "Build team-based reduction challenges.",
-      "Integrate IoT smart campus meters.",
-    ],
-    gap: ["MongoDB"],
-  },
-  {
-    name: "StudyWise Adaptive Tutor",
-    description:
-      "Turn lecture notes into personalized study plans, smart flashcards, and interactive quizzes with LLM-powered insights.",
-    type: "EdTech & AI",
-    skills: ["Python", "FastAPI", "React", "OpenAI"],
-    role: "Fullstack Developer",
-    hours: 12,
-    duration: "3 months",
-    difficulty: "Advanced",
-    team: 4,
-    capacity: 6,
-    initials: "SW",
-    color: "rose",
-    factors: [95, 90, 95, 85, 100],
-    goals: [
-      "Vectorize lecture PDFs and course slides.",
-      "Generate active recall questions with spaced repetition.",
-      "Collaborative peer study groups.",
-    ],
-    gap: ["FastAPI"],
-  },
-  {
-    name: "HealthPulse Telehealth Portal",
-    description:
-      "A collaborative clinical triage platform providing remote student consultations, appointment booking, and encrypted records.",
-    type: "HealthTech",
-    skills: [".NET", "PostgreSQL", "Docker", "WebRTC"],
-    role: "Backend Engineer",
-    hours: 10,
-    duration: "5 months",
-    difficulty: "Advanced",
-    team: 3,
-    capacity: 5,
-    initials: "HP",
-    color: "emerald",
-    factors: [90, 80, 85, 90, 100],
-    goals: [
-      "HIPAA-compliant encrypted messaging and audio calls.",
-      "Student clinic triage workflow automation.",
-      "Integration with university medical center.",
-    ],
-    gap: ["Docker"],
-  },
-  {
-    name: "SmartCampus IoT Sensor Grid",
-    description:
-      "Real-time energy tracking, room occupancy detection, and microclimate monitoring using campus-wide sensor meshes.",
-    type: "IoT & Embedded",
-    skills: ["MQTT", "Python", "C++", "AWS IoT Core"],
-    role: "IoT Engineer",
-    hours: 8,
-    duration: "3 months",
-    difficulty: "Intermediate",
-    team: 1,
-    capacity: 4,
-    initials: "SC",
-    color: "violet",
-    factors: [80, 85, 90, 70, 95],
-    goals: [
-      "Deploy 50 low-power LoRaWAN temperature and air sensors.",
-      "Streaming telemetry dashboard on AWS.",
-      "Predictive HVAC optimization to reduce energy consumption.",
-    ],
-    gap: ["AWS IoT Core"],
-  },
-  {
-    name: "FinSight Student Investing",
-    description:
-      "Gamified financial literacy and paper-trading portfolio simulator designed for university students.",
-    type: "FinTech",
-    skills: ["TypeScript", "Next.js", "Tailwind CSS", "PostgreSQL"],
-    role: "Frontend Engineer",
-    hours: 6,
-    duration: "2 months",
-    difficulty: "Beginner-friendly",
-    team: 2,
-    capacity: 4,
-    initials: "FS",
-    color: "indigo",
-    factors: [85, 95, 80, 75, 90],
-    goals: [
-      "Virtual stock trading engine with real market delayed feeds.",
-      "Interactive budgeting and compound interest lessons.",
-      "Campus student investment league.",
-    ],
-    gap: ["PostgreSQL"],
-  },
-]
+import useMyProjects from "../../hooks/useMyProjects"
+import { projectErrorMessage } from "../../services/projectEditor.service"
+import { deleteProjectApi } from "../../services/projects.service"
 
 export function LeaderDashboard() {
   const {
-    profile,
-    projects,
     setProjects,
     candidateInvites,
     candidateInterested,
@@ -184,6 +32,10 @@ export function LeaderDashboard() {
   } = useTindy()
 
   const location = useLocation()
+  const resource = useMyProjects()
+  const [archiveError, setArchiveError] = useState("")
+  const [archivingId, setArchivingId] = useState<string | null>(null)
+  const archiveBusy = useRef(false)
   const [currentPage, setCurrentPage] = useState(1)
   const [managingPositionProject, setManagingPositionProject] = useState<Project | null>(null)
   const [showSaveSuccessModal, setShowSaveSuccessModal] = useState(false)
@@ -201,9 +53,8 @@ export function LeaderDashboard() {
     }
   }, [location.state])
 
-  const managed = projects.filter(
-    (project) => project.id === "cloud-desk" || project.leader === profile.name,
-  )
+  const leadingIds = new Set(resource.data?.leading_projects.filter(project => project.status !== "archived").map(project => project.project_id))
+  const managed = resource.data?.projects.filter(project => leadingIds.has(project.id)) ?? []
 
   const totalPages = Math.max(1, Math.ceil(managed.length / PROJECTS_PER_PAGE))
 
@@ -221,15 +72,24 @@ export function LeaderDashboard() {
   const pageItemsCount = currentProjects.length
 
   const handleDeleteProject = async (projectId: string, projectName: string) => {
-    if (getStoredToken() && !projectId.startsWith("sim-proj-")) {
-      try {
-        await deleteProjectApi(projectId)
-      } catch {
-        // Keep local archive working when backend is offline
-      }
+    if (archiveBusy.current || !window.confirm('Archive project "' + projectName + '"? Its recruitment positions will close.')) return
+    archiveBusy.current = true
+    setArchivingId(projectId)
+    setArchiveError("")
+    try {
+      await deleteProjectApi(projectId)
+      setProjects(previous => previous.filter(project => project.id !== projectId))
+      resource.replace(previous => ({ ...previous!,
+        leading_projects: previous!.leading_projects.filter(project => project.project_id !== projectId),
+        projects: previous!.projects.filter(project => project.id !== projectId) }))
+      notify('Project "' + projectName + '" archived.')
+      resource.reload()
+    } catch (error: unknown) {
+      setArchiveError(projectErrorMessage(error))
+    } finally {
+      archiveBusy.current = false
+      setArchivingId(null)
     }
-    setProjects((prev) => prev.filter((p) => p.id !== projectId))
-    notify(`Project "${projectName}" removed.`)
   }
 
   return (
@@ -249,7 +109,7 @@ export function LeaderDashboard() {
         <Stat
           label="Open positions"
           value={managed.reduce(
-            (total, project) => total + project.capacity - project.team,
+            (total, project) => total + (project.openings ?? 0),
             0,
           )}
           detail="Find the right people"
@@ -296,7 +156,8 @@ export function LeaderDashboard() {
           </span>
         }
       />
-      {managed.length === 0 ? (
+      {(resource.error || archiveError) && <div className="info-banner" role="alert">{archiveError || projectErrorMessage(resource.error)} <button onClick={resource.reload}>Refresh projects</button></div>}
+      {resource.loading && !resource.data ? <div className="info-banner" role="status">Loading your projects…</div> : resource.error && !resource.data ? null : managed.length === 0 ? (
         <div
           className="panel empty-state"
           style={{
@@ -332,7 +193,7 @@ export function LeaderDashboard() {
                   </span>
                   <div className="leader-project-info">
                     <div className="leader-project-badge-row">
-                      <Badge tone="success">RECRUITING</Badge>
+                      <Badge tone="success">{(project.status ?? "recruiting").replace(/_/g, " ").toUpperCase()}</Badge>
                     </div>
                     <h2>{project.name}</h2>
                     <p title={project.description}>{project.description}</p>
@@ -343,8 +204,9 @@ export function LeaderDashboard() {
                       onClick={() =>
                         handleDeleteProject(project.id, project.name)
                       }
-                      title="Close or archive project"
-                      aria-label="Delete project"
+                      title="Archive Project"
+                      aria-label="Archive Project"
+                      disabled={archivingId !== null}
                       style={{ color: "#d9534f" }}
                     >
                       <Trash2 size={16} />
@@ -368,7 +230,7 @@ export function LeaderDashboard() {
                   </span>
                   <span>
                     <Code2 size={16} />
-                    <strong>{project.capacity - project.team}</strong> open
+                    <strong>{project.openings ?? 0}</strong> open
                     positions
                   </span>
                   <Link
@@ -390,6 +252,7 @@ export function LeaderDashboard() {
                   <Link to="/candidates" className="btn btn-primary">
                     Candidate pipeline <ArrowRight size={15} />
                   </Link>
+                  <button className="btn btn-secondary" onClick={() => setManagingPositionProject(project)}>Manage positions</button>
                   <Link to="/team" className="btn btn-secondary">
                     Team workspace
                   </Link>
@@ -511,33 +374,7 @@ export function LeaderDashboard() {
         <LeaderPositionManagerModal
           projectId={managingPositionProject.id}
           projectName={managingPositionProject.name}
-          projectRole={managingPositionProject.role}
-          projectSkills={managingPositionProject.skills}
-          initialPositions={
-            managingPositionProject.openPositions?.map((op) => ({
-              position_id: op.positionId,
-              project_id: managingPositionProject.id,
-              role_id: op.role,
-              title: op.title,
-              description: op.description,
-              required_count: op.count,
-              filled_count: 0,
-              experience_level: toApiDifficulty(op.level),
-              status: "open" as const,
-              skills: [
-                ...op.requiredSkills.map((name) => ({
-                  skill_id: `skill-${name.toLowerCase().replace(/\s+/g, "_")}`,
-                  name,
-                  is_required: true,
-                })),
-                ...op.niceSkills.map((name) => ({
-                  skill_id: `skill-${name.toLowerCase().replace(/\s+/g, "_")}`,
-                  name,
-                  is_required: false,
-                })),
-              ],
-            }))
-          }
+          onPositionsChanged={resource.reload}
           onClose={() => setManagingPositionProject(null)}
         />
       )}

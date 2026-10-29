@@ -8,16 +8,20 @@ import {
   ArrowRight,
   Search,
   SlidersHorizontal,
-  Plus
+  Plus,
+  FolderKanban
 } from 'lucide-react';
-import { projects, ProjectItem } from '../../data/projectsData';
+import type { ProjectItem } from '../../data/projectsData';
 import ProjectSaveButton from '../../components/common/ProjectSaveButton';
-import { getProjectsApi } from '../../services/projects.service';
+import { getProjectsApi, getProjectByIdApi, isGuid } from '../../services/projects.service';
+import { ApiError } from '../../services/apiClient';
+
+import { projectErrorMessage } from '../../services/projectEditor.service';
 
 interface WorkspaceProjectsScreenProps {
   mode: 'projects' | 'saved';
-  saved: number[];
-  onToggleSave: (id: number) => void;
+  saved: string[];
+  onToggleSave: (id: string) => void;
   onSelectDetail: (project: ProjectItem) => void;
   onCreateProject: () => void;
   onOpenFilters: () => void;
@@ -34,37 +38,53 @@ export default function WorkspaceProjectsScreen({
   const navigate = useNavigate();
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState('All projects');
-  const [projectList, setProjectList] = useState<ProjectItem[]>(projects);
+  const [projectList, setProjectList] = useState<ProjectItem[]>([]);
 
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [page, setPage] = useState(1);
+  const [hasNext, setHasNext] = useState(false);
+  const [version, setVersion] = useState(0);
+  const savedKey = saved.join(',');
   useEffect(() => {
     const controller = new AbortController();
-    getProjectsApi({ q: query || undefined }, controller.signal)
-      .then((res) => {
-        if (res.items?.length) {
-          setProjectList((prev) => {
-            const baseIcon = prev[0]?.icon || Sparkles;
-            const mapped: ProjectItem[] = res.items.map((dto, idx) => ({
-              id: idx + 100,
-              name: dto.name,
-              sub: dto.tagline || dto.category,
-              type: dto.category,
-              desc: dto.description,
-              tags: dto.open_positions?.[0]?.required_skills ?? [],
-              role: dto.open_positions?.[0]?.title || 'Developer',
-              color: dto.color_theme || 'default',
-              hours: `${dto.expected_commitment_hours} hrs/week`,
-              duration: dto.duration,
-              people: [dto.initials || 'PL'],
-              score: 90,
-              icon: baseIcon,
-            }));
-            return [...prev, ...mapped.filter((m) => !prev.some((p) => p.name === m.name))];
-          });
-        }
+    setLoading(true); setError('');
+    const load = async () => {
+      if (mode !== 'saved') return getProjectsApi({ q: query || undefined, page, page_size: 12 }, controller.signal);
+      const details = await Promise.all(savedKey.split(',').filter(isGuid).map(async id => {
+        try { return await getProjectByIdApi(id, controller.signal); }
+        catch (error) { if (error instanceof ApiError && error.status === 404) return null; throw error; }
+      }));
+      return { items: details.filter(detail => detail !== null).map(detail => ({ ...detail,
+        open_positions: detail.positions.filter(position => position.status === 'open').map(position => ({
+          position_id: position.position_id, title: position.title, role_name: position.title, required_count: position.required_count,
+          required_skills: position.skills.filter(skill => skill.is_required).map(skill => skill.name),
+          nice_to_have_skills: position.skills.filter(skill => !skill.is_required).map(skill => skill.name),
+        })),
+      })), pagination: { has_next: false } };
+    };
+    load()
+      .then(res => {
+        if (controller.signal.aborted) return;
+        setHasNext(res.pagination.has_next);
+        setProjectList(res.items.map(dto => ({
+          id: dto.project_id, name: dto.name, sub: dto.tagline || dto.category,
+          type: dto.category, desc: dto.description, tags: dto.open_positions.flatMap(position => position.required_skills),
+          role: dto.open_positions[0]?.title || 'No open positions', color: dto.color_theme || 'default',
+          hours: dto.expected_commitment_hours + ' hrs/week', duration: dto.duration,
+          people: [dto.leader.initials || 'PL'], team: dto.current_team_size, capacity: dto.max_team_capacity,
+          score: 0, icon: FolderKanban,
+        })));
       })
-      .catch(() => {});
+      .catch(error => { if (!controller.signal.aborted) { setProjectList([]); setError(projectErrorMessage(error)); } })
+      .finally(() => { if (!controller.signal.aborted) setLoading(false); });
     return () => controller.abort();
-  }, [query]);
+  }, [query, page, version, mode, savedKey]);
+
+  const selectProject = (project: ProjectItem) => {
+    onSelectDetail(project);
+    navigate('/project/' + project.id);
+  };
 
   const card = (project: ProjectItem) => (
     <article className="project-card" key={project.id}>
@@ -77,17 +97,7 @@ export default function WorkspaceProjectsScreen({
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
             Active Sprint
           </span>
-        ) : (
-          <span className={`match border font-bold ${
-            project.score < 35
-              ? 'bg-rose-50 text-rose-700 border-rose-300'
-              : project.score <= 65
-              ? 'bg-amber-50 text-amber-800 border-amber-300'
-              : 'bg-emerald-50 text-emerald-800 border-emerald-300'
-          }`}>
-            {project.score < 35 ? '⚠ ' : ''}{project.score}% match
-          </span>
-        )}
+        ) : <span className="match border font-bold">Saved locally</span>}
         {mode === 'saved' && (
           <ProjectSaveButton
             saved={saved.includes(project.id)}
@@ -100,7 +110,7 @@ export default function WorkspaceProjectsScreen({
         )}
       </div>
       <div className="project-category">{project.type}</div>
-      <button className="title-button text-left" onClick={() => onSelectDetail(project)}>
+      <button className="title-button text-left" onClick={() => selectProject(project)}>
         <span>{project.name}</span>
         <ArrowUpRight size={16} />
       </button>
@@ -119,9 +129,9 @@ export default function WorkspaceProjectsScreen({
           {project.people.map((person, index) => (
             <span className="avatar" key={person}>{person}</span>
           ))}
-          <small>+2 team</small>
+          <small>{project.team} / {project.capacity} members</small>
         </div>
-        <button onClick={() => onSelectDetail(project)}>
+        <button onClick={() => selectProject(project)}>
           View project <ArrowRight size={13} />
         </button>
       </div>
@@ -130,10 +140,8 @@ export default function WorkspaceProjectsScreen({
 
   const displayedProjects = projectList.filter(project => {
     if (mode === 'saved' && !saved.includes(project.id)) return false;
-    if (mode === 'projects' && project.id >= 3) return false;
     const matchQuery = `${project.name} ${project.tags.join(' ')}`.toLowerCase().includes(query.toLowerCase());
     if (!matchQuery) return false;
-    if (filter === 'Best matches' && project.score < 90) return false;
     return true;
   });
 
@@ -181,15 +189,18 @@ export default function WorkspaceProjectsScreen({
         <input
           placeholder="Search projects, technical stacks, or roles..."
           value={query}
-          onChange={event => setQuery(event.target.value)}
+          onChange={event => { setQuery(event.target.value); setPage(1); }}
         />
       </label>
 
+      {loading && <div className="info-banner" role="status">Loading projects…</div>}
+      {error && <div className="info-banner" role="alert">{error} <button onClick={() => setVersion(value => value + 1)}>Retry</button></div>}
       <div className="project-grid">
-        {displayedProjects.map(card)}
+        {!loading && !error && displayedProjects.map(card)}
       </div>
 
-      {mode === 'saved' && saved.length === 0 && (
+      {!loading && !error && <div className="leader-pagination-controls"><button disabled={page === 1} onClick={() => setPage(value => value - 1)}>Previous</button><span>Page {page}</span><button disabled={!hasNext} onClick={() => setPage(value => value + 1)}>Next</button></div>}
+      {!loading && !error && displayedProjects.length === 0 && (
         <div className="empty text-center py-12 bg-white rounded-xl border border-slate-200">
           <Bookmark size={24} className="mx-auto text-slate-400 mb-2" />
           <p className="text-slate-700 font-semibold text-sm">No saved projects in your collection.</p>

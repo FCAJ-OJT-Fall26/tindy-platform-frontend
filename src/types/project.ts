@@ -12,7 +12,6 @@ export type PositionStatus = "open" | "filled" | "closed"
 export interface ProjectLeaderSummary {
   user_id: string
   display_name: string
-  email?: string
   avatar_url?: string | null
   initials?: string
 }
@@ -120,7 +119,7 @@ export interface CreateProjectPositionInput {
   title: string
   required_count: number
   experience_level: ProjectDifficultyLevel
-  description?: string
+  description?: string | null
   skills: CreateProjectPositionSkillInput[]
 }
 

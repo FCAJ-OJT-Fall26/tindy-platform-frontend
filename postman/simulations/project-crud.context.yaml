@@ -1,0 +1,44 @@
+purpose:
+  stands_in_for: Local Tindy backend Project, Position, Skill, Catalog and session-read contracts
+  unblocks: Frontend Project CRUD regression checks without production or PostgreSQL access
+assumptions:
+  - id: caller-contract
+    status: supported
+    claim: The revised frontend uses the existing snake_case Project and Position contracts, catalog UUIDs and response envelopes in the scenarios exercised.
+    reason: Backend DTOs/controllers/services were inspected and the real frontend made matching HTTP requests through the stand-in.
+    verification: On 2026-10-29, npm run test:projects passed 22 checks, including UUID preservation, optional description, ownership and actual member-count rendering. This verifies the frontend against the modeled contract, not a live database.
+    source: src/types/project.ts; src/services/projects.service.ts; tests/projects.browser.mjs; sibling tindy-backend-platform ProjectDtos.cs, ProjectsController.cs and ProjectPositionsController.cs
+    updated_at: "2026-10-29"
+  - id: partial-edit-retry
+    status: supported
+    claim: In the tested partial edit, a confirmed newly created Position is reused on retry after its skill write fails.
+    reason: The caller retained the server Position UUID and compared the pending draft with refetched state.
+    verification: On 2026-10-29, the simulated Position POST succeeded, skill POST returned 500, the form retained pending input, and retry completed with exactly one Position creation request. Removal of a Position created earlier in the same edit was also exercised.
+    source: src/services/projectEditor.service.ts; tests/projects.browser.mjs; postman/mocks/tindy-project/handler.js
+    updated_at: "2026-10-29"
+  - id: archive-confirmation
+    status: supported
+    claim: A failed archive retains the active card, while a confirmed archive removes it and refreshes membership in the exercised frontend flow.
+    reason: The dashboard waits for DELETE confirmation before changing its active collection.
+    verification: On 2026-10-29, an injected DELETE 500 preserved the Project card and displayed an error; the subsequent successful archive closed modeled Positions and removed the active card.
+    source: src/pages/leader/LeaderDashboardScreen.tsx; tests/projects.browser.mjs; postman/mocks/tindy-project/handler.js
+    updated_at: "2026-10-29"
+  - id: production-unknown-write-outcomes
+    status: unknown
+    claim: Unknown POST outcomes can always be reconciled uniquely against the live backend.
+    reason: The existing API has no idempotency-key contract. The client blocks additional POSTs when no unique result is available; concurrent identical creates and late commits cannot be universally identified by content.
+    verification: A local committed create followed by a lost response was recovered with one POST, and an uncommitted interrupted request remained blocked from blind reposting. No live PostgreSQL or production concurrency check was run.
+    source: src/services/projectEditor.service.ts; tests/projects.browser.mjs; PROJECT_CRUD_INTEGRATION.md
+    updated_at: "2026-10-29"
+  - id: three-step-create
+    status: supported
+    claim: The creation wizard retains draft data between steps and refresh, validates before progressing, and performs no Project writes until final Publish.
+    reason: The real frontend navigated through all steps against the local HTTP stand-in before any Project POST was recorded.
+    verification: On 2026-10-29, npm run test:projects passed 26 checks including new step navigation, inline validation, skill selection, Back/refresh retention and preview cases. Desktop/mobile screenshots were inspected; edit and save/retry regression paths also passed.
+    source: src/components/projects/ProjectForm.tsx; src/index.css; tests/projects.browser.mjs
+    updated_at: "2026-10-29"
+fingerprints:
+  - id: project-crud-frontend-working-tree
+    date: "2026-10-29"
+    commit: "2c51e35dd758f4200644d2200c2c52c162813c39 (working tree changes)"
+    cli: "1.73.0"

@@ -12,6 +12,7 @@ import CandidateShortlistModal from '../../components/candidates/CandidateShortl
 import AiExplanationModal from '../../components/common/AiExplanationModal';
 import { SlidersHorizontal, ChevronDown } from 'lucide-react';
 import { useTindy } from '../../store';
+import { projectErrorMessage } from '../../services/projectEditor.service';
 
 interface SwipeDiscoveryViewProps {
   initialMode?: DiscoveryMode;
@@ -77,11 +78,20 @@ export default function SwipeDiscoveryView({
   }, []);
 
   // Data collections
-  const [projects, setProjects] = useState<DiscoveryProject[]>(INITIAL_PROJECTS);
+  const demoMode = searchParams.get('demo') === '1';
+  useEffect(() => { if (!demoMode) tindy.requestProjects(); }, [demoMode, tindy.requestProjects]);
+  const projects = useMemo<DiscoveryProject[]>(() => demoMode ? INITIAL_PROJECTS : tindy.projects.map(project => ({
+    id: project.id, name: project.name, tagline: project.tagline ?? '', desc: project.description,
+    category: project.type, role: project.role, skills: project.skills, niceToHave: project.gap,
+    hours: project.hours + ' hrs/week', duration: project.duration, teamSize: project.team,
+    maxTeamSize: project.capacity, teamMembers: [], goals: project.goals, techStack: project.skills,
+    leadName: project.leader, leadRole: 'Project Leader', leadAvatar: '', color: 'blue', matchAvailable: false,
+    match: { overall: 0, verdict: 'Low Match', factors: [], strongMatches: [], skillGaps: [], explanationSummary: 'Matching is not available for this project.' },
+  })), [demoMode, tindy.projects]);
   const [candidates, setCandidates] = useState<DiscoveryCandidate[]>(INITIAL_CANDIDATES);
 
   // User decision collections
-  const [savedProjectIds, setSavedProjectIds] = useState<string[]>(['proj-2']);
+  const [savedProjectIds, setSavedProjectIds] = useState<string[]>(demoMode ? ['proj-2'] : tindy.saved);
   const [interestedProjectIds, setInterestedProjectIds] = useState<string[]>([]);
   const [savedCandidateIds, setSavedCandidateIds] = useState<string[]>([]);
   const [shortlistedCandidateIds, setShortlistedCandidateIds] = useState<string[]>([]);
@@ -272,7 +282,7 @@ export default function SwipeDiscoveryView({
   const filteredItems = useMemo(() => {
     if (displayMode === 'student') {
       return projects.filter((p) => {
-        if (p.match.overall < minScore) return false;
+        if (demoMode && p.match.overall < minScore) return false;
         if (selectedRole !== 'All' && p.role !== selectedRole) return false;
         if (selectedSkill !== 'All' && !p.skills.includes(selectedSkill)) return false;
         return true;
@@ -311,12 +321,12 @@ export default function SwipeDiscoveryView({
 
     if (direction === 'left') {
       setSkippedIds((prev) => [...prev, item.id]);
-      tindy.setSkipped((prev) => [...new Set([...prev, item.id])]);
+      if (!demoMode) tindy.setSkipped((prev) => [...new Set([...prev, item.id])]);
       showToast(`Skipped "${item.name}".`);
     } else if (direction === 'up') {
       if (displayMode === 'student') {
         setSavedProjectIds((prev) => [...new Set([...prev, item.id])]);
-        tindy.setSaved((prev) => [...new Set([...prev, item.id])]);
+        if (!demoMode) tindy.setSaved((prev) => [...new Set([...prev, item.id])]);
         showToast(`Saved "${item.name}" for later.`);
       } else {
         setSavedCandidateIds((prev) => [...new Set([...prev, item.id])]);
@@ -326,8 +336,8 @@ export default function SwipeDiscoveryView({
     } else if (direction === 'right') {
       if (displayMode === 'student') {
         setInterestedProjectIds((prev) => [...new Set([...prev, item.id])]);
-        tindy.setInterested((prev) => [...new Set([...prev, item.id])]);
-        showToast(`Marked interest in "${item.name}". Project lead notified!`);
+        if (!demoMode) tindy.setInterested((prev) => [...new Set([...prev, item.id])]);
+        showToast(demoMode ? `Marked interest in "${item.name}". Project lead notified!` : "Interest saved locally. Project applications are not available yet.");
       } else {
         setShortlistModalCandidate(item as DiscoveryCandidate);
       }
@@ -342,12 +352,12 @@ export default function SwipeDiscoveryView({
 
     if (lastAction.direction === 'left') {
       setSkippedIds((prev) => prev.filter((id) => id !== lastAction.id));
-      tindy.setSkipped((prev) => prev.filter((id) => id !== lastAction.id));
+      if (!demoMode) tindy.setSkipped((prev) => prev.filter((id) => id !== lastAction.id));
       showToast(`Restored "${lastAction.item.name}" to stack.`);
     } else if (lastAction.direction === 'up') {
       if (displayMode === 'student') {
         setSavedProjectIds((prev) => prev.filter((id) => id !== lastAction.id));
-        tindy.setSaved((prev) => prev.filter((id) => id !== lastAction.id));
+        if (!demoMode) tindy.setSaved((prev) => prev.filter((id) => id !== lastAction.id));
       } else {
         setSavedCandidateIds((prev) => prev.filter((id) => id !== lastAction.id));
         tindy.setCandidateShortlisted((prev) => prev.filter((name) => name !== lastAction.item.name));
@@ -356,7 +366,7 @@ export default function SwipeDiscoveryView({
     } else if (lastAction.direction === 'right') {
       if (displayMode === 'student') {
         setInterestedProjectIds((prev) => prev.filter((id) => id !== lastAction.id));
-        tindy.setInterested((prev) => prev.filter((id) => id !== lastAction.id));
+        if (!demoMode) tindy.setInterested((prev) => prev.filter((id) => id !== lastAction.id));
       } else {
         setShortlistedCandidateIds((prev) => prev.filter((id) => id !== lastAction.id));
       }
@@ -388,6 +398,7 @@ export default function SwipeDiscoveryView({
   // Save / Bookmark toggle
   const handleToggleSave = (id: string) => {
     if (displayMode === 'student') {
+      if (!demoMode) tindy.toggleSave(id);
       setSavedProjectIds((prev) =>
         prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
       );
@@ -403,6 +414,7 @@ export default function SwipeDiscoveryView({
   // Handle tap card to view full detail
   const handleCardTap = (item: DiscoveryProject | DiscoveryCandidate) => {
     if (displayMode === 'student') {
+      if (!demoMode) { navigate('/project/' + item.id); return; }
       setProjectDetailModalItem(item as DiscoveryProject);
     } else {
       setCandidateDetailModalItem(item as DiscoveryCandidate);
@@ -411,6 +423,7 @@ export default function SwipeDiscoveryView({
 
   // Handle why matches click
   const handleWhyMatches = (item: DiscoveryProject | DiscoveryCandidate) => {
+    if ('matchAvailable' in item && item.matchAvailable === false) { showToast('Match scoring is not available for this project.'); return; }
     setAiModalItem(item);
   };
 
@@ -572,7 +585,7 @@ export default function SwipeDiscoveryView({
               </span>
               <span className="truncate text-slate-600">
                 {(activeItem || filteredItems[0])
-                  ? `${(activeItem || filteredItems[0]).name} · ${(activeItem || filteredItems[0]).match.overall}% Fit`
+                  ? `${(activeItem || filteredItems[0]).name}${!demoMode && displayMode === 'student' ? '' : ' · ' + (activeItem || filteredItems[0]).match.overall + '% Fit'}`
                   : 'Live Algorithmic Evaluation'}
               </span>
             </span>
@@ -628,6 +641,9 @@ export default function SwipeDiscoveryView({
         </div>
       </div>
 
+      {demoMode && <div className="info-banner" role="status">Demo discovery — sample cards are separate from saved Projects.</div>}
+      {!demoMode && displayMode === 'student' && tindy.projectsLoading && <div className="info-banner" role="status">Loading projects…</div>}
+      {!demoMode && displayMode === 'student' && Boolean(tindy.projectsError) && <div className="info-banner" role="alert">{projectErrorMessage(tindy.projectsError)} <button onClick={tindy.reloadProjects}>Retry</button></div>}
       {/* Modals */}
       <ProjectDetailModal
         project={projectDetailModalItem}

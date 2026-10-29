@@ -31,6 +31,7 @@ export interface FullPreviewDialogProps {
   hours: number
   duration: string
   currentMembers: number
+  capacity?: number
   goalsList: string[]
   positionsList: FullPreviewPosition[]
   allSkills: SelectedSkill[]
@@ -48,6 +49,7 @@ export default function FullPreviewDialog({
   hours,
   duration,
   currentMembers,
+  capacity,
   goalsList,
   positionsList,
   allSkills,
@@ -60,7 +62,7 @@ export default function FullPreviewDialog({
     (acc, p) => acc + (Number(p.count) || 1),
     0,
   )
-  const maxCapacity = currentMembers + totalOpenings
+  const maxCapacity = capacity ?? currentMembers + totalOpenings
   const leaderInitial = (leaderName.trim() || "N")[0].toUpperCase()
 
   return (

@@ -15,7 +15,7 @@ export { MyProjectsScreen, MyProjects } from "./projects/MyProjectsScreen"
 export { CreateProject } from "./projects/CreateProjectScreen"
 
 // Leader & Candidates
-export { LeaderDashboard, mockProjectTemplates } from "./leader/LeaderDashboardScreen"
+export { LeaderDashboard } from "./leader/LeaderDashboardScreen"
 export { Candidates } from "./candidates/CandidatesScreen"
 export { CandidateDetail } from "./candidates/CandidateDetailScreen"
 

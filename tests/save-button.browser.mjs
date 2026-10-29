@@ -1,3 +1,4 @@
+import { projectApiFixture, projectFixtureId } from "./projects-fixture.mjs"
 import { createServer } from "vite"
 import { spawn } from "node:child_process"
 import { mkdtemp, rm } from "node:fs/promises"
@@ -113,7 +114,7 @@ try {
     } else if (message.method === "Fetch.requestPaused") {
       const { requestId, request } = message.params
       const url = new URL(request.url)
-      let responseBody = null
+      let responseBody = projectApiFixture(url.pathname)
       if (url.pathname === "/api/me") {
         responseBody = { success: true, message: "OK", data: user }
       }
@@ -149,11 +150,11 @@ try {
     mobile: false,
   })
   await send("Page.addScriptToEvaluateOnNewDocument", {
-    source: `localStorage.setItem('tindy_access_token', 'mock-token'); localStorage.setItem('saved', JSON.stringify([]));`,
+    source: `localStorage.setItem('tindy_access_token', 'mock-token'); localStorage.setItem('saved', JSON.stringify([])); localStorage.setItem('tindy-v2-interested', JSON.stringify(['${projectFixtureId}']));`,
   })
 
   // Navigate to Project Details Screen
-  await send("Page.navigate", { url: `${origin}/project/studywise` })
+  await send("Page.navigate", { url: `${origin}/project/${projectFixtureId}` })
   await waitForBrowser(evalInBrowser, "Boolean(document.querySelector('.project-save-btn'))")
 
   // Test 1: Project Details Screen - Initial Unsaved State

@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from "react"
+import { useCallback, useState, useMemo } from "react"
 import { Link, useSearchParams } from "react-router"
 import {
   ArrowRight,
@@ -16,8 +16,11 @@ import {
 } from "lucide-react"
 import { Badge, Button, EmptyState, Modal, PageHeader, ProjectCard } from "../../components/ui"
 import type { Project } from "../../data"
-import { getStoredToken } from "../../services/apiClient"
-import { getMyProjectsApi } from "../../services/projects.service"
+import { ApiError } from "../../services/apiClient"
+import useMyProjects from "../../hooks/useMyProjects"
+import useRemoteResource from "../../hooks/useRemoteResource"
+import { projectErrorMessage } from "../../services/projectEditor.service"
+import { getProjectByIdApi, isGuid, mapProjectDetailToUiProject } from "../../services/projects.service"
 import { useTindy } from "../../store"
 import { useExplanation } from "../../utils/useExplanation"
 
@@ -164,14 +167,10 @@ function Cards({ projects, status }: { projects: Project[]; status?: string }) {
 
 export function MyProjectsScreen() {
   const {
-    profile,
-    projects,
-    setProjects,
+    authUser,
     interested,
     saved,
     invited,
-    active,
-    completed,
     setInvited,
     setActive,
     notify,
@@ -185,146 +184,36 @@ export function MyProjectsScreen() {
     : "Active"
 
   const [invitation, setInvitation] = useState<Project | null>(null)
-  const [remoteLeadingIds, setRemoteLeadingIds] = useState<string[]>([])
-  const [pendingApplicantsByProject, setPendingApplicantsByProject] = useState<
-    Record<string, number>
-  >({})
-
-  // Determine active stage group based on current tab
+  const resource = useMyProjects()
   const currentTabConfig = TAB_CONFIGS[tab] || TAB_CONFIGS.Active
   const activeStageId: StageId = currentTabConfig.stageId
-
-  useEffect(() => {
-    if (!getStoredToken()) return
-    const controller = new AbortController()
-    getMyProjectsApi(controller.signal)
-      .then((res) => {
-        if (res.leading_projects?.length) {
-          setRemoteLeadingIds(res.leading_projects.map((p) => p.project_id))
-          const counts: Record<string, number> = {}
-          for (const item of res.leading_projects) {
-            counts[item.project_id] = item.pending_applications_count
-          }
-          setPendingApplicantsByProject(counts)
-          setProjects((old) => {
-            const next = [...old]
-            for (const lp of res.leading_projects) {
-              if (!next.some((existing) => existing.id === lp.project_id)) {
-                next.push({
-                  id: lp.project_id,
-                  name: lp.name,
-                  description: "Project managed in your leader workspace.",
-                  type: "Web Application",
-                  skills: [],
-                  role: "Project Leader",
-                  hours: 10,
-                  duration: "3 months",
-                  difficulty: "Intermediate",
-                  team: lp.current_team_size,
-                  capacity: lp.max_team_capacity,
-                  leader: profile.name || "Project Leader",
-                  initials: lp.name
-                    .split(" ")
-                    .slice(0, 2)
-                    .map((w) => w[0])
-                    .join("")
-                    .toUpperCase(),
-                  color: "indigo",
-                  created: Date.now(),
-                  closing: 14,
-                  factors: [85, 90, 90, 80, 100],
-                  goals: [],
-                  gap: [],
-                })
-              }
-            }
-            return next
-          })
-        }
-        if (res.joined_projects?.length) {
-          const joinedIds = res.joined_projects.map((p) => p.project_id)
-          setActive((old) => Array.from(new Set([...old, ...joinedIds])))
-          setProjects((old) => {
-            const next = [...old]
-            for (const jp of res.joined_projects) {
-              if (!next.some((existing) => existing.id === jp.project_id)) {
-                next.push({
-                  id: jp.project_id,
-                  name: jp.name,
-                  description: `Joined as ${jp.my_role}`,
-                  type: "Collaborative Project",
-                  skills: [],
-                  role: jp.my_role,
-                  hours: 10,
-                  duration: "3 months",
-                  difficulty: "Intermediate",
-                  team: 2,
-                  capacity: 5,
-                  leader: jp.leader_name,
-                  initials: jp.name
-                    .split(" ")
-                    .slice(0, 2)
-                    .map((w) => w[0])
-                    .join("")
-                    .toUpperCase(),
-                  color: "teal",
-                  created: Date.now(),
-                  closing: 14,
-                  factors: [85, 90, 90, 80, 100],
-                  goals: [],
-                  gap: [],
-                })
-              }
-            }
-            return next
-          })
-        }
-      })
-      .catch(() => {
-        // Fallback to local project lists when backend is offline
-      })
-    return () => controller.abort()
-  }, [profile.name, setActive, setProjects])
-
-  const leadingIds = useMemo(
-    () =>
-      Array.from(
-        new Set([
-          ...remoteLeadingIds,
-          ...projects
-            .filter((p) => p.id === "cloud-desk" || (profile.name && p.leader === profile.name))
-            .map((p) => p.id),
-        ]),
-      ),
-    [projects, remoteLeadingIds, profile.name]
-  )
-
+  const localIds = [...new Set([...saved, ...interested, ...invited].filter(isGuid))].sort().join(",")
+  const loadBookmarks = useCallback(async (signal: AbortSignal) => {
+    const details = await Promise.all(localIds.split(",").filter(Boolean).map(async id => {
+      try { return await getProjectByIdApi(id, signal) }
+      catch (error) { if (error instanceof ApiError && error.status === 404) return null; throw error }
+    }))
+    return details.filter(detail => detail !== null).map(detail => mapProjectDetailToUiProject(detail))
+  }, [localIds])
+  const bookmarks = useRemoteResource(authUser ? authUser.user_id + ":" + localIds : null, loadBookmarks)
+  const projects = [...new Map([...(resource.data?.projects ?? []), ...(bookmarks.data ?? [])].map(project => [project.id, project])).values()]
+  const completed = resource.data?.projects.filter(project => project.status === "completed").map(project => project.id) ?? []
+  const leadingIds = resource.data?.leading_projects.filter(project => project.status !== "archived" && project.status !== "completed").map(project => project.project_id) ?? []
+  const active = resource.data?.joined_projects.filter(project => project.status !== "archived" && project.status !== "completed").map(project => project.project_id) ?? []
   const statuses: Record<TabKey, string[]> = {
-    Interested: interested,
-    Saved: saved,
-    Invited: invited,
-    Active: active,
-    Leading: leadingIds,
-    Completed: completed,
+    Interested: interested.filter(isGuid), Saved: saved.filter(isGuid), Invited: invited.filter(isGuid),
+    Active: active, Leading: leadingIds, Completed: completed,
   }
-
-  const selected = projects.filter((project) =>
-    statuses[tab]?.includes(project.id)
-  )
-
-  // Calculate totals for each stage group
-  const stageCounts = useMemo(() => {
-    return {
-      pipeline: interested.length + saved.length + invited.length,
-      teams: active.length + leadingIds.length,
-      completed: completed.length,
-    }
-  }, [interested.length, saved.length, invited.length, active.length, leadingIds.length, completed.length])
-
-  const totalPendingApplicants = Object.values(pendingApplicantsByProject).reduce(
-    (a, b) => a + b,
-    0
-  )
+  const selected = projects.filter(project => statuses[tab].includes(project.id))
+  const stageCounts = {
+    pipeline: statuses.Interested.length + statuses.Saved.length + statuses.Invited.length,
+    teams: active.length + leadingIds.length, completed: completed.length,
+  }
+  const totalPendingApplicants = resource.data?.leading_projects.reduce((sum, project) => sum + project.pending_applications_count, 0) ?? 0
+  const showingBookmarks = ["Saved", "Interested", "Invited"].includes(tab)
+  const loading = showingBookmarks ? bookmarks.loading : resource.loading
+  const error = showingBookmarks ? bookmarks.error : resource.error
+  const retry = showingBookmarks ? bookmarks.reload : resource.reload
 
   return (
     <>
@@ -449,7 +338,7 @@ export function MyProjectsScreen() {
       </div>
 
       <div key={tab} className="tab-pane-transition">
-        {selected.length ? (
+        {loading ? <div className="info-banner" role="status">Loading projects…</div> : error ? <div className="info-banner" role="alert">{projectErrorMessage(error)} <button onClick={retry}>Retry</button></div> : selected.length ? (
           <>
             {tab === "Invited" && (
               <div className="info-banner" style={{ marginBottom: "20px" }}>
