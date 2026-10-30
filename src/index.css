@@ -15241,3 +15241,13 @@ button.text-link {
     align-items: flex-start;
   }
 }
+
+/* Leader project action dropdown styles */
+.dropdown-item-hover:hover {
+  background: #f8fafc !important;
+  color: #0f172a !important;
+}
+.dropdown-item-danger-hover:hover {
+  background: #fff1f2 !important;
+  color: #be123c !important;
+}

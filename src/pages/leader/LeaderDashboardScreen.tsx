@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react"
 import { Link, useLocation, useSearchParams } from "react-router"
 import {
   Sparkles,
+  Settings,
   Plus,
   Code2,
   Users,
@@ -39,6 +40,22 @@ export function LeaderDashboard() {
   const [archivingId, setArchivingId] = useState<string | null>(null)
   const archiveBusy = useRef(false)
   const [currentPage, setCurrentPage] = useState(1)
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null)
+
+  useEffect(() => {
+    const handleOutsideClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement
+      if (!target.closest('.leader-project-menu-container')) {
+        setOpenMenuId(null)
+      }
+    }
+    if (openMenuId) {
+      document.addEventListener('click', handleOutsideClick)
+    }
+    return () => {
+      document.removeEventListener('click', handleOutsideClick)
+    }
+  }, [openMenuId])
   const [showSaveSuccessModal, setShowSaveSuccessModal] = useState(false)
   const [savedSuccessProjectName, setSavedSuccessProjectName] = useState("")
   const [isSavedCreate, setIsSavedCreate] = useState(false)
@@ -238,7 +255,7 @@ export function LeaderDashboard() {
                     <h2>{project.name}</h2>
                     <p title={project.description}>{project.description}</p>
                   </div>
-                  <div className="leader-project-top-actions">
+                  <div className="leader-project-top-actions leader-project-menu-container" style={{ position: "relative" }}>
                     <button
                       className="icon-button"
                       onClick={() =>
@@ -251,13 +268,133 @@ export function LeaderDashboard() {
                     >
                       <Trash2 size={16} />
                     </button>
-                    <Link
+
+                    <button
+                      type="button"
                       className="icon-button"
-                      to={`/project/${project.id}/edit`}
-                      aria-label="Edit project"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setOpenMenuId(openMenuId === project.id ? null : project.id)
+                      }}
+                      aria-label="Project settings"
+                      title="Project settings"
+                      style={{
+                        background: openMenuId === project.id ? "#f1f5f9" : undefined,
+                        color: openMenuId === project.id ? "#0f172a" : undefined,
+                      }}
                     >
                       <MoreHorizontal size={20} />
-                    </Link>
+                    </button>
+
+                    {openMenuId === project.id && (
+                      <div
+                        className="project-actions-dropdown"
+                        style={{
+                          position: "absolute",
+                          top: "calc(100% + 6px)",
+                          right: 0,
+                          width: "190px",
+                          background: "#ffffff",
+                          border: "1px solid #e2e8f0",
+                          borderRadius: "10px",
+                          boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.05)",
+                          padding: "6px",
+                          zIndex: 50,
+                          display: "flex",
+                          flexDirection: "column",
+                          gap: "2px",
+                        }}
+                      >
+                        <Link
+                          to={`/project/${project.id}/edit`}
+                          onClick={() => setOpenMenuId(null)}
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "8px",
+                            padding: "8px 10px",
+                            borderRadius: "6px",
+                            fontSize: "12px",
+                            fontWeight: 500,
+                            color: "#1e293b",
+                            textDecoration: "none",
+                          }}
+                          className="dropdown-item-hover"
+                        >
+                          <Settings size={14} style={{ color: "#64748b" }} />
+                          <span>Manage project</span>
+                        </Link>
+
+                        <Link
+                          to={`/project/${project.id}`}
+                          onClick={() => setOpenMenuId(null)}
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "8px",
+                            padding: "8px 10px",
+                            borderRadius: "6px",
+                            fontSize: "12px",
+                            fontWeight: 500,
+                            color: "#1e293b",
+                            textDecoration: "none",
+                          }}
+                          className="dropdown-item-hover"
+                        >
+                          <ArrowUpRight size={14} style={{ color: "#64748b" }} />
+                          <span>View public specs</span>
+                        </Link>
+
+                        <Link
+                          to={`/project/${project.id}/applications`}
+                          onClick={() => setOpenMenuId(null)}
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "8px",
+                            padding: "8px 10px",
+                            borderRadius: "6px",
+                            fontSize: "12px",
+                            fontWeight: 500,
+                            color: "#1e293b",
+                            textDecoration: "none",
+                          }}
+                          className="dropdown-item-hover"
+                        >
+                          <Users size={14} style={{ color: "#64748b" }} />
+                          <span>Review applicants</span>
+                        </Link>
+
+                        <div style={{ height: "1px", background: "#f1f5f9", margin: "4px 0" }} />
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setOpenMenuId(null)
+                            handleDeleteProject(project.id, project.name)
+                          }}
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "8px",
+                            padding: "8px 10px",
+                            borderRadius: "6px",
+                            fontSize: "12px",
+                            fontWeight: 500,
+                            color: "#e11d48",
+                            background: "transparent",
+                            border: "none",
+                            width: "100%",
+                            textAlign: "left",
+                            cursor: "pointer",
+                          }}
+                          className="dropdown-item-danger-hover"
+                        >
+                          <Trash2 size={14} />
+                          <span>Archive project</span>
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </div>
                 <div className="leader-project-stats">
