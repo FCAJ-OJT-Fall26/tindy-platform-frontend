@@ -559,6 +559,30 @@ export function ProjectForm({ mode, initialProject, initialDetail }: ProjectForm
     setActiveSection(section)
   }
 
+  const slidePane0Ref = useRef<HTMLDivElement | null>(null)
+  const slidePane1Ref = useRef<HTMLDivElement | null>(null)
+  const slidePane2Ref = useRef<HTMLDivElement | null>(null)
+  const [containerHeight, setContainerHeight] = useState<number | undefined>(undefined)
+
+  useEffect(() => {
+    if (!isWizard) return
+    const panes = [slidePane0Ref.current, slidePane1Ref.current, slidePane2Ref.current]
+    const activePane = panes[stepIndex]
+    if (!activePane) return
+
+    setContainerHeight(activePane.offsetHeight)
+
+    if (typeof ResizeObserver !== "undefined") {
+      const observer = new ResizeObserver(() => {
+        if (activePane) {
+          setContainerHeight(activePane.offsetHeight)
+        }
+      })
+      observer.observe(activePane)
+      return () => observer.disconnect()
+    }
+  }, [stepIndex, isWizard, positionsList, jd, goals, name, tagline])
+
   const previousWizardSection = useRef(activeSection)
   useEffect(() => {
     if (!isWizard || previousWizardSection.current === activeSection) return
@@ -568,7 +592,15 @@ export function ProjectForm({ mode, initialProject, initialDetail }: ProjectForm
         ?? document.getElementById("project-step-title")
       focusTarget?.focus({ preventScroll: true })
       const navigation = document.querySelector(".project-section-nav")
-      if (navigation) window.scrollTo({ top: Math.max(0, navigation.getBoundingClientRect().top + window.scrollY - 80), behavior: "auto" })
+      if (navigation) {
+        const topOffset = 85
+        const elementPosition = navigation.getBoundingClientRect().top
+        const offsetPosition = elementPosition + window.pageYOffset - topOffset
+        window.scrollTo({
+          top: Math.max(0, offsetPosition),
+          behavior: "smooth",
+        })
+      }
     })
     return () => window.cancelAnimationFrame(frame)
   }, [activeSection, isWizard])
@@ -933,11 +965,25 @@ export function ProjectForm({ mode, initialProject, initialDetail }: ProjectForm
             </div>}
             {serverState && saveError && <details className="info-banner"><summary>Saved state refreshed — your pending edits are kept</summary><p>{serverState.name}: {serverState.positions.length} saved positions, {serverState.current_team_size} actual members.</p></details>}
             <fieldset disabled={submitting} style={{ display: "contents", border: 0, padding: 0, margin: 0, minWidth: 0 }}>
-            {/* SECTION 01: The big picture */}
-            {(!isWizard || activeSection === "big-picture") && <section
-              id="section-big-picture"
-              className={`project-form-section-card ${isWizard ? "project-step-panel" : ""}`}
+            <div
+              className={isWizard ? "wizard-slide-viewport" : "project-sections-stack"}
+              style={isWizard && containerHeight ? { height: `${containerHeight}px` } : undefined}
             >
+              <div
+                className={isWizard ? "wizard-slide-track" : undefined}
+                style={isWizard ? { transform: `translateX(-${stepIndex * 100}%)` } : undefined}
+              >
+                {/* PANE 0: The big picture */}
+                <div
+                  ref={slidePane0Ref}
+                  className={isWizard ? "wizard-slide-pane" : undefined}
+                  aria-hidden={isWizard ? stepIndex !== 0 : undefined}
+                  inert={isWizard && stepIndex !== 0 ? "" : undefined}
+                >
+                  <section
+                    id="section-big-picture"
+                    className={`project-form-section-card ${isWizard ? "project-step-panel" : ""}`}
+                  >
               <div className="section-card-header">
                 <div className="section-card-header-badge">01</div>
                 <div>
@@ -1119,13 +1165,20 @@ export function ProjectForm({ mode, initialProject, initialDetail }: ProjectForm
                   </span>
                 </div>
               </div>
-            </section>}
+            </section>
+                </div>
 
-            {/* SECTION 02: The people & the fit */}
-            {(!isWizard || activeSection === "people-skills") && <section
-              id="section-people-skills"
-              className={`project-form-section-card ${isWizard ? "project-step-panel" : ""}`}
-            >
+                {/* PANE 1: The people & the fit */}
+                <div
+                  ref={slidePane1Ref}
+                  className={isWizard ? "wizard-slide-pane" : undefined}
+                  aria-hidden={isWizard ? stepIndex !== 1 : undefined}
+                  inert={isWizard && stepIndex !== 1 ? "" : undefined}
+                >
+                  <section
+                    id="section-people-skills"
+                    className={`project-form-section-card ${isWizard ? "project-step-panel" : ""}`}
+                  >
               <div className="section-card-header">
                 <div className="section-card-header-badge">02</div>
                 <div>
@@ -1549,13 +1602,20 @@ export function ProjectForm({ mode, initialProject, initialDetail }: ProjectForm
                   </div>
                 ) : null}
               </div>
-            </section>}
+            </section>
+                </div>
 
-            {/* SECTION 03: A realistic commitment */}
-            {(!isWizard || activeSection === "commitment") && <section
-              id="section-commitment"
-              className={`project-form-section-card ${isWizard ? "project-step-panel" : ""}`}
-            >
+                {/* PANE 2: A realistic commitment & review */}
+                <div
+                  ref={slidePane2Ref}
+                  className={isWizard ? "wizard-slide-pane" : undefined}
+                  aria-hidden={isWizard ? stepIndex !== 2 : undefined}
+                  inert={isWizard && stepIndex !== 2 ? "" : undefined}
+                >
+                  <section
+                    id="section-commitment"
+                    className={`project-form-section-card ${isWizard ? "project-step-panel" : ""}`}
+                  >
               <div className="section-card-header">
                 <div className="section-card-header-badge">03</div>
                 <div>
@@ -1657,9 +1717,8 @@ export function ProjectForm({ mode, initialProject, initialDetail }: ProjectForm
                   </div>
                 </div>
               </div>
-            </section>}
+            </section>
 
-            {(!isWizard || activeSection === "commitment") && <>
             <div className="field-group"><label className="field-label" htmlFor="project-difficulty">Project difficulty</label><select id="project-difficulty" className="field-select" value={difficulty} onChange={event => { setDifficulty(event.target.value as ProjectDifficultyLevel); handleFieldChange() }}><option value="beginner_friendly">Beginner-friendly</option><option value="intermediate">Intermediate</option><option value="advanced">Advanced</option></select></div>
             {isWizard && <section className="project-form-section-card project-review-summary" aria-label="Project review">
               <div className="section-heading"><h3>Ready to publish?</h3><button type="button" className="action-btn secondary" onClick={() => setShowPreviewDialog(true)}><Eye size={15} /> Review full brief</button></div>
@@ -1693,8 +1752,9 @@ export function ProjectForm({ mode, initialProject, initialDetail }: ProjectForm
                 </div>
               </label>
             </div>
-
-            </>}
+                </div>
+              </div>
+            </div>
 
             {/* Bottom Action Bar Card */}
             <div className="project-form-actions-card">

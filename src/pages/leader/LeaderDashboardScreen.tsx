@@ -16,7 +16,6 @@ import {
 } from "lucide-react"
 import { useTindy, Project, initialCandidates } from "../../store"
 import { PageHeader, Stat, SectionHeading, Avatar, Badge } from "../../components/ui"
-import LeaderPositionManagerModal from "../../components/projects/LeaderPositionManagerModal"
 import { SaveSuccessModal } from "../../components/projects/SaveSuccessModal"
 import useMyProjects from "../../hooks/useMyProjects"
 import { projectErrorMessage } from "../../services/projectEditor.service"
@@ -39,7 +38,6 @@ export function LeaderDashboard() {
   const [archivingId, setArchivingId] = useState<string | null>(null)
   const archiveBusy = useRef(false)
   const [currentPage, setCurrentPage] = useState(1)
-  const [managingPositionProject, setManagingPositionProject] = useState<Project | null>(null)
   const [showSaveSuccessModal, setShowSaveSuccessModal] = useState(false)
   const [savedSuccessProjectName, setSavedSuccessProjectName] = useState("")
   const [isSavedCreate, setIsSavedCreate] = useState(false)
@@ -256,7 +254,6 @@ export function LeaderDashboard() {
                   <Link to={`/project/${project.id}/applications`} className="btn btn-primary">
                     Applications <ArrowRight size={15} />
                   </Link>
-                  <button className="btn btn-secondary" onClick={() => setManagingPositionProject(project)}>Manage positions</button>
                   <Link to={`/project/${project.id}`} className="btn btn-secondary">
                     View team
                   </Link>
@@ -378,14 +375,6 @@ export function LeaderDashboard() {
       </div>
       <Link className="btn btn-secondary" to="/team">Team workspace <span className="beta">DEMO</span></Link>
       </section>
-      {managingPositionProject && (
-        <LeaderPositionManagerModal
-          projectId={managingPositionProject.id}
-          projectName={managingPositionProject.name}
-          onPositionsChanged={resource.reload}
-          onClose={() => setManagingPositionProject(null)}
-        />
-      )}
       <SaveSuccessModal
         open={showSaveSuccessModal}
         projectName={savedSuccessProjectName}
