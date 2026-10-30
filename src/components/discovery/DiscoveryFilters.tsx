@@ -2,6 +2,7 @@ import React from 'react';
 import { SlidersHorizontal, RotateCcw } from 'lucide-react';
 import { DiscoveryMode } from '../../types/discovery';
 import DiscoverySegmentedControl from './DiscoverySegmentedControl';
+import MinMatchScoreSlider from './MinMatchScoreSlider';
 
 interface DiscoveryFiltersProps {
   mode: DiscoveryMode;
@@ -109,121 +110,7 @@ export default function DiscoveryFilters({
       </div>
 
       {/* Minimum Match Score Slider */}
-      <div className="space-y-1.5 lg:space-y-2 min-w-0">
-        <div className="flex items-center justify-between gap-2 text-xs">
-          <label
-            htmlFor={`${idPrefix}-score-slider`}
-            className="text-[11px] font-bold uppercase tracking-wider text-slate-600 truncate"
-          >
-            Min Match Score
-          </label>
-          <div
-            className={`inline-flex items-center gap-0.5 px-2 py-0.5 rounded border shrink-0 transition-colors ${
-              minScore < 35
-                ? 'bg-rose-50 border-rose-300 text-rose-700'
-                : minScore <= 65
-                ? 'bg-amber-50 border-amber-300 text-amber-800'
-                : 'bg-emerald-50 border-emerald-300 text-emerald-800'
-            }`}
-          >
-            <input
-              id={`${idPrefix}-score-input`}
-              type="number"
-              min={0}
-              max={100}
-              step={1}
-              inputMode="numeric"
-              value={minScore}
-              onChange={(e) => {
-                const raw = e.target.value;
-                if (raw === '') {
-                  onMinScoreChange(0);
-                  return;
-                }
-                const val = Math.round(Number(raw));
-                if (!Number.isNaN(val)) {
-                  onMinScoreChange(Math.max(0, Math.min(100, val)));
-                }
-              }}
-              className="w-8 text-right font-mono font-bold text-xs bg-transparent focus:outline-none p-0 border-0 m-0"
-              title="Type any number to filter minimum match score"
-              aria-label="Minimum match score percentage"
-            />
-            <span className="font-mono font-bold text-xs opacity-75">%</span>
-          </div>
-        </div>
-
-        {/* Dynamic Tiered Range Slider */}
-        <div className="space-y-1 lg:space-y-1.5 pt-0.5 lg:pt-1 min-w-0">
-          <input
-            id={`${idPrefix}-score-slider`}
-            type="range"
-            min={0}
-            max={100}
-            step={1}
-            value={minScore}
-            onChange={(e) => onMinScoreChange(Number(e.target.value))}
-            aria-label="Minimum match score slider"
-            className="custom-range-slider block w-full"
-            style={{
-              background:
-                minScore === 0
-                  ? '#e2e8f0'
-                  : `linear-gradient(to right, ${
-                      minScore < 35
-                        ? '#f43f5e'
-                        : minScore <= 65
-                        ? '#f59e0b'
-                        : '#10b981'
-                    } 0%, ${
-                      minScore < 35
-                        ? '#f43f5e'
-                        : minScore <= 65
-                        ? '#f59e0b'
-                        : '#10b981'
-                    } ${minScore}%, #e2e8f0 ${minScore}%, #e2e8f0 100%)`,
-            }}
-          />
-
-          {/* Exact threshold tick markers */}
-          <div className="relative h-4 text-[10px] font-mono select-none w-full">
-            <button
-              type="button"
-              onClick={() => onMinScoreChange(0)}
-              className="absolute left-0 text-rose-600 hover:font-bold transition-all cursor-pointer"
-              title="Set to 0%"
-            >
-              0%
-            </button>
-            <button
-              type="button"
-              onClick={() => onMinScoreChange(35)}
-              className="absolute -translate-x-1/2 text-amber-600 hover:font-bold transition-all cursor-pointer"
-              style={{ left: '35%' }}
-              title="Set to 35% threshold"
-            >
-              35%
-            </button>
-            <button
-              type="button"
-              onClick={() => onMinScoreChange(65)}
-              className="absolute -translate-x-1/2 text-emerald-600 hover:font-bold transition-all cursor-pointer"
-              style={{ left: '65%' }}
-              title="Set to 65% threshold"
-            >
-              65%
-            </button>
-            <button
-              type="button"
-              onClick={() => onMinScoreChange(100)}
-              className="absolute right-0 text-slate-500 hover:font-bold transition-all cursor-pointer"
-              title="Set to 100%"
-            >
-              100%
-            </button>
-          </div>
-        </div>
-      </div>
+      <MinMatchScoreSlider value={minScore} onChange={onMinScoreChange} />
 
       {/* Session Discovery Summary */}
       <div className="pt-2 border-t border-slate-100 space-y-1.5 lg:space-y-2">
