@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react"
 import type { RuleMatch } from "../../types/discovery"
-import { AlertCircle, ArrowUpRight, BriefcaseBusiness, Check, ChevronDown, CircleHelp, Clock, Info, Sparkles } from "lucide-react"
+import { ArrowUpRight, Check, ChevronDown, CircleHelp } from "lucide-react"
 import MatchScoreRing from "./MatchScoreRing"
 import SkillIcon from "../onboarding/SkillIcon"
 import { getMatchTier } from "../../utils/matchTier"
@@ -169,8 +169,27 @@ function parseInsights(explanation: string) {
     .split(/[;.]\s+/)
     .map((p) => p.trim().replace(/\.$/, ""))
     .filter(Boolean)
-  return rawParts.map((part) => {
-    const lower = part.toLowerCase()
+
+  // Merge availability and expected hours if separate
+  const merged: string[] = []
+  for (let i = 0; i < rawParts.length; i++) {
+    const current = rawParts[i]
+    const next = rawParts[i + 1]
+    if (
+      current.toLowerCase().includes("availability") &&
+      next &&
+      next.toLowerCase().startsWith("project expects")
+    ) {
+      merged.push(`${current} (${next.toLowerCase()})`)
+      i++
+    } else {
+      merged.push(current)
+    }
+  }
+
+  return merged.map((part) => {
+    const formatted = part.charAt(0).toUpperCase() + part.slice(1)
+    const lower = formatted.toLowerCase()
     let tone: "positive" | "warning" | "neutral" = "neutral"
     if (lower.includes("required skill")) {
       const isMissing = lower.includes("0/") || lower.includes("missing") || lower.includes("not matched")
@@ -182,7 +201,7 @@ function parseInsights(explanation: string) {
     } else if (lower.includes("differ") || lower.includes("missing") || lower.includes("0%")) {
       tone = "warning"
     }
-    return { text: part, tone }
+    return { text: formatted, tone }
   })
 }
 
@@ -295,9 +314,7 @@ export default function RuleMatchPanel({
         <MatchScoreRing score={match.match_score} large />
         <div className="rule-match__hero-text">
           <div className="rule-match__hero-meta">
-            <span className="rule-match__eyebrow">
-              <Sparkles size={12} />RULE-BASED COMPATIBILITY
-            </span>
+            <span className="rule-match__eyebrow">RULE-BASED COMPATIBILITY</span>
             {projectName && <span className="rule-match__project-pill">{projectName}</span>}
           </div>
           <h2>Your position match</h2>
@@ -308,9 +325,6 @@ export default function RuleMatchPanel({
       <div className="rule-match__position-card">
         <div className="rule-match__position-header">
           <div className="rule-match__position-main">
-            <div className="rule-match__position-icon">
-              <BriefcaseBusiness size={18} />
-            </div>
             <div>
               <div className="rule-match__position-title-wrap">
                 <strong>{match.best_position.title}</strong>
@@ -318,9 +332,13 @@ export default function RuleMatchPanel({
                   {match.best_position.experience_level.replace(/_/g, " ")}
                 </span>
               </div>
-              <span className="rule-match__role-name">
-                {match.best_position.role_name}
-              </span>
+              {match.best_position.role_name &&
+                match.best_position.role_name.trim().toLowerCase() !==
+                  match.best_position.title.trim().toLowerCase() && (
+                  <span className="rule-match__role-name">
+                    {match.best_position.role_name}
+                  </span>
+                )}
             </div>
           </div>
           <span className="rule-match__slots">
@@ -333,13 +351,6 @@ export default function RuleMatchPanel({
           <div className="rule-match__insights-wrap">
             {insights.map((ins, idx) => (
               <span key={idx} className={`rule-match__insight-pill is-${ins.tone}`}>
-                {ins.tone === "positive" ? (
-                  <Check size={12} />
-                ) : ins.tone === "warning" ? (
-                  <AlertCircle size={12} />
-                ) : (
-                  <Info size={12} />
-                )}
                 <span>{ins.text}</span>
               </span>
             ))}
@@ -351,7 +362,7 @@ export default function RuleMatchPanel({
 
       {match.data_incomplete && (
         <p role="note" className="rule-match__notice">
-          <Info size={16} />
+          <CircleHelp size={15} />
           <span>
             Some profile information is missing. Unknown factors are marked below rather than treated as a zero match.
           </span>
@@ -386,9 +397,8 @@ export default function RuleMatchPanel({
         ].map((group) => (
           <section className={group.matched ? "is-matched" : "is-missing"} key={group.label}>
             <h3>
-              {group.matched ? <Check size={15} /> : <CircleHelp size={15} />}
-              {group.label}
-              <span>{group.skills.length}</span>
+              <span>{group.label}</span>
+              <span className="rule-match__skills-count">{group.skills.length}</span>
             </h3>
             {group.skills.length ? (
               <ul>
@@ -423,8 +433,7 @@ export default function RuleMatchPanel({
       </details>
 
       <div className="rule-match__footer-banner">
-        <Info size={15} />
-        <span>Compatibility describes your fit. The project leader makes the final decision.</span>
+        <span>Compatibility describes your algorithmic fit. The project leader makes the final decision.</span>
       </div>
     </section>
   )

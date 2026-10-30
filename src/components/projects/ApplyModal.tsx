@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import { Link } from "react-router"
-import { AlertCircle, ArrowUpRight, CalendarDays, CheckCircle2, Send, Clock } from "lucide-react"
+import { AlertCircle, ArrowUpRight } from "lucide-react"
 import { Button, Modal } from "../ui"
 import { useTindy } from "../../store"
 import useRemoteResource from "../../hooks/useRemoteResource"
@@ -142,11 +142,8 @@ export default function ApplyModal({
             Choose an open position and confirm. This submits your application for the leader to review.
           </p>
           {project && (
-            <div className="apply-modal-meta-row">
-              <span className="apply-modal-deadline-badge">
-                <CalendarDays size={13} />
-                <span>Recruitment deadline: <strong>{formatClosingDate(project.recruitment_closing_date)}</strong> (Vietnam time)</span>
-              </span>
+            <div className="apply-modal-deadline-line">
+              Recruitment deadline: <strong>{formatClosingDate(project.recruitment_closing_date)}</strong> (Vietnam time)
             </div>
           )}
         </div>
@@ -170,11 +167,11 @@ export default function ApplyModal({
           </div>
         )}
 
-        <div className="apply-modal-form-card">
+        <div className="apply-modal-form-fields">
           <div className="apply-modal-field">
             <label className="apply-modal-label" htmlFor="apply-position-select">
-              <span>Target Position <span style={{ color: "#e11d48" }}>*</span></span>
-              <span style={{ fontSize: 10, color: "#64748b", fontWeight: 500, textTransform: "none" }}>
+              <span>Target Position <span className="apply-modal-required-mark">*</span></span>
+              <span className="apply-modal-label-helper">
                 {open.length} {open.length === 1 ? "opening" : "openings"} available
               </span>
             </label>
@@ -199,8 +196,8 @@ export default function ApplyModal({
 
           <div className="apply-modal-field">
             <div className="apply-modal-label">
-              <span>Message to Leader <small style={{ textTransform: "none", color: "#94a3b8", fontWeight: 400 }}>(optional)</small></span>
-              <span style={{ fontSize: 10, color: "#94a3b8", fontWeight: 500 }}>{message.length}/2000</span>
+              <span>Message to Leader <small>(optional)</small></span>
+              <span className="apply-modal-label-helper">{message.length}/2000</span>
             </div>
             <textarea
               className="apply-modal-textarea"
