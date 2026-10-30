@@ -114,7 +114,7 @@ try {
     } else if (message.method === "Fetch.requestPaused") {
       const { requestId, request } = message.params
       const url = new URL(request.url)
-      let responseBody = projectApiFixture(url.pathname)
+      let responseBody = projectApiFixture(url.pathname, request.method)
       if (url.pathname === "/api/me") {
         responseBody = { success: true, message: "OK", data: user }
       }
@@ -129,9 +129,9 @@ try {
             { name: "Content-Type", value: "application/json" },
           ],
           body: Buffer.from(JSON.stringify(responseBody)).toString("base64"),
-        })
+        }).catch(error => { if (!error.message.includes('Invalid InterceptionId')) throw error })
       } else {
-        await send("Fetch.continueRequest", { requestId })
+        await send("Fetch.continueRequest", { requestId }).catch(error => { if (!error.message.includes('Invalid InterceptionId')) throw error })
       }
     } else if (message.method === "Runtime.exceptionThrown") {
       pageErrors.push(message.params.exceptionDetails)
@@ -213,11 +213,13 @@ try {
   console.log("PASS 3: Skip button feedback cleanly resets within ~220ms")
 
   // Test 3: Star Button Click Micro-Interaction in SwipeCardStack
+  await evalInBrowser("document.querySelector('[aria-label=Undo]').click()")
+  await waitForBrowser(evalInBrowser, "document.querySelector('.star-micro-btn')?.disabled===false")
   const starFeedbackState = await evalInBrowser(`
     (async () => {
       const starBtn = document.querySelector(".star-micro-btn");
       starBtn.click();
-      await new Promise(r => setTimeout(r, 50));
+      for (let i=0;i<150 && !starBtn.querySelector('.star-micro-icon.is-popping');i++) await new Promise(r=>setTimeout(r,20));
       const icon = starBtn.querySelector(".star-micro-icon");
       const aura = starBtn.querySelector(".star-micro-aura");
       const sparkles = starBtn.querySelectorAll(".star-micro-sparkle");
@@ -257,11 +259,14 @@ try {
   console.log("PASS 5: Star sparkles and aura cleanly expire and unmount from DOM")
 
   // Test 4: Interested Button Click Micro-Interaction in SwipeCardStack
+  // Restore a card so the feedback remains mounted after the confirmed swipe.
+  await evalInBrowser("document.querySelector('[aria-label=Undo]').click()")
+  await waitForBrowser(evalInBrowser, "document.querySelector('.interested-micro-btn')?.disabled===false")
   const heartFeedbackState = await evalInBrowser(`
     (async () => {
       const heartBtn = document.querySelector(".interested-micro-btn");
       heartBtn.click();
-      await new Promise(r => setTimeout(r, 50));
+      for (let i=0;i<150 && !heartBtn.querySelector('.heart-micro-icon.is-popping');i++) await new Promise(r=>setTimeout(r,20));
       const icon = heartBtn.querySelector(".heart-micro-icon");
       const aura = heartBtn.querySelector(".heart-micro-aura");
       const particles = heartBtn.querySelectorAll(".heart-micro-particle");
@@ -329,6 +334,8 @@ try {
   console.log("PASS 8: ProjectDetailModal uses StarActionButton and InterestedActionButton")
 
   // Test 6: Toggle Star ON -> Burst Sparkles; Toggle Star OFF -> Gentle shrink, NO sparkles
+  await evalInBrowser("(() => { const button=document.querySelector('.modal-content-animate .star-micro-btn');if(button.getAttribute('aria-pressed')==='true') button.click(); })()")
+  await delay(450)
   const starOnState = await evalInBrowser(`
     (async () => {
       const starBtn = document.querySelector(".modal-content-animate .star-micro-btn");
@@ -392,7 +399,7 @@ try {
   console.log("PASS 10: Confirm interest transitions to 'Interest Confirmed' with glow, pop, and micro-particles")
 
   // Test 7b: Mode Switch Spam & Cancel-Mid-Exit Behavior
-  await send("Page.navigate", { url: `${origin}/discover` })
+  await send("Page.navigate", { url: `${origin}/discover?demo=1` })
   await waitForBrowser(evalInBrowser, "Boolean(document.querySelector('[aria-label=\"Discovery Mode Switcher\"]'))")
 
   const modeSwitchState = await evalInBrowser(`

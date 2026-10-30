@@ -15,7 +15,7 @@ import {
   Sparkles,
 } from "lucide-react"
 import { Badge, Button, EmptyState, Modal, PageHeader, ProjectCard } from "../../components/ui"
-import type { Project } from "../../data"
+import { initialProjects, type Project } from "../../data"
 import { ApiError } from "../../services/apiClient"
 import useMyProjects from "../../hooks/useMyProjects"
 import useRemoteResource from "../../hooks/useRemoteResource"
@@ -23,6 +23,9 @@ import { projectErrorMessage } from "../../services/projectEditor.service"
 import { getProjectByIdApi, isGuid, mapProjectDetailToUiProject } from "../../services/projects.service"
 import { useTindy } from "../../store"
 import { useExplanation } from "../../utils/useExplanation"
+import MyApplicationsView from "./MyApplicationsView"
+import SavedProjectsView from "./SavedProjectsView"
+import useMyApplications from "../../hooks/useMyApplications"
 
 export type TabKey = "Interested" | "Saved" | "Invited" | "Active" | "Leading" | "Completed"
 export type StageId = "all" | "pipeline" | "teams" | "completed"
@@ -71,13 +74,13 @@ interface TabConfig {
 const TAB_CONFIGS: Record<TabKey, TabConfig> = {
   Interested: {
     key: "Interested",
-    label: "Interested",
+    label: "Applications",
     stageId: "pipeline",
     stageLabel: "Opportunity Pipeline",
     icon: Send,
-    description: "Applications and interest sent · Awaiting project leaders to review your profile.",
+    description: "Your confirmed applications and review history.",
     emptyTitle: "No applications sent yet.",
-    emptyDescription: "Explore projects matching your skills on the Discovery feed and swipe right to submit interest.",
+    emptyDescription: "Explore projects and confirm a position application when ready.",
     emptyActionText: "Discover projects",
     emptyActionTo: "/discover",
   },
@@ -99,7 +102,7 @@ const TAB_CONFIGS: Record<TabKey, TabConfig> = {
     stageId: "pipeline",
     stageLabel: "Opportunity Pipeline",
     icon: Mail,
-    description: "Direct invitations received · Project leaders who reviewed your profile and want you on their team.",
+    description: "Demo preview · Invitations are not connected to the backend yet.",
     emptyTitle: "No pending invitations.",
     emptyDescription: "When a project leader invites you to their team, the invitation and role commitment will appear here.",
     emptyActionText: "Discover projects",
@@ -143,7 +146,7 @@ const TAB_CONFIGS: Record<TabKey, TabConfig> = {
   },
 }
 
-function Cards({ projects, status }: { projects: Project[]; status?: string }) {
+function Cards({ projects, status, pendingCounts }: { projects: Project[]; status?: string; pendingCounts?: Record<string, number> }) {
   const { saved, toggleSave } = useTindy()
   const explanation = useExplanation()
   return (
@@ -156,7 +159,7 @@ function Cards({ projects, status }: { projects: Project[]; status?: string }) {
             saved={saved.includes(project.id)}
             onSave={() => toggleSave(project.id)}
             onExplain={() => explanation.open(project)}
-            status={status}
+            status={pendingCounts ? `${pendingCounts[project.id] ?? 0} pending applications` : status}
           />
         ))}
       </div>
@@ -185,9 +188,10 @@ export function MyProjectsScreen() {
 
   const [invitation, setInvitation] = useState<Project | null>(null)
   const resource = useMyProjects()
+  const applications = useMyApplications()
   const currentTabConfig = TAB_CONFIGS[tab] || TAB_CONFIGS.Active
   const activeStageId: StageId = currentTabConfig.stageId
-  const localIds = [...new Set([...saved, ...interested, ...invited].filter(isGuid))].sort().join(",")
+  const localIds = ""
   const loadBookmarks = useCallback(async (signal: AbortSignal) => {
     const details = await Promise.all(localIds.split(",").filter(Boolean).map(async id => {
       try { return await getProjectByIdApi(id, signal) }
@@ -201,7 +205,7 @@ export function MyProjectsScreen() {
   const leadingIds = resource.data?.leading_projects.filter(project => project.status !== "archived" && project.status !== "completed").map(project => project.project_id) ?? []
   const active = resource.data?.joined_projects.filter(project => project.status !== "archived" && project.status !== "completed").map(project => project.project_id) ?? []
   const statuses: Record<TabKey, string[]> = {
-    Interested: interested.filter(isGuid), Saved: saved.filter(isGuid), Invited: invited.filter(isGuid),
+    Interested: applications.data?.map(a => a.application_id) ?? [], Saved: saved.filter(isGuid), Invited: [],
     Active: active, Leading: leadingIds, Completed: completed,
   }
   const selected = projects.filter(project => statuses[tab].includes(project.id))
@@ -260,7 +264,6 @@ export function MyProjectsScreen() {
                 const count = statuses[tabKey]?.length || 0
                 const isActive = tab === tabKey
                 const hasPendingApplicants = tabKey === "Leading" && totalPendingApplicants > 0
-                const hasPendingInvitations = tabKey === "Invited" && invited.length > 0
 
                 return (
                   <button
@@ -272,8 +275,8 @@ export function MyProjectsScreen() {
                   >
                     <Icon className="tab-icon" />
                     <span>{config.label}</span>
+                    {tabKey === "Invited" && <span className="beta">DEMO</span>}
                     <span className="tab-count-badge">{count}</span>
-                    {hasPendingInvitations && <span className="journey-tab-pulse-dot" title="Pending invitations" />}
                     {hasPendingApplicants && (
                       <span
                         style={{
@@ -338,22 +341,13 @@ export function MyProjectsScreen() {
       </div>
 
       <div key={tab} className="tab-pane-transition">
-        {loading ? <div className="info-banner" role="status">Loading projects…</div> : error ? <div className="info-banner" role="alert">{projectErrorMessage(error)} <button onClick={retry}>Retry</button></div> : selected.length ? (
+        {tab === "Interested" ? <MyApplicationsView /> : tab === "Saved" ? <SavedProjectsView /> : tab === "Invited" ? <section className="panel" aria-label="Invitations demo preview"><Badge tone="blue">DEMO PREVIEW</Badge><h2>Invited</h2><p>Leaders can invite you to a specific project position. This preview lets you explore the review, accept and decline flow; it does not create a real invitation or team membership.</p><Button variant="secondary" onClick={() => setInvitation(initialProjects[0])}>Preview invitation</Button></section> : loading ? <div className="info-banner" role="status">Loading projects…</div> : error ? <div className="info-banner" role="alert">{projectErrorMessage(error)} <button onClick={retry}>Retry</button></div> : selected.length ? (
           <>
-            {tab === "Invited" && (
-              <div className="info-banner" style={{ marginBottom: "20px" }}>
-                <Mail size={18} />
-                <span>
-                  A team is ready to welcome you. Review the invitation to see the role and commitment.
-                </span>
-              </div>
-            )}
             <Cards
               projects={selected}
+              pendingCounts={tab === "Leading" ? Object.fromEntries((resource.data?.leading_projects ?? []).map(project => [project.project_id, project.pending_applications_count])) : undefined}
               status={
-                tab === "Interested"
-                  ? "Interest sent · Waiting for project leader"
-                  : tab === "Active"
+                tab === "Active"
                   ? "You’re on the team"
                   : tab === "Leading"
                   ? totalPendingApplicants > 0
@@ -364,15 +358,6 @@ export function MyProjectsScreen() {
                   : undefined
               }
             />
-            {tab === "Invited" &&
-              selected.map((project) => (
-                <div className="invitation-bar" key={project.id} style={{ marginTop: "16px" }}>
-                  <span>
-                    <strong>{project.leader}</strong> invited you to <strong>{project.name}</strong>
-                  </span>
-                  <Button onClick={() => setInvitation(project)}>Review invitation</Button>
-                </div>
-              ))}
           </>
         ) : (
           <EmptyState
@@ -389,7 +374,8 @@ export function MyProjectsScreen() {
 
       {invitation && (
         <Modal title="Team invitation" onClose={() => setInvitation(null)}>
-          <Badge tone="success">YOU’RE INVITED</Badge>
+          <Badge tone="blue">DEMO INVITATION</Badge>
+          <p>Sample invitation — these actions only close the preview and do not change your team membership.</p>
           <h2>Build with {invitation.name}</h2>
           <p>
             {invitation.leader} invited you to join as a {invitation.role}.
@@ -412,20 +398,16 @@ export function MyProjectsScreen() {
             <Button
               variant="secondary"
               onClick={() => {
-                setInvited((old) => old.filter((item) => item !== invitation.id))
                 setInvitation(null)
-                notify("Invitation declined")
+                notify("Demo: invitation declined in this preview.")
               }}
             >
               Decline
             </Button>
             <Button
               onClick={() => {
-                setActive((old) => [...new Set([...old, invitation.id])])
-                setInvited((old) => old.filter((item) => item !== invitation.id))
                 setInvitation(null)
-                notify("Welcome to the team!")
-                setParams({ tab: "Active" })
+                notify("Demo: invitation accepted in this preview. No team membership was created.")
               }}
             >
               Accept & join team <Check size={15} />

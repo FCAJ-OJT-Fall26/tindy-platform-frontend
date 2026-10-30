@@ -3,6 +3,7 @@ import { Link } from "react-router"
 import { ArrowRight, Code2, ExternalLink, GraduationCap } from "lucide-react"
 import { Button, MatchExplanation, Modal } from "../components/ui"
 import type { Profile, Project } from "../data"
+import RuleMatchPanel from "../components/discovery/RuleMatchPanel"
 
 export function useExplanation(
   evidence?: Pick<Profile, "skills" | "role" | "hours" | "experience">,
@@ -20,7 +21,7 @@ export function useExplanation(
           setLearning(false)
         }}
       >
-        {learning ? (
+        {project.serverMatch ? <RuleMatchPanel match={project.serverMatch} /> : project.matchAvailable === false ? <p>Matching is available from your personalized Discovery feed.</p> : learning ? (
           <>
             <div className="insight-label">
               <GraduationCap size={16} /> NEXT STEPS

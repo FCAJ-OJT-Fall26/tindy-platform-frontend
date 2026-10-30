@@ -61,6 +61,9 @@ export function mapProjectSummaryToUiProject(dto: ProjectSummaryDto, existing?: 
 
   return {
     id: dto.project_id,
+    recruitmentClosingDate: dto.recruitment_closing_date,
+    recruitmentClosesAt: dto.recruitment_closes_at,
+    isRecruitmentOpen: dto.is_recruitment_open,
     name: dto.name,
     tagline: dto.tagline ?? undefined,
     description: dto.description,
@@ -108,6 +111,9 @@ export function mapProjectDetailToUiProject(dto: ProjectDetailDto, existing?: Pr
 
   return {
     id: dto.project_id,
+    recruitmentClosingDate: dto.recruitment_closing_date,
+    recruitmentClosesAt: dto.recruitment_closes_at,
+    isRecruitmentOpen: dto.is_recruitment_open,
     name: dto.name,
     tagline: dto.tagline ?? undefined,
     description: dto.description,

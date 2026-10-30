@@ -144,6 +144,10 @@ http
         envelope({ has_local_password: true, providers: state.providers }),
       )
     if (path === "/api/auth/logout") return send(res, 204)
+    // Global navigation reads these new V1 resources during Profile regressions.
+    if (req.method === "GET" && ["/api/me/discovery/saved", "/api/me/project-applications"].includes(path)) return send(res, 200, envelope({ items: [], pagination: { current_page: 1, page_size: 50, total_items: 0, total_pages: 0, has_next: false, has_previous: false } }))
+    if (req.method === "GET" && path === "/api/discovery/projects") return send(res, 200, envelope({ items: [], next_cursor: null, has_more: false, feed_version: "feed-v1" }))
+    if (req.method === "GET" && path === "/api/me/projects") return send(res, 200, envelope({ leading_projects: [], joined_projects: [] }))
     if (path === "/api/me/profile/media/quota") return send(res, 200, envelope(quota(state)))
     const privateMedia = path.match(/^\/api\/media\/([^/]+)\/content$/)
     if (privateMedia) {

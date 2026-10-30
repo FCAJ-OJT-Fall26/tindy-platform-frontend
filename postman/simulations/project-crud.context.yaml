@@ -2,6 +2,13 @@ purpose:
   stands_in_for: Local Tindy backend Project, Position, Skill, Catalog and session-read contracts
   unblocks: Frontend Project CRUD regression checks without production or PostgreSQL access
 assumptions:
+  - id: discovery-applications-v1
+    status: supported
+    claim: The frontend sends the implemented V1 deadline, discovery, saved/skipped and application contract and waits for confirmed mutations.
+    reason: Sibling backend DTOs and docs were inspected; Chrome exercised the real React app through local HTTP Postman simulation.
+    verification: On 2026-10-30, Project checks passed 27 scenarios and Recruitment checks passed 19 scenarios, including 70-item feed, GUID filters, physical swipes, confirm-only Apply, immediate same-position reapply, caller isolation, leader review conflicts and lost-response reconciliation. This establishes frontend behavior against a synthetic contract, not PostgreSQL locking or the backend scorer.
+    source: tests/projects.browser.mjs; tests/recruitment.browser.mjs; postman/mocks/tindy-project/handler.js; DISCOVERY_FRONTEND_INTEGRATION.md; sibling docs/api/DISCOVERY_API.md
+    updated_at: "2026-10-30"
   - id: caller-contract
     status: supported
     claim: The revised frontend uses the existing snake_case Project and Position contracts, catalog UUIDs and response envelopes in the scenarios exercised.

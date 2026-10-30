@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useRef, useCallback, useEffect } from 'react';
-import { useNavigate, useSearchParams } from 'react-router';
+import { Link, useNavigate, useSearchParams } from 'react-router';
 import { DiscoveryProject, DiscoveryCandidate, DiscoveryMode, SwipeDirection, SwipeHistoryEntry } from '../../types/discovery';
 import { INITIAL_PROJECTS, INITIAL_CANDIDATES } from '../../data/mockData';
 import SwipeCardStack from '../../components/discovery/SwipeCardStack';
@@ -13,6 +13,7 @@ import AiExplanationModal from '../../components/common/AiExplanationModal';
 import { SlidersHorizontal, ChevronDown } from 'lucide-react';
 import { useTindy } from '../../store';
 import { projectErrorMessage } from '../../services/projectEditor.service';
+import LiveDiscoveryView from './LiveDiscoveryView';
 
 interface SwipeDiscoveryViewProps {
   initialMode?: DiscoveryMode;
@@ -20,7 +21,7 @@ interface SwipeDiscoveryViewProps {
   onNotify?: (message: string) => void;
 }
 
-export default function SwipeDiscoveryView({
+function DemoSwipeDiscoveryView({
   initialMode = 'student',
   onNavigateToMessages,
   onNotify,
@@ -326,7 +327,6 @@ export default function SwipeDiscoveryView({
     } else if (direction === 'up') {
       if (displayMode === 'student') {
         setSavedProjectIds((prev) => [...new Set([...prev, item.id])]);
-        if (!demoMode) tindy.setSaved((prev) => [...new Set([...prev, item.id])]);
         showToast(`Saved "${item.name}" for later.`);
       } else {
         setSavedCandidateIds((prev) => [...new Set([...prev, item.id])]);
@@ -357,7 +357,6 @@ export default function SwipeDiscoveryView({
     } else if (lastAction.direction === 'up') {
       if (displayMode === 'student') {
         setSavedProjectIds((prev) => prev.filter((id) => id !== lastAction.id));
-        if (!demoMode) tindy.setSaved((prev) => prev.filter((id) => id !== lastAction.id));
       } else {
         setSavedCandidateIds((prev) => prev.filter((id) => id !== lastAction.id));
         tindy.setCandidateShortlisted((prev) => prev.filter((name) => name !== lastAction.item.name));
@@ -738,4 +737,9 @@ export default function SwipeDiscoveryView({
       />
     </div>
   );
+}
+
+export default function SwipeDiscoveryView(props: SwipeDiscoveryViewProps) {
+  const [params] = useSearchParams();
+  return params.get('demo') === '1' ? <><div className="panel" role="note">Demo mode — sample projects, candidates and actions. <Link className="text-link" to="/discover">Back to live projects</Link></div><DemoSwipeDiscoveryView {...props} /></> : <LiveDiscoveryView />;
 }

@@ -40,6 +40,7 @@ import AiWritingDialog from "./AiWritingDialog"
 import FullPreviewDialog from "./FullPreviewDialog"
 import { UnsavedChangesDialog } from "./UnsavedChangesDialog"
 import { SaveConfirmDialog } from "./SaveConfirmDialog"
+import { addCalendarDays, formatClosingDate, useVietnamToday, validFutureDate, type DeadlineMode } from "../../services/recruitmentDeadline"
 
 export type FormPositionItem = ProjectDraftPosition
 
@@ -51,7 +52,7 @@ export interface ProjectFormProps {
 
 type FormSection = "big-picture" | "people-skills" | "commitment"
 const FORM_STEPS: FormSection[] = ["big-picture", "people-skills", "commitment"]
-type StepErrors = Partial<Record<"name" | "tagline" | "description" | "goals" | "category" | "positions" | "capacity" | "role" | "title" | "count" | "skills" | "hours" | "duration", string>>
+type StepErrors = Partial<Record<"name" | "tagline" | "description" | "goals" | "category" | "positions" | "capacity" | "role" | "title" | "count" | "skills" | "hours" | "duration" | "deadline", string>>
 
 const PROJECT_TYPES = [
   "AI & Machine Learning",
@@ -81,7 +82,7 @@ export function ProjectForm({ mode, initialProject, initialDetail }: ProjectForm
   const { setProjects, profile, authUser, notify } = useTindy()
   const draftKey = `tindy-project-draft:${authUser?.user_id}:${initialProject?.id ?? "new"}`
   const [restored] = useState(() => {
-    try { return JSON.parse(sessionStorage.getItem(draftKey) || "null") as { fields: { name: string; tagline: string; jd: string; goals: string; type: string; hours: number; durationMonths: number; durationEdited?: boolean; capacity: number; difficulty: ProjectDifficultyLevel; positionsList: FormPositionItem[]; wizardStep?: FormSection }; progress: ProjectSaveProgress } | null } catch { return null }
+    try { return JSON.parse(sessionStorage.getItem(draftKey) || "null") as { fields: { name: string; tagline: string; jd: string; goals: string; type: string; hours: number; durationMonths: number; durationEdited?: boolean; capacity: number; difficulty: ProjectDifficultyLevel; positionsList: FormPositionItem[]; wizardStep?: FormSection; deadlineMode?: DeadlineMode; deadlineDate?: string; deadlineEdited?: boolean }; progress: ProjectSaveProgress } | null } catch { return null }
   })
   const [activeSection, setActiveSection] = useState<FormSection>(
     isWizard && restored?.fields.wizardStep && FORM_STEPS.includes(restored.fields.wizardStep)
@@ -118,6 +119,12 @@ export function ProjectForm({ mode, initialProject, initialDetail }: ProjectForm
   const [capacity, setCapacity] = useState(restored?.fields.capacity ?? initialDetail?.max_team_capacity ?? 5)
   const [difficulty, setDifficulty] = useState<ProjectDifficultyLevel>(restored?.fields.difficulty ?? initialDetail?.difficulty_level ?? "intermediate")
   const [confirmed, setConfirmed] = useState(false)
+  const today = useVietnamToday()
+  const [deadlineMode, setDeadlineMode] = useState<DeadlineMode>(restored?.fields.deadlineMode ?? (initialDetail ? "custom" : "14"))
+  const [deadlineDate, setDeadlineDate] = useState(restored?.fields.deadlineDate ?? initialDetail?.recruitment_closing_date ?? addCalendarDays(today, 14))
+  const [deadlineEdited, setDeadlineEdited] = useState(restored?.fields.deadlineEdited ?? false)
+  const closingDate = deadlineMode === "custom" ? deadlineDate : addCalendarDays(today, Number(deadlineMode))
+  const deadlineChanged = mode === "create" || deadlineEdited
   const [submitting, setSubmitting] = useState(false)
 
   // Positions list
@@ -133,9 +140,9 @@ export function ProjectForm({ mode, initialProject, initialDetail }: ProjectForm
   const [catalogVersion, setCatalogVersion] = useState(0)
   const persistDraft = () => {
     if (savedRef.current) return
-    try { sessionStorage.setItem(draftKey, JSON.stringify({ fields: { name, tagline, jd, goals, type, hours, durationMonths, durationEdited: durationChanged, capacity, difficulty, positionsList, wizardStep: activeSection }, progress: progressRef.current })) } catch {}
+    try { sessionStorage.setItem(draftKey, JSON.stringify({ fields: { name, tagline, jd, goals, type, hours, durationMonths, durationEdited: durationChanged, capacity, difficulty, positionsList, wizardStep: activeSection, deadlineMode, deadlineDate, deadlineEdited }, progress: progressRef.current })) } catch {}
   }
-  useEffect(() => { persistDraft() }, [name, tagline, jd, goals, type, hours, durationMonths, durationChanged, capacity, difficulty, positionsList, activeSection])
+  useEffect(() => { persistDraft() }, [name, tagline, jd, goals, type, hours, durationMonths, durationChanged, capacity, difficulty, positionsList, activeSection, deadlineMode, deadlineDate, deadlineEdited, today])
 
   // Active position tab index
   const [activePosIndex, setActivePosIndex] = useState<number>(0)
@@ -200,6 +207,7 @@ export function ProjectForm({ mode, initialProject, initialDetail }: ProjectForm
       type,
       hours,
       duration: durationString,
+      closingDate,
       members,
       positionsList,
     })
@@ -524,6 +532,7 @@ export function ProjectForm({ mode, initialProject, initialDetail }: ProjectForm
     } else {
       if (!Number.isInteger(hours) || hours < 1 || hours > 40) errors.hours = "Enter between 1 and 40 whole hours per week."
       if (!Number.isInteger(durationMonths) || durationMonths < 1 || durationMonths > 36) errors.duration = "Enter a duration between 1 and 36 whole months."
+      if (deadlineChanged && !validFutureDate(closingDate, today)) errors.deadline = "Choose a future closing date, earliest tomorrow in Vietnam."
     }
     return { errors, positionIndex }
   }
@@ -608,6 +617,10 @@ export function ProjectForm({ mode, initialProject, initialDetail }: ProjectForm
     event.preventDefault()
 
     if (submittingRef.current) return
+    if (!isWizard && deadlineChanged && !validFutureDate(closingDate, today)) {
+      showStepErrors("commitment", { errors: { deadline: "Choose a future closing date, earliest tomorrow in Vietnam." }, positionIndex: undefined })
+      return
+    }
     if (isWizard) {
       if (stepIndex < FORM_STEPS.length - 1) { goToWizardStep(FORM_STEPS[stepIndex + 1]); return }
       for (const section of FORM_STEPS) {
@@ -694,6 +707,7 @@ export function ProjectForm({ mode, initialProject, initialDetail }: ProjectForm
     setSaveError("")
     setShowSaveConfirmDialog(false)
     const request: UpdateProjectRequest = {
+      ...(deadlineChanged ? { recruitment_closing_date: closingDate } : {}),
       name: name.trim(), tagline: tagline.trim(), description: jd.trim(), category: type,
       difficulty_level: difficulty, expected_commitment_hours: hours, duration: durationString,
       max_team_capacity: capacity, color_theme: initialDetail?.color_theme ?? "indigo",
@@ -704,7 +718,7 @@ export function ProjectForm({ mode, initialProject, initialDetail }: ProjectForm
       let id = progressRef.current.projectId
       if (!id && !progressRef.current.creationAttempt) progressRef.current.creationDraftKeys = positionsList.map(position => position.id)
       if (!id) id = await createProjectOnce({
-        ...request, initial_team_size: 1, recruitment_closing_days: 14,
+        ...request, initial_team_size: 1,
         positions: positionsList.map(position => ({
           role_id: position.roleId, title: position.title.trim(), description: position.description.trim(),
           required_count: position.count, experience_level: toApiDifficulty(position.level),
@@ -1619,6 +1633,20 @@ export function ProjectForm({ mode, initialProject, initialDetail }: ProjectForm
                   </div>
                 </div>
 
+                <div className="field-group">
+                  <label className="field-label" htmlFor="recruitment-deadline-mode">Recruitment deadline</label>
+                  <select id="recruitment-deadline-mode" className="field-select" value={deadlineMode} onChange={event => {
+                    setDeadlineMode(event.target.value as DeadlineMode); setDeadlineEdited(true); handleFieldChange()
+                  }}>
+                    <option value="7">7 days</option><option value="14">14 days</option><option value="30">30 days</option><option value="custom">Custom Date</option>
+                  </select>
+                  {deadlineMode === "custom" && <><label className="field-label" htmlFor="recruitment-closing-date">Closing date (Vietnam time)</label>
+                    <input id="recruitment-closing-date" type="date" className="field-input" min={addCalendarDays(today, 1)} max="9999-12-30" value={deadlineDate}
+                      {...validationProps("deadline")} onChange={event => { setDeadlineDate(event.target.value); setDeadlineEdited(true); handleFieldChange() }} /></>}
+                  {fieldError("deadline")}
+                  <strong>Recruitment closes on {formatClosingDate(closingDate)} (Vietnam time)</strong>
+                  <span className="field-helper">Applications close at midnight after this date. Project duration is separate.</span>
+                </div>
                 {/* Guidance callout */}
                 <div className="commitment-guidance-box">
                   <div className="guidance-icon">
@@ -1641,6 +1669,7 @@ export function ProjectForm({ mode, initialProject, initialDetail }: ProjectForm
                 <div><dt>Recruitment</dt><dd>{positionsList.length} role{positionsList.length === 1 ? "" : "s"} · {totalOpenings} opening{totalOpenings === 1 ? "" : "s"}</dd></div>
                 <div><dt>Team</dt><dd>1 leader · up to {capacity} members</dd></div>
                 <div><dt>Commitment</dt><dd>{hours} hours/week · {durationString}</dd></div>
+                <div><dt>Recruitment deadline</dt><dd>{formatClosingDate(closingDate)} (Vietnam time)</dd></div>
                 <div><dt>Skills</dt><dd>{autoSyncedTechStack.map(skill => skill.name ?? skill.skill_id).join(", ")}</dd></div>
               </dl>
               <p className="field-helper">Your project is created only after you confirm Publish.</p>
@@ -1997,6 +2026,7 @@ export function ProjectForm({ mode, initialProject, initialDetail }: ProjectForm
       <SaveConfirmDialog
         open={showSaveConfirmDialog}
         projectName={name}
+        recruitmentClosingDate={formatClosingDate(closingDate)}
         isSubmitting={submitting}
         mode={mode}
         onCancel={() => setShowSaveConfirmDialog(false)}

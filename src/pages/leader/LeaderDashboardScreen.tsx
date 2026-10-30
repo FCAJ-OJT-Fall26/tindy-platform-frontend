@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react"
-import { Link, useLocation } from "react-router"
+import { Link, useLocation, useSearchParams } from "react-router"
 import {
   Sparkles,
   Plus,
@@ -23,6 +23,8 @@ import { projectErrorMessage } from "../../services/projectEditor.service"
 import { deleteProjectApi } from "../../services/projects.service"
 
 export function LeaderDashboard() {
+  const [params] = useSearchParams()
+  const demo = params.get("demo") === "1"
   const {
     setProjects,
     candidateInvites,
@@ -55,6 +57,8 @@ export function LeaderDashboard() {
 
   const leadingIds = new Set(resource.data?.leading_projects.filter(project => project.status !== "archived").map(project => project.project_id))
   const managed = resource.data?.projects.filter(project => leadingIds.has(project.id)) ?? []
+  const pendingCount = resource.data?.leading_projects.reduce((sum, p) => sum + p.pending_applications_count, 0) ?? 0
+  const pendingFor = (id: string) => resource.data?.leading_projects.find(p => p.project_id === id)?.pending_applications_count ?? 0
 
   const totalPages = Math.max(1, Math.ceil(managed.length / PROJECTS_PER_PAGE))
 
@@ -94,6 +98,7 @@ export function LeaderDashboard() {
 
   return (
     <>
+      {demo && <div className="info-banner">Demo mode — sample candidate profiles and messages below.</div>}
       <PageHeader
         eyebrow="PROJECT LEADER WORKSPACE"
         title="Great teams start here."
@@ -116,16 +121,16 @@ export function LeaderDashboard() {
           icon={<Code2 size={18} />}
         />
         <Stat
-          label="Interested candidates"
-          value={candidateInterested.length}
-          detail="Ready to contribute"
+          label={demo ? "Interested candidates" : "Pending applications"}
+          value={demo ? candidateInterested.length : pendingCount}
+          detail="Awaiting your review"
           icon={<Users size={18} />}
           tone="teal"
         />
         <Stat
-          label="Pending invitations"
-          value={candidateInvites.length}
-          detail="Your team is taking shape"
+          label={demo ? "Pending invitations" : "Led projects"}
+          value={demo ? candidateInvites.length : managed.length}
+          detail="Your project workspace"
           icon={<Mail size={18} />}
           tone="amber"
         />
@@ -234,7 +239,7 @@ export function LeaderDashboard() {
                     positions
                   </span>
                   <Link
-                    to="/candidates"
+                    to={`/project/${project.id}/applications`}
                     style={{
                       display: "inline-flex",
                       alignItems: "center",
@@ -244,17 +249,16 @@ export function LeaderDashboard() {
                     }}
                   >
                     <Sparkles size={16} />
-                    <strong>{candidateInterested.length}</strong> interested
-                    candidates
+                    <strong>{pendingFor(project.id)}</strong> pending applications
                   </Link>
                 </div>
                 <div className="leader-project-actions">
-                  <Link to="/candidates" className="btn btn-primary">
-                    Candidate pipeline <ArrowRight size={15} />
+                  <Link to={`/project/${project.id}/applications`} className="btn btn-primary">
+                    Applications <ArrowRight size={15} />
                   </Link>
                   <button className="btn btn-secondary" onClick={() => setManagingPositionProject(project)}>Manage positions</button>
-                  <Link to="/team" className="btn btn-secondary">
-                    Team workspace
+                  <Link to={`/project/${project.id}`} className="btn btn-secondary">
+                    View team
                   </Link>
                   <Link
                     to={`/project/${project.id}/edit`}
@@ -318,6 +322,8 @@ export function LeaderDashboard() {
           )}
         </>
       )}
+      <section aria-label="Candidate and messaging demo preview">
+      <div className="info-banner" role="note">Demo preview — candidate shortlist, invitations and chat below use sample data. {candidateInvites.length} sample invitations · {candidateInterested.length} sample interested candidates.</div>
       <div className="two-column">
         <section className="panel">
           <SectionHeading
@@ -370,6 +376,8 @@ export function LeaderDashboard() {
           </div>
         </section>
       </div>
+      <Link className="btn btn-secondary" to="/team">Team workspace <span className="beta">DEMO</span></Link>
+      </section>
       {managingPositionProject && (
         <LeaderPositionManagerModal
           projectId={managingPositionProject.id}

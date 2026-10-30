@@ -18,6 +18,10 @@ export default function ProjectCardContent({
   onViewDetailsClick,
 }: ProjectCardContentProps) {
   const match = project.match;
+  const matchedIds = new Set(project.ruleMatch?.matched_skills.map(skill => skill.skill_id));
+  const requiredSkills = project.ruleMatch
+    ? [...project.ruleMatch.matched_skills, ...project.ruleMatch.missing_skills].filter(skill => skill.is_required)
+    : project.skills.map(name => ({ skill_id: name, name }));
 
   return (
     <div className="flex flex-col h-full bg-white select-none">
@@ -74,7 +78,7 @@ export default function ProjectCardContent({
             ? 'bg-amber-50/70 border-amber-200'
             : 'bg-slate-50 border-slate-200'
         }`}>
-          <AiMatchBadge score={match.overall} verdict={match.verdict} size="md" showVerdict={true} animate={isActive} />
+          {project.ruleMatch ? <div><strong className="text-xl" data-server-match-score>{project.ruleMatch.match_score}%</strong><span className="block text-xs">Rule-based match</span></div> : <AiMatchBadge score={match.overall} verdict={match.verdict} size="md" showVerdict={true} animate={isActive} />}
 
           <button
             type="button"
@@ -87,7 +91,7 @@ export default function ProjectCardContent({
                 : 'border-slate-200 text-slate-900'
             }`}
           >
-            <span>Why {match.overall}%?</span>
+            <span>{project.ruleMatch ? 'Why this matches' : `Why ${match.overall}%?`}</span>
             <ArrowUpRight size={13} />
           </button>
         </div>
@@ -103,20 +107,22 @@ export default function ProjectCardContent({
               {project.role}
             </div>
           </div>
+          {project.ruleMatch && <p className="text-xs text-slate-600">{project.ruleMatch.best_position.remaining_slots} remaining slots · {project.ruleMatch.best_position.role_name}</p>}
+          {project.closingDate && <p className="text-xs text-slate-600">Recruitment closing date: {project.closingDate} (Vietnam)</p>}
 
           <div>
             <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
               Required Stack
             </span>
             <div className="flex flex-wrap gap-1.5 max-h-[58px] overflow-hidden">
-              {(project.skills || []).map((skill) => {
+              {requiredSkills.map(({ skill_id, name: skill }) => {
                 const strongList = match?.strongMatches || match?.strengths || [];
-                const isMatched = strongList.some((s) =>
+                const isMatched = project.ruleMatch ? matchedIds.has(skill_id) : strongList.some((s) =>
                   s.toLowerCase().includes(skill.toLowerCase())
                 );
                 return (
                   <span
-                    key={skill}
+                    key={skill_id}
                     className={`text-xs px-2 py-0.5 rounded font-medium border inline-flex items-center gap-1.5 ${
                       isMatched
                         ? 'bg-slate-900 text-white border-slate-900'

@@ -3,6 +3,7 @@ import { CheckCircle2, X } from "lucide-react"
 export interface SaveConfirmDialogProps {
   open: boolean
   projectName: string
+  recruitmentClosingDate?: string
   isSubmitting?: boolean
   mode: "create" | "edit"
   onCancel: () => void
@@ -12,6 +13,7 @@ export interface SaveConfirmDialogProps {
 export function SaveConfirmDialog({
   open,
   projectName,
+  recruitmentClosingDate,
   isSubmitting,
   mode,
   onCancel,
@@ -59,6 +61,7 @@ export function SaveConfirmDialog({
         </div>
 
         <div className="preview-modal-body save-confirm-modal-body">
+          {recruitmentClosingDate && <p><strong>Recruitment deadline: {recruitmentClosingDate} (Vietnam time)</strong></p>}
           <p className="save-confirm-message">
             {mode === "create"
               ? `Are you sure you want to publish "${projectName.trim() || "this project"}"? It will be visible to students and recruitment will open immediately.`
