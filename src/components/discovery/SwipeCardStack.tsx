@@ -8,10 +8,12 @@ import { SkipActionButton, StarActionButton, InterestedActionButton } from '../c
 interface SwipeCardStackProps {
   items: (DiscoveryProject | DiscoveryCandidate)[];
   mode: DiscoveryMode;
-  onSwipe: (item: DiscoveryProject | DiscoveryCandidate, direction: SwipeDirection) => void;
+  onSwipe: (item: DiscoveryProject | DiscoveryCandidate, direction: SwipeDirection) => void | boolean | Promise<void | boolean>;
+  disabled?: boolean;
+  live?: boolean;
   onCardTap: (item: DiscoveryProject | DiscoveryCandidate) => void;
   onWhyMatchesClick: (item: DiscoveryProject | DiscoveryCandidate) => void;
-  onUndo?: () => void;
+  onUndo?: () => void | boolean | Promise<void | boolean>;
   canUndo?: boolean;
   onResetStack?: () => void;
   activeItemChanged?: (item: DiscoveryProject | DiscoveryCandidate | null) => void;
@@ -19,6 +21,8 @@ interface SwipeCardStackProps {
 }
 
 export default function SwipeCardStack({
+  disabled = false,
+  live = false,
   items,
   mode,
   onSwipe,
@@ -39,6 +43,11 @@ export default function SwipeCardStack({
   const swipedIdsRef = useRef<Set<string>>(new Set());
   const swipedOrderRef = useRef<string[]>([]);
   const prevItemsRef = useRef(items);
+  const latestItems = useRef(items); latestItems.current = items;
+  const busy = useRef(false);
+  const [pending, setPending] = useState(false);
+  const mounted = useRef(true);
+  useEffect(() => { mounted.current = true; return () => { mounted.current = false; } }, []);
 
   // When filters update `items`, jump to the first unswiped card in the filtered list
   useEffect(() => {
@@ -55,25 +64,43 @@ export default function SwipeCardStack({
   }, [currentItem, activeItemChanged]);
 
   const executeSwipe = useCallback(
-    (direction: SwipeDirection) => {
-      if (!currentItem || flyDirection) return;
-
-      setFlyDirection(direction);
-
-      setTimeout(() => {
+    async (direction: SwipeDirection) => {
+      if (!currentItem || flyDirection || disabled || busy.current) return;
+      busy.current = true; setPending(true);
+      try {
+        const accepted = await onSwipe(currentItem, direction);
+        if (!mounted.current || accepted === false) return;
+        setFlyDirection(direction);
+        await new Promise(resolve => setTimeout(resolve, 250));
+        if (!mounted.current) return;
         swipedIdsRef.current.add(currentItem.id);
         swipedOrderRef.current.push(currentItem.id);
-        onSwipe(currentItem, direction);
-        setCurrentIndex((prev) => prev + 1);
+        const next = latestItems.current.findIndex(item => !swipedIdsRef.current.has(item.id));
+        setCurrentIndex(next === -1 ? latestItems.current.length : next);
         setFlyDirection(null);
         setDragOffset({ x: 0, y: 0 });
-      }, 250);
+      } finally {
+        busy.current = false;
+        if (mounted.current) { setPending(false); setDragOffset({ x: 0, y: 0 }); }
+      }
     },
-    [currentItem, flyDirection, onSwipe]
+    [currentItem, flyDirection, onSwipe, disabled]
   );
 
+  const undo = useCallback(async () => {
+    if (!canUndo || disabled || busy.current) return;
+    busy.current = true; setPending(true);
+    try {
+      if (await onUndo?.() === false || !mounted.current) return;
+      const id = swipedOrderRef.current.pop();
+      if (id) swipedIdsRef.current.delete(id);
+      const index = latestItems.current.findIndex(item => !swipedIdsRef.current.has(item.id));
+      setCurrentIndex(index < 0 ? latestItems.current.length : index);
+    } finally { busy.current = false; if (mounted.current) setPending(false); }
+  }, [canUndo, disabled, onUndo]);
+
   const handlePointerDown = (e: React.PointerEvent) => {
-    if (!currentItem || flyDirection) return;
+    if (!currentItem || flyDirection || disabled || busy.current || (e.target as HTMLElement).closest('button,a,input,select')) return;
     setIsDragging(true);
     dragStartRef.current = { x: e.clientX, y: e.clientY, time: Date.now() };
     (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
@@ -117,8 +144,8 @@ export default function SwipeCardStack({
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (!currentItem || flyDirection) return;
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      if (!currentItem || flyDirection || disabled || busy.current || document.querySelector('[role="dialog"]')) return;
+      if ((e.target as HTMLElement)?.closest('input,textarea,select,button,a')) return;
 
       if (e.key === 'ArrowLeft') {
         e.preventDefault();
@@ -135,17 +162,14 @@ export default function SwipeCardStack({
       } else if ((e.key === 'z' || e.key === 'Z') && (e.ctrlKey || e.metaKey)) {
         if (canUndo) {
           e.preventDefault();
-          const lastId = swipedOrderRef.current.pop();
-          if (lastId) swipedIdsRef.current.delete(lastId);
-          onUndo?.();
-          setCurrentIndex((prev) => Math.max(0, prev - 1));
+          void undo();
         }
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [currentItem, flyDirection, executeSwipe, onCardTap, canUndo, onUndo]);
+  }, [currentItem, flyDirection, executeSwipe, onCardTap, canUndo, undo, disabled]);
 
   if (currentIndex >= items.length) {
     return (
@@ -158,7 +182,7 @@ export default function SwipeCardStack({
         </h3>
         <p className="text-xs text-slate-500 mt-2 max-w-xs leading-relaxed">
           {mode === 'student'
-            ? 'You have reviewed all available project recommendations. Adjust your filter criteria or reset the stack.'
+            ? 'You have reached the end of this feed. Refresh or adjust your filters for more projects.'
             : 'You have evaluated all matching candidates. Reset to review the stack again.'}
         </p>
 
@@ -174,17 +198,13 @@ export default function SwipeCardStack({
             className="button primary text-xs py-2 px-4"
           >
             <RotateCcw size={14} />
-            <span>Reset Stack</span>
+            <span>{live ? 'Refresh feed' : 'Reset Stack'}</span>
           </button>
           {canUndo && (
             <button
               type="button"
-              onClick={() => {
-                const lastId = swipedOrderRef.current.pop();
-                if (lastId) swipedIdsRef.current.delete(lastId);
-                onUndo?.();
-                setCurrentIndex((prev) => Math.max(0, prev - 1));
-              }}
+              disabled={disabled || pending}
+              onClick={() => { void undo(); }}
               className="button outline text-xs py-2 px-3"
             >
               Undo Last Action
@@ -198,8 +218,8 @@ export default function SwipeCardStack({
   const visibleItems = items.slice(currentIndex, currentIndex + 2);
 
   return (
-    <div className="w-full max-w-[460px] sm:max-w-[480px] mx-auto flex flex-col items-center select-none min-w-0">
-      <div className="relative w-full h-[530px] sm:h-[570px] min-h-[500px]">
+    <div className={`${live ? 'live-discovery__stack' : ''} w-full max-w-[460px] sm:max-w-[480px] mx-auto flex flex-col items-center select-none min-w-0`}>
+      <div className={`${live ? 'live-discovery__card-frame' : ''} relative w-full h-[530px] sm:h-[570px] min-h-[500px]`}>
         {visibleItems.map((item, index) => {
           const isTop = index === 0;
           const offsetStyle = {
@@ -241,7 +261,7 @@ export default function SwipeCardStack({
                       style={{ opacity: Math.min(1, (dragOffset.x - 30) / 70) }}
                     >
                       <Heart size={16} fill="currentColor" />
-                      <span>{mode === 'student' ? 'INTERESTED' : 'SHORTLIST'}</span>
+                      <span>{live ? 'APPLY' : mode === 'student' ? 'INTERESTED' : 'SHORTLIST'}</span>
                     </div>
                   )}
 
@@ -271,6 +291,7 @@ export default function SwipeCardStack({
               {mode === 'student' ? (
                 <ProjectCardContent
                   project={item as DiscoveryProject}
+                  live={live}
                   isActive={isTop}
                   onWhyMatchesClick={(e) => {
                     e.stopPropagation();
@@ -301,16 +322,11 @@ export default function SwipeCardStack({
       </div>
 
       {/* Accessible Action Buttons */}
-      <div className="w-full mt-4 flex items-center justify-center gap-2 sm:gap-4 px-1 sm:px-2 min-w-0">
+      <div className={`${live ? 'live-discovery__actions' : ''} w-full mt-4 flex items-center justify-center gap-2 px-1 sm:px-2 min-w-0`}>
         <button
           type="button"
-          disabled={!canUndo || currentIndex === 0}
-          onClick={() => {
-            const lastId = swipedOrderRef.current.pop();
-            if (lastId) swipedIdsRef.current.delete(lastId);
-            onUndo?.();
-            setCurrentIndex((prev) => Math.max(0, prev - 1));
-          }}
+          disabled={!canUndo || disabled || pending}
+          onClick={() => { void undo(); }}
           className={`w-10 h-10 min-h-[40px] shrink-0 rounded-lg border flex items-center justify-center transition-all ${
             canUndo && currentIndex > 0
               ? 'border-slate-300 bg-white text-slate-800 hover:bg-slate-100'
@@ -323,6 +339,7 @@ export default function SwipeCardStack({
         </button>
 
         <SkipActionButton
+          disabled={disabled || pending}
           onClick={() => executeSwipe('left')}
           className="flex-1 min-w-0 max-w-[120px] min-h-[40px] py-2.5 px-2 rounded-lg border border-rose-300 bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold text-xs flex items-center justify-center gap-1.5 transition-colors shadow-2xs"
           title="Skip recommendation"
@@ -334,23 +351,25 @@ export default function SwipeCardStack({
         </SkipActionButton>
 
         <StarActionButton
+          disabled={disabled || pending}
           isActionTrigger
           onToggle={() => executeSwipe('up')}
           className="w-10 h-10 min-h-[40px] shrink-0 rounded-lg border border-sky-300 bg-sky-50 hover:bg-sky-100 text-sky-700 flex items-center justify-center transition-colors shadow-2xs"
           title="Save for later"
           ariaLabel="Save for later"
           iconSize={16}
-        />
+        >{live && <span>Save</span>}</StarActionButton>
 
         <InterestedActionButton
+          disabled={disabled || pending}
           isActionTrigger
           onClick={() => executeSwipe('right')}
-          className="flex-1 min-w-0 max-w-[140px] min-h-[40px] py-2.5 px-2 rounded-lg border border-emerald-400 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-bold text-xs flex items-center justify-center gap-1.5 transition-colors shadow-2xs"
-          title={mode === 'student' ? 'Mark Interested' : 'Shortlist Candidate'}
-          ariaLabel={mode === 'student' ? 'Interested' : 'Shortlist'}
+          className="flex-1 min-w-[88px] max-w-[140px] min-h-[40px] py-2.5 px-2 rounded-lg border border-emerald-400 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-bold text-xs flex items-center justify-center gap-1.5 transition-colors shadow-2xs"
+          title={live ? 'Apply to a position' : mode === 'student' ? 'Mark Interested' : 'Shortlist Candidate'}
+          ariaLabel={live ? 'Apply' : mode === 'student' ? 'Interested' : 'Shortlist'}
           iconSize={15}
         >
-          <span className="truncate">{mode === 'student' ? 'Interested' : 'Shortlist'}</span>
+          <span className="truncate">{live ? 'Apply' : mode === 'student' ? 'Interested' : 'Shortlist'}</span>
         </InterestedActionButton>
       </div>
 
@@ -365,7 +384,7 @@ export default function SwipeCardStack({
         </span>
         <span>•</span>
         <span className="flex items-center gap-1 text-emerald-700 font-semibold">
-          <Heart size={12} className="text-emerald-600 fill-emerald-600" /> {mode === 'student' ? 'Interested' : 'Shortlist'} (→)
+          <Heart size={12} className="text-emerald-600 fill-emerald-600" /> {live ? 'Apply' : mode === 'student' ? 'Interested' : 'Shortlist'} (→)
         </span>
       </div>
     </div>

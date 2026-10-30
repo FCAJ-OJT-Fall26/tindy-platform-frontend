@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useRef, useCallback, useEffect } from 'react';
-import { useNavigate, useSearchParams } from 'react-router';
+import { Link, useNavigate, useSearchParams } from 'react-router';
 import { DiscoveryProject, DiscoveryCandidate, DiscoveryMode, SwipeDirection, SwipeHistoryEntry } from '../../types/discovery';
-import { INITIAL_PROJECTS, INITIAL_CANDIDATES } from '../../data/mockData';
+import { INITIAL_CANDIDATES } from '../../data/mockData';
 import SwipeCardStack from '../../components/discovery/SwipeCardStack';
 import DiscoveryFilters from '../../components/discovery/DiscoveryFilters';
 import DiscoverySegmentedControl from '../../components/discovery/DiscoverySegmentedControl';
@@ -13,6 +13,7 @@ import AiExplanationModal from '../../components/common/AiExplanationModal';
 import { SlidersHorizontal, ChevronDown } from 'lucide-react';
 import { useTindy } from '../../store';
 import { projectErrorMessage } from '../../services/projectEditor.service';
+import LiveDiscoveryView from './LiveDiscoveryView';
 
 interface SwipeDiscoveryViewProps {
   initialMode?: DiscoveryMode;
@@ -20,7 +21,9 @@ interface SwipeDiscoveryViewProps {
   onNotify?: (message: string) => void;
 }
 
-export default function SwipeDiscoveryView({
+const NO_SAMPLE_PROJECTS: DiscoveryProject[] = [];
+
+function DemoSwipeDiscoveryView({
   initialMode = 'student',
   onNavigateToMessages,
   onNotify,
@@ -78,20 +81,13 @@ export default function SwipeDiscoveryView({
   }, []);
 
   // Data collections
-  const demoMode = searchParams.get('demo') === '1';
-  useEffect(() => { if (!demoMode) tindy.requestProjects(); }, [demoMode, tindy.requestProjects]);
-  const projects = useMemo<DiscoveryProject[]>(() => demoMode ? INITIAL_PROJECTS : tindy.projects.map(project => ({
-    id: project.id, name: project.name, tagline: project.tagline ?? '', desc: project.description,
-    category: project.type, role: project.role, skills: project.skills, niceToHave: project.gap,
-    hours: project.hours + ' hrs/week', duration: project.duration, teamSize: project.team,
-    maxTeamSize: project.capacity, teamMembers: [], goals: project.goals, techStack: project.skills,
-    leadName: project.leader, leadRole: 'Project Leader', leadAvatar: '', color: 'blue', matchAvailable: false,
-    match: { overall: 0, verdict: 'Low Match', factors: [], strongMatches: [], skillGaps: [], explanationSummary: 'Matching is not available for this project.' },
-  })), [demoMode, tindy.projects]);
+  // This component is mounted only for mock teammates. Projects always use LiveDiscoveryView.
+  const demoMode = true;
+  const projects = NO_SAMPLE_PROJECTS;
   const [candidates, setCandidates] = useState<DiscoveryCandidate[]>(INITIAL_CANDIDATES);
 
   // User decision collections
-  const [savedProjectIds, setSavedProjectIds] = useState<string[]>(demoMode ? ['proj-2'] : tindy.saved);
+  const [savedProjectIds, setSavedProjectIds] = useState<string[]>([]);
   const [interestedProjectIds, setInterestedProjectIds] = useState<string[]>([]);
   const [savedCandidateIds, setSavedCandidateIds] = useState<string[]>([]);
   const [shortlistedCandidateIds, setShortlistedCandidateIds] = useState<string[]>([]);
@@ -166,6 +162,7 @@ export default function SwipeDiscoveryView({
       setSearchParams((prev) => {
         const updated = new URLSearchParams(prev);
         updated.set('mode', urlValue);
+        if (targetMode === 'student') updated.delete('demo');
         return updated;
       }, { replace: true });
     }
@@ -326,7 +323,6 @@ export default function SwipeDiscoveryView({
     } else if (direction === 'up') {
       if (displayMode === 'student') {
         setSavedProjectIds((prev) => [...new Set([...prev, item.id])]);
-        if (!demoMode) tindy.setSaved((prev) => [...new Set([...prev, item.id])]);
         showToast(`Saved "${item.name}" for later.`);
       } else {
         setSavedCandidateIds((prev) => [...new Set([...prev, item.id])]);
@@ -357,7 +353,6 @@ export default function SwipeDiscoveryView({
     } else if (lastAction.direction === 'up') {
       if (displayMode === 'student') {
         setSavedProjectIds((prev) => prev.filter((id) => id !== lastAction.id));
-        if (!demoMode) tindy.setSaved((prev) => prev.filter((id) => id !== lastAction.id));
       } else {
         setSavedCandidateIds((prev) => prev.filter((id) => id !== lastAction.id));
         tindy.setCandidateShortlisted((prev) => prev.filter((name) => name !== lastAction.item.name));
@@ -738,4 +733,18 @@ export default function SwipeDiscoveryView({
       />
     </div>
   );
+}
+
+export default function SwipeDiscoveryView(props: SwipeDiscoveryViewProps) {
+  const [params, setParams] = useSearchParams();
+  const mode = params.get('mode');
+  const teammates = ['teammates', 'candidates', 'leader'].includes(mode ?? '') || (!mode && props.initialMode === 'leader');
+  useEffect(() => {
+    if (!teammates && params.has('demo')) {
+      const next = new URLSearchParams(params);
+      next.delete('demo');
+      setParams(next, { replace: true });
+    }
+  }, [teammates, params, setParams]);
+  return teammates ? <><div className="panel" role="note">Demo mode — Find Teammates uses sample candidates and actions. <Link className="text-link" to="/discover">Back to live projects</Link></div><DemoSwipeDiscoveryView {...props} initialMode="leader" /></> : <LiveDiscoveryView />;
 }

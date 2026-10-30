@@ -216,7 +216,7 @@ export function Score({
   subtitle?: string
 }) {
   const value =
-    explicitValue !== undefined ? explicitValue : project ? score(project) : 0
+    explicitValue !== undefined ? explicitValue : project?.serverMatch ? project.serverMatch.match_score : project ? score(project) : 0
   const clamped = Math.max(0, Math.min(100, value))
   const size = compact ? 28 : 44
   const center = size / 2
@@ -377,7 +377,7 @@ export function ProjectCard({
   onExplain: () => void
   status?: string
 }) {
-  const projectTier = getMatchTier(score(project))
+  const projectTier = getMatchTier(project.serverMatch?.match_score ?? score(project))
   return (
     <article className="project-card">
       <div className="project-card-top">
@@ -388,7 +388,7 @@ export function ProjectCard({
           {project.type}
           <span className="recruiting">
             <i />
-            Recruiting
+            {project.isRecruitmentOpen === false ? "Recruitment closed" : project.status && project.status !== "recruiting" ? project.status.replace(/_/g, " ") : "Recruiting"}
           </span>
         </div>
         <ProjectSaveButton
@@ -411,22 +411,20 @@ export function ProjectCard({
         </span>
         <span>
           <Clock size={14} />
-          {project.hours === 10 ? "8–10" : project.hours} hrs/week <b>·</b>{" "}
+          {project.hours} hrs/week <b>·</b>{" "}
           {project.duration}
         </span>
       </div>
       <div className={`match-strip match-tier-${projectTier.tier}`}>
         <Score project={project} compact />
-        <button onClick={onExplain}>
+        {project.matchAvailable !== false && <button onClick={onExplain}>
           Why this matches you <ChevronRight size={13} />
-        </button>
+        </button>}
       </div>
       <div className="project-card-bottom">
         <div className="team-preview">
           <div className="avatar-stack">
             <Avatar name={project.leader} color={project.color} />
-            <Avatar name="An Hoang" color="neutral" />
-            <Avatar name="Linh Tran" color="green" />
           </div>
           <small>
             {project.team}/{project.capacity} members
@@ -625,6 +623,7 @@ export function Modal({
   wide = false,
   drawer = false,
   dismissible = true,
+  className = "",
 }: {
   title: string
   children: ReactNode
@@ -632,6 +631,7 @@ export function Modal({
   wide?: boolean
   drawer?: boolean
   dismissible?: boolean
+  className?: string
 }) {
   const container = useRef<HTMLDivElement>(null)
   const [closing, setClosing] = useState(false)
@@ -660,7 +660,7 @@ export function Modal({
       if (event.key === "Escape") handleClose()
       if (event.key === "Tab") {
         const focusable = container.current?.querySelectorAll<HTMLElement>(
-          'button:not(:disabled), a[href], input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex="0"]',
+          'button:not(:disabled), a[href], input:not(:disabled), select:not(:disabled), textarea:not(:disabled), summary, [tabindex="0"]',
         )
         if (!focusable?.length) return
         const first = focusable[0]
@@ -696,7 +696,7 @@ export function Modal({
         aria-modal="true"
         aria-label={title}
         tabIndex={-1}
-        className={`${drawer ? "drawer" : "modal"} ${wide ? "wide" : ""} ${closing ? "closing" : ""}`}
+        className={`${drawer ? "drawer" : "modal"} ${wide ? "wide" : ""} ${closing ? "closing" : ""} ${className}`}
       >
         <div className="modal-heading">
           <span>{title}</span>

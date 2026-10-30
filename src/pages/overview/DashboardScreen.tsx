@@ -24,6 +24,9 @@ import {
 import { score, type Project } from "../../data"
 import { useTindy } from "../../store"
 import { useExplanation } from "../../utils/useExplanation"
+import useDiscoveryFeed from "../../hooks/useDiscoveryFeed"
+import useMyProjects from "../../hooks/useMyProjects"
+import { mapDiscoveryToProject } from "../../services/discovery.service"
 
 function Cards({ projects, status }: { projects: Project[]; status?: string }) {
   const { saved, toggleSave } = useTindy()
@@ -97,16 +100,15 @@ function UserIcon() {
 }
 
 export function DashboardScreen() {
-  const { profile, projects, saved, active, skipped, requestProjects, projectsLoading, projectsError, reloadProjects } = useTindy()
-  useEffect(() => { requestProjects() }, [requestProjects])
+  const { profile, saved, ownerProfile } = useTindy()
+  const feed = useDiscoveryFeed()
+  const membership = useMyProjects()
+  const active = membership.data?.joined_projects ?? []
+  const projectsLoading = feed.loading
+  const projectsError = feed.error
+  const reloadProjects = feed.refresh
   const [tab, setTab] = useState("For you")
-  const available = projects
-    .filter((project) => !skipped.includes(project.id))
-    .sort((first, second) =>
-      tab === "New arrivals"
-        ? second.created - first.created
-        : score(second) - score(first),
-    )
+  const available = feed.items.filter(card => tab !== "New arrivals" || card.feed_bucket === "new_projects").map(mapDiscoveryToProject)
   return (
     <>
       <PageHeader
@@ -141,13 +143,9 @@ export function DashboardScreen() {
           tone="sky"
         />
         <Stat
-          label="Profile strength"
-          value={
-            <>
-              85<span>%</span>
-            </>
-          }
-          detail="Add a certificate to stand out"
+          label="Profile"
+          value={ownerProfile.data ? "Available" : "Loading"}
+          detail="Manage your profile details"
           icon={<ShieldCheck size={19} />}
           tone="green"
         />
@@ -201,7 +199,7 @@ export function DashboardScreen() {
               <Cards projects={available.slice(0, 4)} />
             ) : (
               <EmptyState
-                title="No projects match your profile yet."
+                title={tab === "New arrivals" ? "No new arrivals in the current feed." : "No projects match your profile yet."}
                 description="Add your skills and interests to discover more possibilities."
                 action={
                   <Link to="/profile" className="btn btn-primary">
@@ -221,64 +219,15 @@ export function DashboardScreen() {
               </span>
             </div>
             <p>A little more detail makes better matches.</p>
-            <div className="strength-number">
-              <strong>
-                85<span>%</span>
-              </strong>
-              <Badge tone="success">Looking good</Badge>
-            </div>
-            <div className="progress">
-              <span style={{ width: "85%" }} />
-            </div>
-            <ul className="profile-checklist">
-              <li>
-                <Check size={14} />
-                Basic information
-              </li>
-              <li>
-                <Check size={14} />
-                Skills & preferred roles
-              </li>
-              <li>
-                <Check size={14} />
-                Project experience
-              </li>
-              <li className="pending">
-                <Plus size={14} />
-                Add a certificate
-              </li>
-            </ul>
+            <p>{ownerProfile.data ? `${ownerProfile.data.skills.length} skills · ${ownerProfile.data.experiences_count} experiences · ${ownerProfile.data.certificates_count} certificates` : "Load your profile to see current details."}</p>
             <Link className="btn btn-secondary full" to="/profile">
               Complete my profile <ArrowRight size={14} />
             </Link>
           </section>
           <section className="panel next-steps">
             <h3>Your next steps</h3>
-            <Link
-              className="next-step"
-              to="/messages?conversation=Minh%20Nguyen"
-            >
-              <Avatar name="Minh Nguyen" color="teal" />
-              <div>
-                <strong>A conversation worth having</strong>
-                <p>Minh invited you to chat about CloudDesk.</p>
-                <span>
-                  View conversation <ArrowUpRight size={12} />
-                </span>
-              </div>
-            </Link>
-            <Link className="next-step" to="/projects?tab=Invited">
-              <span className="icon-tile amber">
-                <Mail size={18} />
-              </span>
-              <div>
-                <strong>You have a team invitation</strong>
-                <p>AI Customer Support System is ready for you.</p>
-                <span>
-                  Review invitation <ArrowUpRight size={12} />
-                </span>
-              </div>
-            </Link>
+            <Link className="next-step" to="/projects?tab=Interested"><strong>Review your applications</strong><ArrowUpRight size={12} /></Link>
+            <Link className="next-step" to="/projects?tab=Saved"><strong>Explore your saved projects</strong><ArrowUpRight size={12} /></Link>
           </section>
           <div className="community-footnote">
             <span className="fcaj-symbol">

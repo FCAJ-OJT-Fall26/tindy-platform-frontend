@@ -14,6 +14,7 @@
     "test:auth": "node tests/auth.browser.mjs",
     "test:save-button": "node tests/save-button.browser.mjs",
     "test:discovery-actions": "node tests/discovery-actions.browser.mjs",
+    "test:recruitment": "node tests/recruitment.browser.mjs",
     "preview": "vite preview",
     "format": "oxfmt"
   },

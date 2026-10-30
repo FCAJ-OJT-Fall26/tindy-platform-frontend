@@ -23,6 +23,8 @@ import { getMyProfile, patchMyProfile } from "./services/profile.service"
 import type { ProfilePatch } from "./types/profile"
 import useRemoteResource from "./hooks/useRemoteResource"
 import { getProjectsApi, mapProjectSummaryToUiProject } from "./services/projects.service"
+import { getAllSavedProjects, setDiscoveryFlag } from "./services/discovery.service"
+import { projectErrorMessage } from "./services/projectEditor.service"
 
 const loadProjectCatalog = (signal: AbortSignal) => getProjectsApi({ page_size: 50 }, signal)
 
@@ -80,7 +82,17 @@ function useAppState() {
   useEffect(() => {
     if (projectCatalog.data) setProjects(projectCatalog.data.items.map(dto => mapProjectSummaryToUiProject(dto)))
   }, [projectCatalog.data])
-  const [saved, setSaved] = useStored<string[]>("saved", [])
+  const savedProjects = useRemoteResource(authUser?.is_onboarding_completed ? authUser.user_id : null, getAllSavedProjects)
+  const [savedOverrides, setSavedOverrides] = useState<{ owner: string; flags: Record<string, boolean> }>({ owner: "", flags: {} })
+  const confirmedFlags = savedOverrides.owner === authUser?.user_id ? savedOverrides.flags : {}
+  const saved = [...new Set([...(savedProjects.data?.map(p => p.project_id) ?? []), ...Object.keys(confirmedFlags)])]
+    .filter(id => confirmedFlags[id] ?? Boolean(savedProjects.data?.some(p => p.project_id === id)))
+  const saveRequests = useRef(new Map<string, { value: boolean; promise: Promise<void> }>())
+  useEffect(() => {
+    if (!savedProjects.data || !authUser) return
+    const ids = new Set(savedProjects.data.map(p => p.project_id))
+    setSavedOverrides(old => old.owner === authUser.user_id ? { owner: old.owner, flags: Object.fromEntries(Object.entries(old.flags).filter(([id, flag]) => ids.has(id) !== flag)) } : old)
+  }, [savedProjects.data, authUser?.user_id])
   const [interested, setInterested] = useStored<string[]>("interested", [])
   const [skipped, setSkipped] = useStored<string[]>("skipped", [])
   const [active, setActive] = useStored<string[]>("active", [])
@@ -202,10 +214,27 @@ function useAppState() {
     return request
   }, [resetSession])
 
-  const toggleSave = (id: string) =>
-    setSaved((old) =>
-      old.includes(id) ? old.filter((item) => item !== id) : [...old, id],
-    )
+  const setProjectSaved = (id: string, value: boolean): Promise<void> => {
+    const owner = authUser?.user_id
+    if (!owner) return Promise.reject(new Error("Sign in to save projects."))
+    const key = `${owner}:${id}`
+    const pending = saveRequests.current.get(key)
+    if (pending) return pending.value === value ? pending.promise : Promise.reject(new Error("A save change is still in progress. Try again when it finishes."))
+    const generation = sessionGeneration.current
+    const token = getStoredToken()
+    const operation = (async () => {
+      try {
+        await setDiscoveryFlag(id, "saved", value)
+        if (generation !== sessionGeneration.current || getStoredToken() !== token) return
+        setSavedOverrides(old => ({ owner, flags: { ...(old.owner === owner ? old.flags : {}), [id]: value } }))
+        savedProjects.reload()
+      } catch (error) { if (generation === sessionGeneration.current && getStoredToken() === token) notify(projectErrorMessage(error)); throw error }
+      finally { saveRequests.current.delete(key) }
+    })()
+    saveRequests.current.set(key, { value, promise: operation })
+    return operation
+  }
+  const toggleSave = (id: string) => setProjectSaved(id, !saved.includes(id))
   const toggleShortlistCandidate = (name: string) =>
     setCandidateShortlisted((old) =>
       old.includes(name) ? old.filter((item) => item !== name) : [...old, name],
@@ -243,7 +272,8 @@ function useAppState() {
     reloadProjects: projectCatalog.reload,
     requestProjects,
     saved,
-    setSaved,
+    savedProjects,
+    setProjectSaved,
     toggleSave,
     interested,
     setInterested,
