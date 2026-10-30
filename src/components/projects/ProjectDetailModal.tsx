@@ -3,7 +3,6 @@ import { Link } from 'react-router';
 import { X, Clock, Bookmark, ArrowLeft, Heart, Star, ArrowUpRight } from 'lucide-react';
 import { DiscoveryProject } from '../../types/discovery';
 import AiMatchBadge from '../common/AiMatchBadge';
-import FunnelStatusTracker from '../common/FunnelStatusTracker';
 import SkillIcon from '../onboarding/SkillIcon';
 import { StarActionButton, InterestedActionButton } from '../common/DiscoveryActionButtons';
 
@@ -68,29 +67,28 @@ export default function ProjectDetailModal({
             <ArrowLeft size={15} />
             <span>Back to Discovery Deck</span>
           </button>
-          <div className="flex items-center gap-2">
-            <Link
-              to={`/project/${project.id}`}
-              className="py-1.5 px-3 rounded-lg border border-slate-200 text-xs font-semibold flex items-center gap-1.5 bg-white text-slate-700 hover:bg-slate-100 transition-colors"
-            >
-              <span>Full page specs</span>
-              <ArrowUpRight size={13} />
-            </Link>
-            <StarActionButton
-              starred={isSaved}
-              onToggle={() => onToggleSave(project.id)}
-              className={`py-1.5 px-3 rounded-lg border text-xs font-semibold flex items-center gap-1.5 transition-colors ${
-                isSaved
-                  ? 'bg-sky-50 text-sky-700 border-sky-300'
-                  : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
-              }`}
-              iconSize={13}
-            >
-              <span>{isSaved ? 'Saved' : 'Save'}</span>
-            </StarActionButton>
+          <div className="flex items-center gap-3">
+            <div className="flex flex-col items-end">
+              <Link
+                to={`/project/${project.id}`}
+                className="py-2 px-4 rounded-lg border border-slate-300 text-xs font-semibold flex items-center gap-2 bg-white text-slate-800 hover:bg-slate-100 hover:border-slate-400 transition-all shadow-2xs"
+              >
+                <span>Full page specs</span>
+                <ArrowUpRight size={14} />
+              </Link>
+              {isSaved && (
+                <div
+                  className="flex items-center gap-1 text-[11px] font-semibold text-sky-600 mt-1"
+                  title="Project saved"
+                >
+                  <Star size={11} className="fill-sky-500 text-sky-500" />
+                  <span>Saved</span>
+                </div>
+              )}
+            </div>
             <button
               onClick={handleClose}
-              className="p-1.5 rounded-lg text-slate-400 hover:text-slate-800 hover:bg-slate-200 transition-colors"
+              className="p-2 rounded-lg text-slate-400 hover:text-slate-800 hover:bg-slate-200 transition-colors cursor-pointer"
               aria-label="Close modal"
             >
               <X size={18} />
@@ -100,11 +98,6 @@ export default function ProjectDetailModal({
 
         {/* Content Body */}
         <div className="p-6 overflow-y-auto space-y-6 text-sm text-slate-700">
-          {/* Funnel Tracker */}
-          <FunnelStatusTracker
-            currentStatus={isInterested ? 'Interested' : isSaved ? 'Recommended' : 'Recommended'}
-          />
-
           {/* Project Title & Category */}
           <div className="space-y-1.5">
             <div className="flex items-center gap-2">
