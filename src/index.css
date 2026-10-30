@@ -14093,6 +14093,32 @@ button.text-link {
   gap: 7px;
 }
 
+.team-ws-stack-chips .chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.team-ws-stack-chips .chips > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  padding: 4px 9px;
+  font-size: 11.5px;
+  font-weight: 500;
+  color: #334155;
+  transition: all 0.15s ease;
+}
+
+.team-ws-stack-chips .chips > span:hover {
+  background: #edf2f7;
+  border-color: #cbd5e1;
+  transform: translateY(-1px);
+}
+
 .ws-stack-pill {
   display: inline-flex;
   align-items: center;

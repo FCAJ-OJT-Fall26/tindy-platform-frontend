@@ -11,7 +11,7 @@ import {
   Send,
 } from "lucide-react"
 import { useTindy } from "../../store"
-import { Button, Modal } from "../../components/ui"
+import { Button, Modal, Chips } from "../../components/ui"
 import SkillIcon from "../../components/onboarding/SkillIcon"
 
 interface TeamMember {
@@ -325,18 +325,7 @@ export function TeamScreen() {
               <div className="team-ws-meta-row">
                 <span className="team-ws-meta-label">Stack</span>
                 <div className="team-ws-meta-value team-ws-stack-chips">
-                  {[
-                    { name: ".NET", tone: "indigo" },
-                    { name: "AWS", tone: "emerald" },
-                    { name: "PostgreSQL", tone: "slate" },
-                    { name: "RAG", tone: "indigo" },
-                    { name: "LLM", tone: "emerald" },
-                  ].map((tech) => (
-                    <span key={tech.name} className={`ws-stack-pill ${tech.tone}`}>
-                      <SkillIcon name={tech.name} size={14} />
-                      <span>{tech.name}</span>
-                    </span>
-                  ))}
+                  <Chips items={[".NET", "AWS", "PostgreSQL", "RAG", "LLM"]} />
                 </div>
               </div>
             </div>
