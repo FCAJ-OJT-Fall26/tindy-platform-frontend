@@ -12,29 +12,22 @@ import {
 } from "../../components/ui"
 
 export function TeamScreen() {
-  const { profile, notify } = useTindy()
+  const { notify } = useTindy()
   const [announcement, setAnnouncement] = useState("")
-  const [posts, setPosts] = useState([
-    "Welcome to EcoTrack! Our kickoff is Friday at 5 PM. Bring your ideas.",
-  ])
+  const [posts, setPosts] = useState<string[]>([])
   const [invite, setInvite] = useState(false)
-  const [team, setTeam] = useState([
-    "Jamie Le",
-    profile.name,
-    "An Hoang",
-    "Linh Tran",
-  ])
+  const [team, setTeam] = useState<string[]>([])
 
   return (
     <>
       <PageHeader
         eyebrow="TEAM WORKSPACE"
-        title="EcoTrack"
-        description="A shared space for the people building a greener future."
+        title="Team workspace"
+        description="A shared space for your active project team."
         action={
           <Link
             className="btn btn-primary"
-            to="/messages?conversation=EcoTrack%20team"
+            to="/messages"
           >
             <MessageSquare size={16} />
             Open team chat
@@ -52,7 +45,7 @@ export function TeamScreen() {
               </Button>
             }
           />
-          {team.map((person, index) => (
+          {team.length === 0 ? <p>No active team members yet.</p> : team.map((person, index) => (
             <div className="team-person" key={person}>
               <Avatar name={person} color={index === 0 ? "green" : "neutral"} />
               <div>
@@ -76,6 +69,7 @@ export function TeamScreen() {
         </section>
         <section className="panel">
           <h2>Team announcements</h2>
+          {posts.length === 0 && <p>No announcements yet.</p>}
           {posts.map((post, index) => (
             <div className="announcement" key={index}>
               <Badge tone="blue">TEAM UPDATE</Badge>
@@ -117,7 +111,7 @@ export function TeamScreen() {
               const data = new FormData(event.currentTarget)
               setTeam([...team, String(data.get("name"))])
               setInvite(false)
-              notify("Demo teammate added")
+              notify("Invitation sent")
             }}
           >
             <label className="field">

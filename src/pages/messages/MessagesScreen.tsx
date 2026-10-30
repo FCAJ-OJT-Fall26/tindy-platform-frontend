@@ -1,281 +1,142 @@
-import { useState } from "react"
-import { useSearchParams, Link } from "react-router"
-import {
-  Search,
-  ShieldCheck,
-  FolderKanban,
-  Paperclip,
-  CheckCheck,
-  Send,
-  ArrowUpRight,
-} from "lucide-react"
-import { useTindy } from "../../store"
-import {
-  PageHeader,
-  Avatar,
-  Badge,
-  Button,
-  EmptyState,
-} from "../../components/ui"
+import { HubConnectionBuilder, LogLevel, type HubConnection } from "@microsoft/signalr"
+import { CheckCheck, MessageCircle, MoreHorizontal, Paperclip, Search, Send, Smile, X } from "lucide-react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useSearchParams } from "react-router"
+import { EmptyState, PageHeader } from "../../components/ui"
+import { apiOrigin } from "../../services/apiConfig"
+import { ApiError, getStoredToken } from "../../services/apiClient"
+import { createDirectConversation, getChatConversations, getChatMessages, mapChatMessage, markChatRead, searchChatUsers, sendChatMessage, type ChatConversation, type ChatMessage, type ChatUser } from "../../services/chat.service"
 
-export type ChatMessage = {
-  body: string
-  outgoing: boolean
-  file?: boolean
+export type { ChatMessage } from "../../services/chat.service"
+
+function initials(name: string) {
+  return name.split(" ").filter(Boolean).slice(-2).map((part) => part[0]).join("").toUpperCase() || "?"
 }
 
+function formatMessageTime(value: string) {
+  return new Intl.DateTimeFormat("vi-VN", { hour: "2-digit", minute: "2-digit" }).format(new Date(value))
+}
+
+// Conversations are server-owned. No local/demo conversation is used as a fallback.
 export function Messages() {
   const [params, setParams] = useSearchParams()
-  const { notify, profile } = useTindy()
   const [query, setQuery] = useState("")
+  const [users, setUsers] = useState<ChatUser[]>([])
+  const [conversations, setConversations] = useState<ChatConversation[]>([])
+  const [messages, setMessages] = useState<ChatMessage[]>([])
   const [draft, setDraft] = useState("")
-  const [tab, setTab] = useState("General chat")
-  const [history, setHistory] = useState<Record<string, ChatMessage[]>>({})
-  const current = params.get("conversation") || "Minh Nguyen"
-  const people = [
-    ...new Set(["Minh Nguyen", "EcoTrack team", "Cao Thanh Nhan", current]),
-  ]
-  const team = current.includes("team")
-  const initial: ChatMessage[] =
-    current === "Minh Nguyen"
-      ? [
-          {
-            body: `Hey ${profile.name.split(" ")[0]}! Your experience with .NET and RAG caught my eye. I think you’d be a great fit for our AI Customer Support project.`,
-            outgoing: false,
-          },
-          {
-            body: "Thanks for reaching out! The project sounds really interesting. I’d love to learn more about the architecture.",
-            outgoing: true,
-          },
-          {
-            body: "Absolutely. We’re building the backend on .NET, with PostgreSQL and AWS. Would you have 8–10 hours a week to collaborate?",
-            outgoing: false,
-          },
-        ]
-      : [
-          {
-            body: team
-              ? "Welcome to the team! Our next check-in is Friday at 5 PM. Share what you’re working on here."
-              : `Hi! I’d love to connect about AI Customer Support System.`,
-            outgoing: !team,
-          },
-        ]
-  const messages = history[current] || initial
-  const send = (body: string, file = false) => {
-    if (!body.trim()) return
-    setHistory((old) => ({
-      ...old,
-      [current]: [...messages, { body, outgoing: true, file }],
-    }))
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const connection = useRef<HubConnection | null>(null)
+  const messagesContainerRef = useRef<HTMLDivElement | null>(null)
+  const firstUnreadRef = useRef<HTMLDivElement | null>(null)
+  const conversationId = params.get("conversation")
+  const selected = useMemo(() => conversations.find((item) => item.conversationId === conversationId) ?? null, [conversations, conversationId])
+
+  const refresh = useCallback(async () => {
+    const data = await getChatConversations()
+    setConversations(data)
+    if (!conversationId && data[0]) setParams({ conversation: data[0].conversationId })
+  }, [conversationId, setParams])
+
+  useEffect(() => {
+    void refresh().catch(() => setError("Could not load your conversations.")).finally(() => setLoading(false))
+  }, [refresh])
+
+  useEffect(() => {
+    if (query.trim().length < 2) { setUsers([]); return }
+    const timer = window.setTimeout(() => void searchChatUsers(query).then(setUsers).catch(() => setUsers([])), 250)
+    return () => window.clearTimeout(timer)
+  }, [query])
+
+  useEffect(() => {
+    if (!conversationId) { setMessages([]); return }
+    firstUnreadRef.current = null
+    void getChatMessages(conversationId)
+      .then((page) => {
+        setMessages(page.items)
+      })
+      .catch(() => setError("Could not load messages."))
+  }, [conversationId])
+
+  useEffect(() => {
+    const container = messagesContainerRef.current
+    if (!container) return
+    const frame = window.requestAnimationFrame(() => {
+      container.scrollTo({ top: container.scrollHeight, behavior: "smooth" })
+    })
+    return () => window.cancelAnimationFrame(frame)
+  }, [messages.length, conversationId])
+
+  useEffect(() => {
+    if (!getStoredToken()) return
+    const hub = new HubConnectionBuilder().withUrl(`${apiOrigin()}/hubs/chat`, { accessTokenFactory: () => getStoredToken() ?? "" }).withAutomaticReconnect().configureLogging(LogLevel.Warning).build()
+    connection.current = hub
+    hub.on("message.created", (message: ChatMessage) => {
+      const normalizedMessage = mapChatMessage(message)
+      if (normalizedMessage.conversationId === conversationId) setMessages((current) => current.some((item) => item.messageId === normalizedMessage.messageId) ? current : [...current, normalizedMessage])
+      void refresh()
+    })
+    void hub.start().then(() => {
+      if (conversationId) return hub.invoke("JoinConversation", conversationId).catch(() => undefined)
+      return undefined
+    }).catch(() => undefined)
+    return () => { connection.current = null; void hub.stop() }
+  }, [conversationId, refresh])
+
+  async function selectUser(user: ChatUser) {
+    try { const conversation = await createDirectConversation(user.userId); setQuery(""); setUsers([]); await refresh(); setParams({ conversation: conversation.conversationId }) }
+    catch (reason) { setError(reason instanceof ApiError ? reason.message : "Could not start the conversation.") }
+  }
+
+  async function submitMessage() {
+    const body = draft.trim()
+    if (!body || !conversationId) return
+    const clientMessageId = crypto.randomUUID()
     setDraft("")
-    if (!file) notify("Message sent")
+    try {
+      if (connection.current?.state === "Connected") await connection.current.invoke("SendMessage", conversationId, body, clientMessageId)
+      else { const message = await sendChatMessage(conversationId, body, clientMessageId); setMessages((current) => [...current, message]); await refresh() }
+    } catch { setDraft(body); setError("Could not send the message.") }
+  }
+
+  async function jumpToFirstUnread() {
+    const container = messagesContainerRef.current
+    const target = firstUnreadRef.current
+    if (container && target) {
+      const targetTop = target.getBoundingClientRect().top - container.getBoundingClientRect().top + container.scrollTop
+      container.scrollTo({ top: Math.max(0, targetTop - container.clientHeight / 3), behavior: "smooth" })
+    }
+    if (conversationId) {
+      await markChatRead(conversationId).catch(() => undefined)
+      await refresh().catch(() => undefined)
+    }
   }
 
   return (
     <>
       <PageHeader
         title="Conversations that move things forward."
-        description="Connect with project leaders, candidates, and your team."
+        description="Connect directly with the people building projects with you."
       />
-      <section className="messaging">
-        <aside className="conversation-sidebar">
-          <div className="conversation-heading">
-            <h3>Messages</h3>
-            <span className="badge">{people.length}</span>
-          </div>
-          <label className="search-input">
+      <section className="messaging chat-workspace">
+        <aside className="conversation-sidebar chat-inbox">
+          <div className="conversation-heading chat-inbox-heading"><div><span className="chat-eyebrow">INBOX</span><h3>Messages</h3></div><span className="chat-count">{conversations.length}</span></div>
+          <label className="search-input chat-search">
             <Search size={16} />
             <input
-              aria-label="Search conversations"
-              placeholder="Search conversations…"
+              aria-label="Search users"
+              placeholder="Search people to chat…"
               value={query}
               onChange={(event) => setQuery(event.target.value)}
             />
           </label>
-          <div className="conversation-list">
-            {people
-              .filter((person) =>
-                person.toLowerCase().includes(query.toLowerCase()),
-              )
-              .map((person, index) => (
-                <button
-                  key={person}
-                  className={`conversation ${
-                    current === person ? "active" : ""
-                  }`}
-                  onClick={() => {
-                    setParams({ conversation: person })
-                    setTab("General chat")
-                    setDraft("")
-                  }}
-                >
-                  <Avatar
-                    name={person}
-                    color={index === 0 ? "teal" : index === 1 ? "green" : "sky"}
-                  />
-                  <div>
-                    <div>
-                      <strong>{person}</strong>
-                      <small>{index === 0 ? "10:42" : "Yesterday"}</small>
-                    </div>
-                    <span>
-                      {person.includes("team")
-                        ? "EcoTrack · Team conversation"
-                        : "AI Customer Support System"}
-                    </span>
-                    <p>
-                      {history[person]?.at(-1)?.body ||
-                        (index === 0
-                          ? "Would you have 8–10 hours a week?"
-                          : "Let’s build something meaningful.")}
-                    </p>
-                  </div>
-                  {index === 0 && <i />}
-                </button>
-              ))}
-          </div>
-          {query &&
-            !people.some((person) =>
-              person.toLowerCase().includes(query.toLowerCase()),
-            ) && (
-              <EmptyState
-                title="No conversations found"
-                description="Try a different name."
-              />
-            )}
-          <div className="conversation-context">
-            <ShieldCheck size={15} />
-            <span>
-              Your project conversations,
-              <br />
-              all in one place.
-            </span>
-          </div>
+          {users.length > 0 && <div className="chat-results"><span className="chat-section-label">People</span>{users.map((user) => <button className="chat-contact" key={user.userId} onClick={() => void selectUser(user)}><span className="chat-avatar chat-avatar-search">{initials(user.displayName)}</span><span><strong>{user.displayName}</strong><small>{user.username ? `@${user.username}` : "Tindy account"}</small></span><MessageCircle size={16} /></button>)}</div>}
+          <div className="chat-conversation-list"><span className="chat-section-label">Conversations</span>{loading ? <p className="chat-muted">Loading…</p> : conversations.map((item) => <button className={`chat-contact ${item.conversationId === conversationId ? "active" : ""}`} key={item.conversationId} onClick={() => setParams({ conversation: item.conversationId })}><span className="chat-avatar">{initials(item.otherParticipant.displayName)}</span><span className="chat-contact-copy"><strong>{item.otherParticipant.displayName}</strong><small>{item.lastMessageAt ? "Active conversation" : "Start a conversation"}</small></span>{item.unreadCount > 0 && <span className="chat-unread">{item.unreadCount}</span>}</button>)}{!loading && !conversations.length && !users.length && <EmptyState title="No conversations yet" description="Search for a real account to start chatting." />}</div>
         </aside>
-        <div className="chat-main">
-          <div className="chat-header">
-            <Avatar name={current} color="teal" />
-            <div>
-              <h3>{current}</h3>
-              <p>
-                <span className="online-dot" />
-                {team ? "Team conversation" : "Project leader / candidate"}{" "}
-                <b>·</b> FCAJ
-              </p>
-            </div>
-            <Link
-              to={team ? "/project/ecotrack" : "/project/cloud-desk"}
-              className="btn btn-secondary"
-            >
-              View project <ArrowUpRight size={13} />
-            </Link>
-          </div>
-          <div className="chat-project-context">
-            <FolderKanban size={15} />
-            <span>{team ? "EcoTrack" : "AI Customer Support System"}</span>
-            <Badge>PROJECT CONTEXT</Badge>
-          </div>
-          {team && (
-            <div className="tabs chat-tabs">
-              {["General chat", "Announcements", "Team members"].map((item) => (
-                <button
-                  key={item}
-                  className={tab === item ? "active" : ""}
-                  onClick={() => setTab(item)}
-                >
-                  {item}
-                </button>
-              ))}
-            </div>
-          )}
-          {tab === "Announcements" ? (
-            <div className="chat-announcement">
-              <Badge tone="blue">TEAM UPDATE</Badge>
-              <h3>Kickoff · Friday, 5 PM</h3>
-              <p>
-                Bring your ideas and questions. We’ll review the architecture
-                and plan our first sprint.
-              </p>
-            </div>
-          ) : tab === "Team members" ? (
-            <div className="chat-announcement">
-              {["Jamie Le", profile.name, "An Hoang", "Linh Tran"].map(
-                (person) => (
-                  <div className="team-person" key={person}>
-                    <Avatar name={person} />
-                    <strong>{person}</strong>
-                    <Badge>MEMBER</Badge>
-                  </div>
-                ),
-              )}
-            </div>
-          ) : (
-            <>
-              <div className="chat-messages">
-                <div className="chat-date">
-                  <span>Today</span>
-                </div>
-                {messages.map((message, index) => (
-                  <div
-                    className={`message-row ${
-                      message.outgoing ? "outgoing" : ""
-                    }`}
-                    key={index}
-                  >
-                    {!message.outgoing && (
-                      <Avatar name={current} color="teal" />
-                    )}
-                    <div>
-                      <div className="chat-bubble">
-                        {message.file && <Paperclip size={15} />} {message.body}
-                      </div>
-                      <small>
-                        {message.outgoing ? "You" : current.split(" ")[0]} · 10:
-                        {(32 + index).toString().padStart(2, "0")}{" "}
-                        {message.outgoing && <CheckCheck size={12} />}
-                      </small>
-                    </div>
-                  </div>
-                ))}
-              </div>
-              <form
-                className="message-composer"
-                onSubmit={(event) => {
-                  event.preventDefault()
-                  send(draft)
-                }}
-              >
-                <label className="attach-file" title="Attach a file">
-                  <Paperclip size={20} />
-                  <input
-                    type="file"
-                    hidden
-                    onChange={(event) => {
-                      const file = event.target.files?.[0]
-                      if (file) {
-                        send(file.name, true)
-                        notify(
-                          "Attachment added · Filename only in this prototype",
-                        )
-                      }
-                    }}
-                  />
-                </label>
-                <input
-                  aria-label="Write a message"
-                  placeholder="Write a message…"
-                  value={draft}
-                  onChange={(event) => setDraft(event.target.value)}
-                />
-                <Button disabled={!draft.trim()} aria-label="Send message">
-                  <Send size={17} />
-                </Button>
-              </form>
-              <div className="chat-demo-note">
-                Local demo conversation · Messages are not sent to a server.
-              </div>
-            </>
-          )}
+        <div className="chat-main chat-room">
+          {selected ? <><header className="chat-header chat-room-header"><div className="chat-avatar chat-avatar-large">{initials(selected.otherParticipant.displayName)}</div><div className="chat-room-identity"><h3>{selected.otherParticipant.displayName}</h3><p><span className="chat-online-dot" />Active on Tindy</p></div><button className="chat-icon-button" type="button" aria-label="More options"><MoreHorizontal size={20} /></button></header><div ref={messagesContainerRef} className="chat-messages chat-message-stream"><div className="chat-day-divider"><span>Today</span></div>{selected.unreadCount > 0 && <button className="chat-unread-jump" type="button" onClick={() => void jumpToFirstUnread()}>Jump to first unread <span>{selected.unreadCount}</span></button>}{messages.map((message) => { const outgoing = message.senderId !== selected.otherParticipant.userId; const isFirstUnread = !outgoing && selected.firstUnreadAt && new Date(message.createdAt) >= new Date(selected.firstUnreadAt); return <div className={`chat-message-row ${outgoing ? "outgoing" : "incoming"} ${isFirstUnread ? "first-unread" : ""}`} key={message.messageId} ref={isFirstUnread && !firstUnreadRef.current ? firstUnreadRef : undefined}>{isFirstUnread && <div className="chat-unread-divider"><span>New messages</span></div>}<div className="chat-message-stack"><div className="chat-bubble">{message.body}</div><div className="chat-message-meta"><span>{formatMessageTime(message.createdAt)}</span>{outgoing && <CheckCheck size={14} />}</div></div></div> })}</div><form className="chat-composer" onSubmit={(event) => { event.preventDefault(); void submitMessage() }}><button className="chat-composer-icon" type="button" aria-label="Attach file"><Paperclip size={19} /></button><input aria-label="Message" placeholder="Write a message…" maxLength={4000} value={draft} onChange={(event) => setDraft(event.target.value)} /><button className="chat-composer-icon" type="button" aria-label="Emoji"><Smile size={19} /></button><button className="chat-send-button" type="submit" aria-label="Send"><Send size={17} /></button></form></> : <div className="chat-empty"><div className="chat-empty-orbit"><MessageCircle size={28} /></div><h3>Start a conversation</h3><p>Search for an account on the left to send a private message.</p></div>}
+          {error && <div className="chat-error" role="alert"><span>{error}</span><button type="button" aria-label="Dismiss error" onClick={() => setError(null)}><X size={16} /></button></div>}
         </div>
       </section>
     </>

@@ -258,7 +258,7 @@ export default function OverviewScreen({
             <div className="completion">
               <strong>75<span>%</span></strong>
               <div>
-                <b>Alex Le</b>
+                <b>Your profile</b>
                 <small>Computer Science Senior</small>
               </div>
             </div>
@@ -284,14 +284,9 @@ export default function OverviewScreen({
           <section className="activity-panel">
             <h3>Recent Activity <span className="live-dot" /></h3>
             <div className="activity">
-              <span className="avatar">JL</span>
               <div>
-                <p><strong>Jamie Le</strong> invited you to EcoTrack</p>
-                <small>Frontend Developer · 2 hours ago</small>
-                <button onClick={() => navigate('/messages')}>
-                  <span>Reply to message</span>
-                  <ArrowUpRight size={12} />
-                </button>
+                <p>No recent activity yet.</p>
+                <small>Updates will appear after real project interactions.</small>
               </div>
             </div>
             <div className="activity">

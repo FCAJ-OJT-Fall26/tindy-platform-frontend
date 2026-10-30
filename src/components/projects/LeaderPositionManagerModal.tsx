@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from "react"
+import { useState, useEffect, useCallback } from "react"
 import {
   Plus,
   Trash2,
@@ -69,46 +69,8 @@ export default function LeaderPositionManagerModal({
 }: LeaderPositionManagerModalProps) {
   const { notify } = useTindy()
 
-  const defaultFallbackPositions: ProjectPositionDto[] = useMemo(() => {
-    if (initialPositions && initialPositions.length > 0) return initialPositions
-    return [
-      {
-        position_id: `mock-pos-1`,
-        project_id: projectId,
-        role_id: "role_frontend",
-        title: projectRole || "Frontend Developer",
-        description: "Build intuitive user interfaces, state management, and real-time interaction flows.",
-        required_count: 2,
-        filled_count: 0,
-        experience_level: "intermediate",
-        status: "open",
-        skills: (projectSkills || ["React", "TypeScript", "Tailwind"]).slice(0, 3).map((name) => ({
-          skill_id: `skill-${name.toLowerCase().replace(/\s+/g, "_")}`,
-          name,
-          is_required: true,
-        })),
-      },
-      {
-        position_id: `mock-pos-2`,
-        project_id: projectId,
-        role_id: "role_backend",
-        title: "Backend Engineer",
-        description: "Develop resilient APIs, manage relational/vector databases, and ensure cloud security.",
-        required_count: 1,
-        filled_count: 0,
-        experience_level: "intermediate",
-        status: "open",
-        skills: [
-          { skill_id: "skill_dotnet", name: ".NET / C#", is_required: true },
-          { skill_id: "skill_postgres", name: "PostgreSQL", is_required: true },
-          { skill_id: "skill_docker", name: "Docker", is_required: false },
-        ],
-      },
-    ]
-  }, [initialPositions, projectId, projectRole, projectSkills])
-
   const [positions, setPositions] = useState<ProjectPositionDto[]>(
-    initialPositions && initialPositions.length > 0 ? initialPositions : defaultFallbackPositions,
+    initialPositions ?? [],
   )
   const [loading, setLoading] = useState(false)
   const [busyPosId, setBusyPosId] = useState<string | null>(null)
@@ -144,7 +106,7 @@ export default function LeaderPositionManagerModal({
       if (initialPositions && initialPositions.length > 0) {
         setPositions(initialPositions)
       } else {
-        setPositions(defaultFallbackPositions)
+        setPositions([])
       }
       return
     }
@@ -163,7 +125,7 @@ export default function LeaderPositionManagerModal({
     } finally {
       setLoading(false)
     }
-  }, [projectId, initialPositions, defaultFallbackPositions])
+  }, [projectId, initialPositions])
 
   useEffect(() => {
     fetchPositions()

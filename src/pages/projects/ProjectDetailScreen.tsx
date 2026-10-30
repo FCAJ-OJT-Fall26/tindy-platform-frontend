@@ -379,7 +379,7 @@ export function ProjectDetailScreen() {
                     </Badge>
                   </div>
                 ))
-              : [project.leader, "An Hoang", "Linh Tran"]
+              : [project.leader]
                   .slice(0, project.team)
                   .map((name, index) => (
                     <div className="team-person" key={name}>

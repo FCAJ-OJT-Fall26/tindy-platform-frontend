@@ -41,7 +41,7 @@ export function CandidateDetail() {
       </Link>
       <PageHeader
         title="A person behind the profile."
-        description="Candidate review · AI Customer Support System"
+        description="Candidate review"
       />
       <div className="panel candidate-detail-top">
         <Avatar name={candidate.name} color={candidate.color} size="xl" />

@@ -1,6 +1,5 @@
 import { createContext, useContext, useState, useEffect, useCallback, useRef, type ReactNode } from "react"
 import {
-  initialProfile,
   initialProjects,
   initialCandidates,
   type Profile,
@@ -8,7 +7,6 @@ import {
 } from "./data"
 
 export {
-  initialProfile,
   initialProjects,
   initialCandidates,
   type Profile,
@@ -30,7 +28,10 @@ const emptySessionProfile: Profile = { name: 'Tindy member', university: '', ema
 function useStored<T>(key: string, initial: T) {
   const [value, setValue] = useState<T>(() => {
     try {
-      const stored = localStorage.getItem(`tindy-v2-${key}`)
+      // Legacy v2 state contained prototype/demo records. Production data is
+      // server-owned, so discard that local cache instead of migrating it.
+      localStorage.removeItem(`tindy-v2-${key}`)
+      const stored = localStorage.getItem(`tindy-v3-${key}`)
       return stored ? JSON.parse(stored) : initial
     } catch {
       return initial
@@ -41,7 +42,7 @@ function useStored<T>(key: string, initial: T) {
       const updater = next as (previous: T) => T
       const result = typeof next === "function" ? updater(old) : next
       try {
-        localStorage.setItem(`tindy-v2-${key}`, JSON.stringify(result))
+        localStorage.setItem(`tindy-v3-${key}`, JSON.stringify(result))
       } catch {}
       return result
     }), [key])
@@ -73,34 +74,30 @@ function useAppState() {
     initialProjects,
   )
   const [saved, setSaved] = useStored<string[]>("saved", [
-    "campus-cloud",
-    "openfolio",
   ])
-  const [interested, setInterested] = useStored<string[]>("interested", [
-    "studywise",
-  ])
+  const [interested, setInterested] = useStored<string[]>("interested", [])
   const [skipped, setSkipped] = useStored<string[]>("skipped", [])
-  const [active, setActive] = useStored<string[]>("active", ["ecotrack"])
-  const [invited, setInvited] = useStored<string[]>("invited", ["cloud-desk"])
+  const [active, setActive] = useStored<string[]>("active", [])
+  const [invited, setInvited] = useStored<string[]>("invited", [])
   const [completed] = useStored<string[]>("completed", [])
   const [mode, setMode] = useStored<string>("mode", "User")
   const [read, setRead] = useStored<number[]>("read", [])
   const [dismissed, setDismissed] = useStored<string[]>("dismissed", [])
   const [candidateInvites, setCandidateInvites] = useStored<string[]>(
     "candidate-invites",
-    ["Minh Nguyen"],
+    [],
   )
   const [candidateShortlisted, setCandidateShortlisted] = useStored<string[]>(
     "candidate-shortlisted",
-    ["Cao Thanh Nhan", "Linh Tran"],
+    [],
   )
   const [candidateInterested, setCandidateInterested] = useStored<string[]>(
     "candidate-interested",
-    ["Cao Thanh Nhan", "David Pham", "An Hoang"],
+    [],
   )
   const [candidateActive, setCandidateActive] = useStored<string[]>(
     "candidate-active",
-    ["Jamie Le"],
+    [],
   )
   const [candidateArchived, setCandidateArchived] = useStored<string[]>(
     "candidate-archived",

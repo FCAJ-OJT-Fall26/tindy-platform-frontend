@@ -107,7 +107,7 @@ export default function FullPreviewDialog({
               </div>
 
               <h1 className="light-preview-title">
-                {projectName.trim() || "AI Customer Support System"}
+                {projectName.trim() || "Untitled project"}
               </h1>
 
               <p className="light-preview-tagline">

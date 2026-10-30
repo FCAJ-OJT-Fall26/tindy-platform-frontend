@@ -17,6 +17,7 @@
     "format": "oxfmt"
   },
   "dependencies": {
+    "@microsoft/signalr": "^8.0.7",
     "lucide-react": "^1.52.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",

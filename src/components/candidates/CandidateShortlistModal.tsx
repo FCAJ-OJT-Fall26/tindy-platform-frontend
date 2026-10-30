@@ -14,7 +14,7 @@ interface CandidateShortlistModalProps {
 export default function CandidateShortlistModal({
   isOpen,
   candidate,
-  projectName = 'EcoTrack',
+  projectName = '',
   onClose,
   onConfirmShortlist,
   onInviteToChat,
@@ -42,7 +42,7 @@ export default function CandidateShortlistModal({
   const handleSendInvite = () => {
     onInviteToChat(
       invitationNote ||
-        `Hi ${candidate.name}, I reviewed your verified profile and would like to invite you to discuss our ${candidate.preferredRole} role for ${projectName}.`
+        `Hi ${candidate.name}, I reviewed your verified profile and would like to invite you to discuss our ${candidate.preferredRole} role${projectName ? ` for ${projectName}` : ''}.`
     );
     setStep('confirm');
     handleClose();

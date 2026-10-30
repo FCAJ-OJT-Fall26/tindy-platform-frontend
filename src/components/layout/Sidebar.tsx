@@ -34,7 +34,7 @@ interface SidebarProps {
 }
 
 export default function Sidebar({ mobile, onClose }: SidebarProps) {
-  const { read, logout, loggingOut } = useTindy()
+  const { logout, loggingOut } = useTindy()
   const location = useLocation()
   const navigate = useNavigate()
 
@@ -133,12 +133,6 @@ export default function Sidebar({ mobile, onClose }: SidebarProps) {
             >
               <item.icon size={18} />
               <span>{item.label}</span>
-              {item.label === "Messages" && (
-                <span className="nav-count">2</span>
-              )}
-              {item.label === "Notifications" && read.length < 4 && (
-                <span className="nav-dot" />
-              )}
             </NavLink>
           ))}
         </nav>

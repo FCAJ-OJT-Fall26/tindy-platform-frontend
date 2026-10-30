@@ -256,7 +256,7 @@ export function Candidates() {
                 <div className="invitation-bar" key={candidate.name}>
                   <span>
                     Invitation sent to <strong>{candidate.name}</strong> for{" "}
-                    <strong>AI Customer Support System</strong> ({candidate.role})
+                    <strong>{candidate.role}</strong>
                   </span>
                   <div
                     style={{
@@ -337,7 +337,7 @@ export function Candidates() {
           <Badge tone="success">INVITATION</Badge>
           <h2>Invite {inviteModal} to your team?</h2>
           <p>
-            They will receive an invitation to join AI Customer Support System
+            They will receive an invitation for the selected project.
             as a core contributor.
           </p>
           <label className="field">
@@ -375,7 +375,7 @@ export function Candidates() {
           <div className="drawer-header">
             <Score
               value={explainCandidate.match}
-              subtitle="Calculated against AI Customer Support System requirements"
+              subtitle="Calculated against the selected project requirements"
             />
           </div>
           <h3>Why {explainCandidate.name} matches your project</h3>

@@ -165,6 +165,7 @@ export function ProjectForm({ mode, initialProject }: ProjectFormProps) {
   // Catalog data
   const [catalogRoles, setCatalogRoles] = useState<ProfessionalRole[]>([])
   const [catalogSkills, setCatalogSkills] = useState<CatalogSkill[]>([])
+  const [catalogError, setCatalogError] = useState("")
 
   // Dialog states
   const [showAiDialog, setShowAiDialog] = useState(false)
@@ -188,12 +189,17 @@ export function ProjectForm({ mode, initialProject }: ProjectFormProps) {
 
   useEffect(() => {
     const controller = new AbortController()
+    setCatalogError("")
     getProfessionalRolesApi(undefined, controller.signal)
       .then(setCatalogRoles)
-      .catch(() => {})
+      .catch(() => {
+        if (!controller.signal.aborted) setCatalogError("Unable to load the project catalog. Check that the backend is running and your account is authenticated.")
+      })
     getSkillsApi(undefined, undefined, controller.signal)
       .then(setCatalogSkills)
-      .catch(() => {})
+      .catch(() => {
+        if (!controller.signal.aborted) setCatalogError("Unable to load skills. Check that the backend is running and your account is authenticated.")
+      })
     return () => controller.abort()
   }, [])
 
@@ -1159,6 +1165,11 @@ export function ProjectForm({ mode, initialProject }: ProjectFormProps) {
               </div>
 
               <div className="section-card-body">
+                {catalogError && (
+                  <div className="catalog-feedback" role="alert">
+                    {catalogError}
+                  </div>
+                )}
                 {/* Team Summary Metric Bar */}
                 <div className="team-summary-banner">
                   <div className="team-summary-item">
