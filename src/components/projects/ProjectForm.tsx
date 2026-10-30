@@ -1138,32 +1138,6 @@ export function ProjectForm({ mode, initialProject, initialDetail }: ProjectForm
                   {fieldError("category")}
                 </div>
 
-                {/* Auto-synced Tech Stack */}
-                <div className="field-group tech-stack-summary-group">
-                  <div className="tech-stack-header-row">
-                    <label className="field-label">Technology stack</label>
-                    <span className="auto-synced-badge">
-                      <Check size={12} /> Auto-synced
-                    </span>
-                  </div>
-                  {autoSyncedTechStack.length > 0 ? (
-                    <div className="tech-stack-chips">
-                      {autoSyncedTechStack.map((s) => (
-                        <span key={s.skill_id} className="tech-stack-chip">
-                          <SkillIcon name={s.name || s.skill_id} size={14} />
-                          <span>{s.name || s.skill_id}</span>
-                        </span>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="tech-stack-empty-state">
-                      Add skills in People & skills to automatically build your project stack.
-                    </div>
-                  )}
-                  <span className="field-helper">
-                    Automatically consolidated and deduplicated from all role skill sets.
-                  </span>
-                </div>
               </div>
             </section>
                 </div>
@@ -1601,6 +1575,33 @@ export function ProjectForm({ mode, initialProject, initialDetail }: ProjectForm
                     </div>
                   </div>
                 ) : null}
+
+                {/* Auto-synced Tech Stack */}
+                <div className="field-group tech-stack-summary-group">
+                  <div className="tech-stack-header-row">
+                    <label className="field-label">Technology stack</label>
+                    <span className="auto-synced-badge">
+                      <Check size={12} /> Auto-synced
+                    </span>
+                  </div>
+                  {autoSyncedTechStack.length > 0 ? (
+                    <div className="tech-stack-chips">
+                      {autoSyncedTechStack.map((s) => (
+                        <span key={s.skill_id} className="tech-stack-chip">
+                          <SkillIcon name={s.name || s.skill_id} size={14} />
+                          <span>{s.name || s.skill_id}</span>
+                        </span>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="tech-stack-empty-state">
+                      Add skills to roles above to automatically build your project stack.
+                    </div>
+                  )}
+                  <span className="field-helper">
+                    Automatically consolidated and deduplicated from all role skill sets.
+                  </span>
+                </div>
               </div>
             </section>
                 </div>
