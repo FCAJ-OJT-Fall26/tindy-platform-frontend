@@ -79,7 +79,7 @@ export function mapProjectSummaryToUiProject(dto: ProjectSummaryDto, existing?: 
     openings: dto.open_positions.reduce((sum, position) => sum + position.required_count, 0),
     leader: dto.leader.display_name,
     leaderId: dto.leader.user_id,
-    matchAvailable: false,
+    matchAvailable: true, serverMatch: existing?.serverMatch,
     initials:
       dto.initials ||
       dto.name
@@ -129,7 +129,7 @@ export function mapProjectDetailToUiProject(dto: ProjectDetailDto, existing?: Pr
     openings: dto.positions.filter(position => position.status === "open").reduce((sum, position) => sum + Math.max(0, position.required_count - position.filled_count), 0),
     leader: dto.leader.display_name,
     leaderId: dto.leader.user_id,
-    matchAvailable: false,
+    matchAvailable: true, serverMatch: existing?.serverMatch,
     initials:
       dto.initials ||
       dto.name

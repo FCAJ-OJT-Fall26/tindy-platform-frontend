@@ -271,7 +271,7 @@ export function Score({
         : "#10b981"
   const piePath = describePieSlice(center, center, pieRadius, animatedPct)
 
-  if (project?.matchAvailable === false && explicitValue === undefined)
+  if (project?.matchAvailable === false && explicitValue === undefined && !project?.serverMatch && value === 0)
     return <span className="subtle-caption">Match score unavailable</span>
 
   return (
@@ -417,7 +417,7 @@ export function ProjectCard({
       </div>
       <div className={`match-strip match-tier-${projectTier.tier}`}>
         <Score project={project} compact />
-        {project.matchAvailable !== false && <button onClick={onExplain}>
+        {(project.matchAvailable !== false || Boolean(project.serverMatch)) && <button onClick={onExplain}>
           Why this matches you <ChevronRight size={13} />
         </button>}
       </div>

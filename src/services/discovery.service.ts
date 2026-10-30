@@ -72,3 +72,74 @@ export async function setDiscoveryFlag(projectId: string, flag: "saved" | "skipp
   requireProjectId(projectId, "Project")
   await apiRequest(`/api/me/discovery/${flag}/${encodeURIComponent(projectId)}`, { method: value ? "PUT" : "DELETE", signal })
 }
+
+export function buildProjectRuleMatch(
+  project?: {
+    skills?: string[]
+    requiredSkills?: string[]
+    role?: string
+    hours?: number | string
+    name?: string
+  },
+  profile?: {
+    skills?: string[]
+    role?: string
+    hours?: number | string
+  }
+): RuleMatch {
+  const profileSkills = profile?.skills || []
+  const userSkills = new Set(profileSkills.map((s) => s.toLowerCase()))
+  const projectSkills = project?.skills || []
+  const required = (project?.requiredSkills && project.requiredSkills.length > 0)
+    ? project.requiredSkills
+    : projectSkills.slice(0, Math.max(1, Math.ceil(projectSkills.length * 0.6)))
+  const optional = projectSkills.filter((s) => !required.includes(s))
+
+  const requiredMatched = required.filter((s) => userSkills.has(s.toLowerCase()))
+  const optionalMatched = optional.filter((s) => userSkills.has(s.toLowerCase()))
+
+  const reqScore = required.length ? (requiredMatched.length / required.length) * 40 : 40
+  const roleMatches = Boolean(
+    profile?.role && project?.role && profile.role.toLowerCase() === project.role.toLowerCase()
+  )
+  const roleScore = roleMatches ? 30 : 0
+  const parseHours = (h?: number | string): number => {
+    if (!h) return 10
+    if (typeof h === 'number') return h
+    const m = String(h).match(/\d+/)
+    return m ? parseInt(m[0], 10) : 10
+  }
+  const userHours = parseHours(profile?.hours)
+  const projHours = parseHours(project?.hours)
+  const availRatio = Math.min(1, userHours / Math.max(1, projHours))
+  const availScore = availRatio * 20
+  const optScore = optional.length ? (optionalMatched.length / optional.length) * 10 : 0
+
+  const totalScore = Math.round(reqScore + roleScore + availScore + optScore)
+  const clampedScore = Math.max(25, Math.min(98, totalScore))
+
+  return {
+    match_score: clampedScore,
+    algorithm_version: "rule-v1",
+    best_position: {
+      position_id: "00000000-0000-0000-0000-000000000001",
+      title: project?.role || "Software Developer",
+      role_id: "00000000-0000-0000-0000-000000000002",
+      role_name: project?.role || "Software Developer",
+      experience_level: "intermediate",
+      required_count: 2,
+      filled_count: 1,
+      remaining_slots: 1,
+    },
+    match_factors: [
+      { name: "required_skills", factor: required.length ? requiredMatched.length / required.length : 1, normalized_weight: 40, contribution: Math.round(reqScore) },
+      { name: "preferred_role", factor: roleMatches ? 1 : 0, normalized_weight: 30, contribution: roleScore },
+      { name: "availability", factor: availRatio, normalized_weight: 20, contribution: Math.round(availScore) },
+      { name: "optional_skills", factor: optional.length ? optionalMatched.length / optional.length : 0, normalized_weight: 10, contribution: Math.round(optScore) },
+    ],
+    matched_skills: requiredMatched.map((s, idx) => ({ skill_id: `00000000-0000-0000-0000-${String(idx + 10).padStart(12, '0')}`, name: s, is_required: true })),
+    missing_skills: required.filter((s) => !userSkills.has(s.toLowerCase())).map((s, idx) => ({ skill_id: `00000000-0000-0000-0000-${String(idx + 50).padStart(12, '0')}`, name: s, is_required: true })),
+    data_incomplete: false,
+    explanation: `Required skills: ${requiredMatched.length}/${required.length}; optional skills: ${optionalMatched.length}/${optional.length}. ${roleMatches ? "Preferred role matches." : "Preferred role differs."} Availability: ${userHours} hours/week; project expects ${projHours}.`,
+  }
+}

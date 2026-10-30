@@ -22,6 +22,9 @@ import { getProjectByIdApi, isGuid, mapProjectDetailToUiProject } from "../../se
 import { useTindy } from "../../store"
 import { useExplanation } from "../../utils/useExplanation"
 import useMyApplications from "../../hooks/useMyApplications"
+import useDiscoveryFeed from "../../hooks/useDiscoveryFeed"
+import { buildProjectRuleMatch } from "../../services/discovery.service"
+import { useMemo } from "react"
 
 function Cards({
   projects,
@@ -56,6 +59,7 @@ function Cards({
 export function MyProjectsScreen() {
   const {
     authUser,
+    profile,
     interested,
     saved,
     savedProjects,
@@ -106,11 +110,41 @@ export function MyProjectsScreen() {
     return details.filter((detail) => detail !== null).map((detail) => mapProjectDetailToUiProject(detail))
   }, [localIds])
 
+  const feed = useDiscoveryFeed()
   const bookmarks = useRemoteResource(authUser ? authUser.user_id + ":" + localIds : null, loadBookmarks)
   const projects = [...new Map([...(resource.data?.projects ?? []), ...(bookmarks.data ?? [])].map((project) => [project.id, project])).values()]
   const completed = resource.data?.projects.filter((project) => project.status === "completed").map((project) => project.id) ?? []
   const leadingIds = resource.data?.leading_projects.filter((project) => project.status !== "archived" && project.status !== "completed").map((project) => project.project_id) ?? []
   const active = resource.data?.joined_projects.filter((project) => project.status !== "archived" && project.status !== "completed").map((project) => project.project_id) ?? []
+
+  const feedCardMap = useMemo(() => {
+    return new Map((feed.items || []).map((card) => [card.project_id, card]))
+  }, [feed.items])
+
+  const enrichedProjects = useMemo(() => {
+    return projects.map((project) => {
+      const feedCard = feedCardMap.get(project.id)
+      if (feedCard) {
+        return {
+          ...project,
+          matchAvailable: true,
+          serverMatch: feedCard,
+        }
+      }
+      if (!project.serverMatch) {
+        const computedMatch = buildProjectRuleMatch(project, profile)
+        return {
+          ...project,
+          matchAvailable: true,
+          serverMatch: computedMatch,
+        }
+      }
+      return {
+        ...project,
+        matchAvailable: true,
+      }
+    })
+  }, [projects, feedCardMap, profile])
 
   const statuses: Record<string, string[]> = {
     Interested: [
@@ -131,7 +165,7 @@ export function MyProjectsScreen() {
     Completed: completed,
   }
 
-  const selected = projects.filter((project) => (statuses[tab] || []).includes(project.id))
+  const selected = enrichedProjects.filter((project) => (statuses[tab] || []).includes(project.id))
   const totalPendingApplicants = resource.data?.leading_projects.reduce((sum, project) => sum + project.pending_applications_count, 0) ?? 0
   const showingBookmarks = ["Saved", "Interested", "Invited"].includes(tab)
   const loading = showingBookmarks ? bookmarks.loading : resource.loading
