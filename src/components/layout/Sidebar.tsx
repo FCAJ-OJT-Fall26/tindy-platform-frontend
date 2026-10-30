@@ -1,3 +1,4 @@
+import { INITIAL_NOTIFICATIONS } from "../../data/notifications"
 import { useState, useEffect, useRef, useCallback } from "react"
 import { NavLink, Link, useLocation } from "react-router"
 import { ChevronDown,
@@ -136,7 +137,7 @@ export default function Sidebar({ mobile, onClose }: SidebarProps) {
               {item.label === "Messages" && (
                 <span className="nav-count">2</span>
               )}
-              {item.label === "Notifications" && read.length < 4 && (
+              {item.label === "Notifications" && INITIAL_NOTIFICATIONS.some(n => !read.includes(Number(n.id))) && (
                 <span className="nav-dot" />
               )}
             </NavLink>

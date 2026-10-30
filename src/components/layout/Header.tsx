@@ -237,8 +237,14 @@ export default function Header({ title, onOpenMobileMenu }: HeaderProps) {
                 {displayedNotifications.length === 0 ? (
                   <div className="notif-popover-empty">
                     <Bell size={28} className="notif-popover-empty-icon" />
-                    <strong>No unread notifications</strong>
-                    <p>You're all caught up with your updates.</p>
+                    <strong>
+                      {notifFilter === "unread" ? "No unread notifications" : "No notifications yet"}
+                    </strong>
+                    <p>
+                      {notifFilter === "unread"
+                        ? "You're all caught up with your updates."
+                        : "Real invitations and team updates will appear here."}
+                    </p>
                   </div>
                 ) : (
                   displayedNotifications.map((notif) => {

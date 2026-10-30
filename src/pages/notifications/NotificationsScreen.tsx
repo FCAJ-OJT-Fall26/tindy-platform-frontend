@@ -49,7 +49,7 @@ export function Notifications() {
       <section className="panel notifications-panel">
         {displayed.length === 0 ? (
           <EmptyState
-            title="You're all caught up."
+            title={tab === "Unread" ? "You're all caught up." : "No notifications yet"}
             description="Real invitations, project activity, and team updates will appear here."
           />
         ) : (
