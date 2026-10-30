@@ -1,12 +1,15 @@
 import React from 'react';
-import { Users, Bookmark, ArrowUpRight, Clock, ShieldCheck } from 'lucide-react';
+import { Users, Bookmark, ArrowUpRight, Clock, ShieldCheck, CalendarDays, BriefcaseBusiness } from 'lucide-react';
 import { DiscoveryProject } from '../../types/discovery';
 import AiMatchBadge from '../common/AiMatchBadge';
 import SkillIcon from '../onboarding/SkillIcon';
+import MatchScoreRing from '../discovery/MatchScoreRing';
+import { formatClosingDate } from '../../services/recruitmentDeadline';
 
 interface ProjectCardContentProps {
   project: DiscoveryProject;
   isActive?: boolean;
+  live?: boolean;
   onWhyMatchesClick: (e: React.MouseEvent) => void;
   onViewDetailsClick: (e: React.MouseEvent) => void;
 }
@@ -14,9 +17,11 @@ interface ProjectCardContentProps {
 export default function ProjectCardContent({
   project,
   isActive = true,
+  live = false,
   onWhyMatchesClick,
   onViewDetailsClick,
 }: ProjectCardContentProps) {
+  if (live && project.ruleMatch) return <LiveProjectCard project={project} onWhyMatchesClick={onWhyMatchesClick} onViewDetailsClick={onViewDetailsClick} />;
   const match = project.match;
   const matchedIds = new Set(project.ruleMatch?.matched_skills.map(skill => skill.skill_id));
   const requiredSkills = project.ruleMatch
@@ -165,4 +170,28 @@ export default function ProjectCardContent({
       </div>
     </div>
   );
+}
+
+function LiveProjectCard({ project, onWhyMatchesClick, onViewDetailsClick }: Pick<ProjectCardContentProps, 'project' | 'onWhyMatchesClick' | 'onViewDetailsClick'>) {
+  const match = project.ruleMatch!;
+  const matchedIds = new Set(match.matched_skills.map(skill => skill.skill_id));
+  const skills = [...match.matched_skills, ...match.missing_skills];
+  const required = skills.filter(skill => skill.is_required);
+  const optional = skills.filter(skill => !skill.is_required);
+  return <article className="live-project-card">
+    <div className="live-project-card__top"><span className="live-discovery__pill">{project.category}</span><span className="live-project-card__team"><Users size={14} /><strong>{project.teamSize}/{project.maxTeamSize}</strong> members</span></div>
+    <div className="live-project-card__body">
+      <div className="live-project-card__intro"><h3>{project.name}</h3>{project.tagline && <p className="live-project-card__tagline">{project.tagline}</p>}<p className="live-project-card__description">{project.desc}</p></div>
+      <div className="live-project-card__match">
+        <div className="live-project-card__match-label"><MatchScoreRing score={match.match_score} serverValue /><div><strong>Rule-based match</strong><span>Based on your profile</span></div></div>
+        <button type="button" onClick={onWhyMatchesClick}>Why this matches <ArrowUpRight size={14} /></button>
+      </div>
+      <div className="live-project-card__position"><div><span className="live-discovery__eyebrow">OPEN POSITION</span><strong><BriefcaseBusiness size={16} />{match.best_position.title}</strong></div><span className="live-project-card__slots">{match.best_position.remaining_slots} {match.best_position.remaining_slots === 1 ? 'slot' : 'slots'} open</span></div>
+      <div className="live-project-card__skills"><span className="live-discovery__eyebrow">REQUIRED SKILLS</span><div>{required.length ? required.map(skill => <span className={`live-project-card__skill${matchedIds.has(skill.skill_id) ? ' is-matched' : ''}`} key={skill.skill_id}><SkillIcon name={skill.name} size={13} />{skill.name}</span>) : <span className="live-discovery__muted">No required skills specified</span>}</div>
+        {optional.length > 0 && <p>Nice to have: {optional.map(skill => skill.name).join(' · ')}</p>}
+      </div>
+      <div className="live-project-card__bottom"><div className="live-project-card__meta"><span><Clock size={15} />{project.hours}</span><span>{project.duration}</span></div><p className="live-project-card__deadline"><CalendarDays size={14} />Closes {formatClosingDate(project.closingDate)} <span>· Vietnam time</span></p></div>
+    </div>
+    <button className="live-project-card__footer" type="button" onClick={onViewDetailsClick}><span>Explore the project and meet the team</span><strong>Full specs <ArrowUpRight size={14} /></strong></button>
+  </article>;
 }

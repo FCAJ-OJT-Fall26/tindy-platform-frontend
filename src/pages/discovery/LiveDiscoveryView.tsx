@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { Link, useNavigate } from "react-router"
-import { ChevronDown, RefreshCw, SlidersHorizontal } from "lucide-react"
+import { ArrowUpRight, Bookmark, ChevronDown, RefreshCw, SlidersHorizontal, Sparkles } from "lucide-react"
 import useDiscoveryFeed from "../../hooks/useDiscoveryFeed"
 import useRemoteResource from "../../hooks/useRemoteResource"
 import { useTindy } from "../../store"
@@ -13,6 +13,7 @@ import DiscoverySegmentedControl from "../../components/discovery/DiscoverySegme
 import RuleMatchPanel from "../../components/discovery/RuleMatchPanel"
 import { Modal } from "../../components/ui"
 import ApplyModal from "../../components/projects/ApplyModal"
+import "./live-discovery.css"
 
 const categories = ["AI & Machine Learning", "Cloud & DevOps", "Web Application", "Mobile App", "Open Source", "Social Impact"]
 const loadCatalog = async (signal: AbortSignal) => {
@@ -21,7 +22,7 @@ const loadCatalog = async (signal: AbortSignal) => {
 }
 
 export default function LiveDiscoveryView() {
-  const { authUser, notify, saved, setProjectSaved } = useTindy()
+  const { authUser, notify, saved, savedProjects, setProjectSaved } = useTindy()
   const navigate = useNavigate()
   const [category, setCategory] = useState("")
   const [role, setRole] = useState("")
@@ -33,13 +34,14 @@ export default function LiveDiscoveryView() {
   const [applying, setApplying] = useState<DiscoveryProject | null>(null)
   const [actionError, setActionError] = useState("")
   const [history, setHistory] = useState<{ id: string; direction: "left" | "up"; wasSaved: boolean }[]>([])
+  const [reviewedApplications, setReviewedApplications] = useState<Set<string>>(new Set())
   const scopeKey = `${authUser?.user_id}:${category}:${role}:${skill}`
   const actionScope = useRef(scopeKey); actionScope.current = scopeKey
   const catalog = useRemoteResource(authUser?.user_id ?? null, loadCatalog)
   const feed = useDiscoveryFeed({ category: category || undefined, role_id: role || undefined, skill_id: skill || undefined })
   const projects = useMemo(() => feed.items.map(mapDiscoveryCard), [feed.items])
   const activeChanged = useCallback((item: DiscoveryProject | DiscoveryCandidate | null) => setActive(item as DiscoveryProject | null), [])
-  useEffect(() => { setActive(null); setExplanation(null); setApplying(null); setHistory([]); setActionError("") }, [feed.key])
+  useEffect(() => { setActive(null); setExplanation(null); setApplying(null); setHistory([]); setReviewedApplications(new Set()); setActionError("") }, [feed.key])
   useEffect(() => {
     if (!active) return
     const index = active ? projects.findIndex(p => p.id === active.id) : projects.length
@@ -72,26 +74,26 @@ export default function LiveDiscoveryView() {
       return true
     } catch (error) { if (actionScope.current === owner) setActionError(projectErrorMessage(error)); return false }
   }
-  const filters = <aside className="panel space-y-4 min-w-0" aria-label="Discovery filters">
-    <strong>Find projects</strong>
+  const filters = <aside className="live-discovery__filters" aria-label="Discovery filters">
+    <div className="live-discovery__filter-heading"><span className="live-discovery__eyebrow">YOUR NEXT OPPORTUNITY</span><h2>Find your fit</h2><p>A few filters. A better place to start.</p></div>
     <label className="field-group">Category<select className="field-select" aria-label="Category" value={category} onChange={e => setCategory(e.target.value)}><option value="">All categories</option>{categories.map(value => <option key={value}>{value}</option>)}</select></label>
     <label className="field-group">Required role<select className="field-select" aria-label="Required role" value={role} onChange={e => setRole(e.target.value)} disabled={catalog.loading || !!catalog.error}><option value="">All roles</option>{catalog.data?.roles.map(value => <option key={value.professional_role_id} value={value.professional_role_id}>{value.name}</option>)}</select></label>
     <label className="field-group">Key technology<select className="field-select" aria-label="Key technology" value={skill} onChange={e => setSkill(e.target.value)} disabled={catalog.loading || !!catalog.error}><option value="">All skills</option>{catalog.data?.skills.map(value => <option key={value.skill_id} value={value.skill_id}>{value.name}</option>)}</select></label>
     {Boolean(catalog.error) && <div role="alert">{projectErrorMessage(catalog.error)} <button className="btn btn-secondary" onClick={catalog.reload}>Retry catalogs</button></div>}
-    <button className="btn btn-secondary" onClick={() => { setCategory(""); setRole(""); setSkill("") }}>Reset filters</button>
-    <p className="field-helper">Rule-based recommendations based on your profile.</p>
-    <Link to="/projects?tab=Saved" className="text-link">Saved projects</Link>
+    <button className="live-discovery__reset" onClick={() => { setCategory(""); setRole(""); setSkill("") }}><RefreshCw size={14} />Reset filters</button>
+    <div className="live-discovery__session"><span className="live-discovery__eyebrow">YOUR OVERVIEW</span><dl><div><dt>Loaded</dt><dd>{projects.length}</dd></div><div><dt>Reviewed here</dt><dd aria-label="Reviewed projects in this feed">{history.length + reviewedApplications.size}</dd></div><div><dt>Saved total</dt><dd>{savedProjects.loading ? "…" : savedProjects.error ? "—" : saved.length}</dd></div><div><dt>Skipped here</dt><dd>{history.filter(item => item.direction === "left").length}</dd></div></dl></div>
+    <Link to="/projects?tab=Saved" className="live-discovery__saved-link"><Bookmark size={14} />Your saved projects<ArrowUpRight size={14} /></Link>
   </aside>
-  return <div className="w-full min-w-0 flex flex-col space-y-6 pb-16" data-live-discovery data-loaded-count={projects.length}>
-    <DiscoverySegmentedControl value="student" options={[{ value: "student", label: "Find Projects" }, { value: "leader", label: "Find Teammates", sublabel: "Demo" }]} ariaLabel="Discovery Mode Switcher" onChange={value => { if (value === "leader") navigate("/discover?demo=1&mode=teammates") }} />
-    <header className="flex flex-wrap items-center justify-between gap-4 bg-white p-4 sm:p-6 rounded-2xl border border-slate-200">
-      <div><span className="insight-label">INTERACTIVE MATCHING STACK</span><h1 className="text-2xl font-extrabold">Discover Projects That Fit You</h1><p className="text-sm text-slate-500">Left to skip, up to save, right to review an application before confirming.</p></div>
-      <button className="btn btn-secondary" onClick={refresh}><RefreshCw size={16} /> Refresh</button>
+  const viewActiveProject = () => { if (active) navigate(`/project/${active.id}`, { state: { match: active.ruleMatch, matchOwner: authUser?.user_id } }) }
+  return <div className="live-discovery" data-live-discovery data-loaded-count={projects.length}>
+    <header className="live-discovery__header">
+      <div><span className="live-discovery__pill"><Sparkles size={12} />INTERACTIVE MATCHING STACK</span><h1>Discover Projects That Fit You</h1><p>Discover your next team. Skip, save, or explore a position before you apply.</p></div>
+      <div className="live-discovery__header-actions"><DiscoverySegmentedControl value="student" options={[{ value: "student", label: "Find Projects" }, { value: "leader", label: "Find Teammates", sublabel: "Demo" }]} ariaLabel="Discovery Mode Switcher" onChange={value => { if (value === "leader") navigate("/discover?mode=teammates") }} /><button className="live-discovery__refresh" onClick={refresh}><RefreshCw size={14} />Refresh</button></div>
     </header>
-    <div className="lg:hidden"><button className="btn btn-secondary w-full" aria-expanded={filtersOpen} onClick={() => setFiltersOpen(v => !v)}><SlidersHorizontal size={15} /> Filters <ChevronDown size={15} /></button></div>
-    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start min-w-0">
-      <div className={`${filtersOpen ? "block" : "hidden"} lg:block lg:col-span-3 min-w-0`}>{filters}</div>
-      <main className="lg:col-span-6 min-w-0 space-y-3">
+    <div className="live-discovery__mobile-tools"><button aria-expanded={filtersOpen} aria-controls="live-discovery-filters" onClick={() => setFiltersOpen(v => !v)}><SlidersHorizontal size={15} />Filters{[category, role, skill].filter(Boolean).length > 0 && <span>{[category, role, skill].filter(Boolean).length}</span>}<ChevronDown size={14} /></button><button disabled={!active?.ruleMatch} onClick={() => setExplanation(active?.ruleMatch ?? null)}><Sparkles size={15} />Match insights</button></div>
+    <div className="live-discovery__layout">
+      <div id="live-discovery-filters" className={`live-discovery__filter-column${filtersOpen ? " is-open" : ""}`}>{filters}</div>
+      <section className="live-discovery__feed" aria-label="Project discovery feed">
         {actionError && <p role="alert" className="panel">{actionError}</p>}
         {Boolean(feed.error) && <div className="panel" role="alert">{projectErrorMessage(feed.error)} <button className="btn btn-secondary" onClick={projects.length && feed.hasMore ? feed.loadMore : refresh}>Retry</button><button className="btn btn-ghost" onClick={refresh}>Refresh feed</button></div>}
         {feed.loading && <p role="status">{projects.length ? "Loading more projects…" : "Loading projects…"}</p>}
@@ -101,13 +103,16 @@ export default function LiveDiscoveryView() {
           onResetStack={refresh} />}
         {!feed.loading && !feed.error && projects.length === 0 && <section className="panel text-center"><h2>No eligible projects right now</h2><p>Refresh or adjust the filters to find more projects.</p><button className="btn btn-primary" onClick={refresh}>Refresh feed</button></section>}
         {feed.hasMore && <button className="btn btn-secondary" disabled={feed.loading} onClick={feed.loadMore}>Load more</button>}
-      </main>
-      <aside className="hidden lg:block lg:col-span-3 min-w-0">{active?.ruleMatch ? <RuleMatchPanel match={active.ruleMatch} /> : <section className="panel">Select a project to inspect its rule-based match.</section>}</aside>
+      </section>
+      <aside className="live-discovery__inspector">{active?.ruleMatch ? <RuleMatchPanel variant="discovery" match={active.ruleMatch} projectName={active.name} onExplain={() => setExplanation(active.ruleMatch ?? null)} onViewDetails={viewActiveProject} /> : <section className="live-discovery__inspector-empty"><Sparkles size={23} /><h2>A closer look at your fit</h2><p>Select a project to see how its position matches your profile.</p></section>}</aside>
     </div>
-    {explanation && <Modal title="Why this matches" onClose={() => setExplanation(null)}><RuleMatchPanel match={explanation} /></Modal>}
+    {explanation && <Modal title="Why this matches" className="rule-match-dialog" onClose={() => setExplanation(null)}><RuleMatchPanel match={explanation} projectName={active?.name} /></Modal>}
     {applying && <ApplyModal key={applying.id} projectId={applying.id} preferredPositionId={applying.ruleMatch?.best_position.position_id} onClose={() => setApplying(null)} onConfirmed={application => {
       setApplying(null)
-      if (application.status === "pending" || application.status === "accepted") feed.remove(application.project_id)
+      if (application.status === "pending" || application.status === "accepted") {
+        setReviewedApplications(old => new Set([...old, application.application_id]))
+        feed.remove(application.project_id)
+      }
       notify(`Application confirmed: ${application.status}.`)
     }} />}
   </div>

@@ -623,6 +623,7 @@ export function Modal({
   wide = false,
   drawer = false,
   dismissible = true,
+  className = "",
 }: {
   title: string
   children: ReactNode
@@ -630,6 +631,7 @@ export function Modal({
   wide?: boolean
   drawer?: boolean
   dismissible?: boolean
+  className?: string
 }) {
   const container = useRef<HTMLDivElement>(null)
   const [closing, setClosing] = useState(false)
@@ -658,7 +660,7 @@ export function Modal({
       if (event.key === "Escape") handleClose()
       if (event.key === "Tab") {
         const focusable = container.current?.querySelectorAll<HTMLElement>(
-          'button:not(:disabled), a[href], input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex="0"]',
+          'button:not(:disabled), a[href], input:not(:disabled), select:not(:disabled), textarea:not(:disabled), summary, [tabindex="0"]',
         )
         if (!focusable?.length) return
         const first = focusable[0]
@@ -694,7 +696,7 @@ export function Modal({
         aria-modal="true"
         aria-label={title}
         tabIndex={-1}
-        className={`${drawer ? "drawer" : "modal"} ${wide ? "wide" : ""} ${closing ? "closing" : ""}`}
+        className={`${drawer ? "drawer" : "modal"} ${wide ? "wide" : ""} ${closing ? "closing" : ""} ${className}`}
       >
         <div className="modal-heading">
           <span>{title}</span>

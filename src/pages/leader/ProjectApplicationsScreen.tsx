@@ -67,7 +67,7 @@ export default function ProjectApplicationsScreen() {
     </article>)}
     {data && !data.applications.items.length && !resource.loading && <section className="panel">No applications match these filters.</section>}
     {data && <nav className="modal-actions" aria-label="Applicant list pages"><Button variant="secondary" disabled={!data.applications.pagination.has_previous || resource.loading || busy} onClick={() => setPage(v => v - 1)}>Previous</Button><span>Page {data.applications.pagination.current_page} · {data.applications.pagination.total_items} applications</span><Button variant="secondary" disabled={!data.applications.pagination.has_next || resource.loading || busy} onClick={() => setPage(v => v + 1)}>Next</Button></nav>}
-    {match && <Modal title="Applied position match" onClose={() => setMatch(null)}><RuleMatchPanel match={match.matching} /></Modal>}
+    {match && <Modal title="Applied position match" className="rule-match-dialog" onClose={() => setMatch(null)}><RuleMatchPanel match={match.matching} projectName={data?.project.name} /></Modal>}
     {decision && <Modal title={decision.action === "accept" ? "Accept application?" : "Reject application?"} onClose={() => { if (!locked.current) setDecision(null) }}>
       <h2>{decision.row.applicant.display_name}</h2><p>{decision.row.applied_position.title} · {data?.project.name}</p>
       <p>{decision.action === "accept" ? "Acceptance joins this member to the project and occupies one position slot." : "Rejection leaves the team and slot count unchanged. The member may apply again immediately."}</p>

@@ -15,13 +15,14 @@ export function useExplanation(
     element: project && (
       <Modal
         drawer
+        className={project.serverMatch ? "rule-match-dialog" : undefined}
         title={learning ? "Learning suggestions" : "Match explanation"}
         onClose={() => {
           setProject(null)
           setLearning(false)
         }}
       >
-        {project.serverMatch ? <RuleMatchPanel match={project.serverMatch} /> : project.matchAvailable === false ? <p>Matching is available from your personalized Discovery feed.</p> : learning ? (
+        {project.serverMatch ? <RuleMatchPanel match={project.serverMatch} projectName={project.name} /> : project.matchAvailable === false ? <p>Matching is available from your personalized Discovery feed.</p> : learning ? (
           <>
             <div className="insight-label">
               <GraduationCap size={16} /> NEXT STEPS

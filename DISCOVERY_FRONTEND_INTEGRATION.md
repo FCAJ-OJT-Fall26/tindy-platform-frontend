@@ -10,6 +10,10 @@ Live Project CRUD, Discovery scores, Save/Skip and Applications still use their 
 
 ## Runtime behavior
 
+- **Find Projects visual refresh:** the live route has a balanced filter/card/Match Inspector layout, a wider Project card, accessible SVG score rings and progress bars using the exact Backend factors. It no longer nests a `main` element inside the application `main` (which previously added page padding/min-height to the card column). The layout uses three columns on wide screens, two on tablet and filter/insight controls on mobile. New styles are scoped to live Discovery; mock teammate cards retain their presentation. Apply/Save/Skip contracts and confirmation semantics are unchanged.
+
+- **Data-source follow-up:** Find Projects always uses the Backend feed, including legacy `?demo=1` project links and switching back from Find Teammates. Only teammate modes (`mode=teammates`, `candidates`, `leader`) render the labelled mock-candidate view. A project API error never falls back to sample cards. Mock Projects are no longer imported by the discovery router.
+
 - Create/Edit retains the existing wizard, drafts, dirty guards and duplicate-POST/unknown-outcome reconciliation. Deadlines use the current Vietnam calendar day, 7/14/30 presets and Custom Date (minimum tomorrow). Untouched expired edit deadlines are omitted rather than silently extended.
 - Production Discovery uses `/api/discovery/projects`, page size 20 and opaque cursors, preserving backend ordering and deduplicating IDs. Filters use real catalog UUIDs. Refresh resets the snapshot. Requests are cancelled/scoped to account and filters.
 - Scores, positional slots, rule factors, matched/missing skills and explanation come from Backend `rule-v1`. Null factors remain unknown. No LLM calls or frontend scoring are used for live matching. Dashboard recommendations use this same feed.
@@ -18,7 +22,7 @@ Live Project CRUD, Discovery scores, Save/Skip and Applications still use their 
 - Project Detail reuses Apply Modal and checks owner, active membership, pending history, deadline, capacity and open slots. Backend remains authoritative if eligibility changes during submission.
 - My Applications preserves every historical application row. Withdraw and immediate Apply Again after rejected/withdrawn use Backend; the same Position is allowed. A pending row blocks all other Positions in that Project. Leading one's own Project does not block joining another.
 - Leader Workspace shows real pending counts and per-project application links. `/project/:id/applications` provides Position/status filters, match/newest sorting, pagination, applied-position score, safe profile links and confirmed Accept/Reject. Conflicts refresh server data; team membership is never added optimistically.
-- Candidate discovery, invitations, messages, notifications and Team Workspace remain visible as labelled demo previews at the user's request. Live matching stays backend Rule-Based; the full optional sample stack is still marked `?demo=1`. Existing AI Profile tools remain.
+- Candidate discovery, invitations, messages, notifications and Team Workspace remain visible as labelled demo previews at the user's request. Find Teammates uses sample candidates; Find Projects always uses Backend Rule-Based matching. Existing AI Profile tools remain.
 
 ## Backend contract checked
 
@@ -57,8 +61,10 @@ New services/types/hooks:
 New screens/components:
 
 - `src/components/discovery/RuleMatchPanel.tsx`
+- `src/components/discovery/MatchScoreRing.tsx`
 - `src/components/projects/ApplyModal.tsx`
 - `src/pages/discovery/LiveDiscoveryView.tsx`
+- `src/pages/discovery/live-discovery.css`
 - `src/pages/projects/MyApplicationsView.tsx`
 - `src/pages/projects/SavedProjectsView.tsx`
 - `src/pages/leader/ProjectApplicationsScreen.tsx`
@@ -100,16 +106,28 @@ Executed results:
 | `npm run test:profile` | 44 passed, HTTP Postman simulation |
 | `npm run test:profile-media` | 64 passed, 651 HTTP calls, Postman simulation |
 | `npm run test:save-button` | 7 passed, intercepted fixtures |
-| `npm run test:discovery-actions` | Passed: script reports 12 checks, plus mode-switch spam/cancel case |
+| `npm run test:discovery-actions` | 9 current HTTP browser checks passed: live actions/feedback, mock teammate mode, switching/Back/Forward, legacy demo URLs and error-without-mock-fallback |
 | `git diff --check` | Passed; line-ending notices only |
 
-Logs are in `.tmp-project-results/final-*.log` and `step05-recruitment.log`. Early animation-test failures were corrected by awaiting confirmed card transitions, using demo URLs for demo mode switches and tolerating only CDP interception IDs cancelled by navigation. The media stand-in was extended for the shared GET Saved read; no production fallback was added.
+Logs are in `.tmp-project-results/final-*.log` and `step05-recruitment.log`. The latest live/mock separation checks are in `live-projects-discovery-actions.log` (9 passed) and `live-projects-recruitment.log` (19 passed), using the local HTTP Postman simulation. The old mock-Project interest/modal and in-place mode animation cases were replaced with the real confirmation flow and cross-mode data-source checks. Early animation-test failures were corrected by awaiting confirmed card transitions. The media stand-in was extended for the shared GET Saved read; no production fallback was added.
 
 Recruitment covers server-only scores and unknown factors, 70-item cursor feed, real filter UUIDs/cursor reset, mobile overflow, no fallback on errors, button and physical swipe gestures, confirmation/cancel, single POST on double click, Skip/Save inverse APIs, immediate same-Position reapply after both terminal states with distinct IDs/history, applied-position review score, profile/experience/certificate routes, Reject confirmation, Accept capacity conflict, confirmed team/slot changes, active-member block, review pagination/sort, committed POST with lost response, account isolation and explicit demo gating.
 
 Project checks cover deadline presets/custom validation/draft retention, existing create/edit/Position workflows, partial-write retry, committed create with lost response (one POST), archive failure/success and auth/draft preservation.
 
 Screenshots taken and visually inspected: `.tmp-project-results/screenshots/discovery-desktop.png`, `discovery-mobile.png`, `leader-applications.png`. Screenshots use synthetic test accounts/projects and are not evidence of live database execution.
+
+Visual refresh verification also covers a long Project title, a desktop card at least 460px wide, actual factor percentages in accessible progress bars, no nested application `main`, mobile filter/insight controls, and no horizontal overflow at 390px and 1024px. Additional inspected screenshots: `discovery-mobile-card.png`, `discovery-mobile-filters.png`, `discovery-tablet.png`. Regression evidence is in `.tmp-project-results/discovery-redesign-recruitment.log` (19 checks) and `discovery-redesign-discovery-actions.log` (9 checks), through local HTTP Postman simulation. The refresh changes presentation only; there is no new endpoint, matching calculation or migration.
+
+## Match explanation and Project Detail refresh
+
+- `RuleMatchPanel.tsx` now shares the graphical Match Inspector between Discovery and the Project Detail sidebar. The full explanation groups the server score, Position, factor percentages/weights/points and matched/missing skill chips. Unknown factors remain excluded rather than becoming synthetic zero percentages.
+- New shared `src/components/discovery/rule-match.css` owns the score ring, inspector and explanation dialog styles. `MatchScoreRing.tsx` imports these styles directly, so opening Project Detail without first visiting Discovery still loads its presentation.
+- New scoped `src/pages/projects/project-detail.css` improves headings, readable body text, Position cards, sidebar spacing and responsive stacking. Project Detail has a Details action for its account-scoped Discovery match; a direct URL without match data retains the existing honest Discovery link.
+- `Modal` accepts an optional scoped class and includes native disclosure summaries in its keyboard focus trap. Explanation dialogs in Discovery, Project Detail, applied-Position review and the existing server-match drawer use the same styling. Other dialogs retain their existing appearance.
+- Verified desktop/mobile overflow, actual server factor values, keyboard Tab/Space disclosure use, opening full Match details from Project Detail and returning to the feed. Visually inspected `match-details-desktop.png`, `match-details-mobile.png`, `project-detail-match-desktop.png` and `project-detail-match-mobile.png` under `.tmp-project-results/screenshots/` (synthetic test data).
+- Current regression results: Recruitment **19 passed**, Discovery actions **9 passed**, Project CRUD **27 passed**, through the local HTTP Postman simulation. Logs: `.tmp-project-results/match-detail-recruitment.log`, `match-detail-discovery-actions.log`, `match-detail-projects.log`. TypeScript and production build logs: `match-detail-typecheck.log`, `match-detail-build.log`.
+- This refresh introduces no endpoint, API contract, score calculation or database migration change.
 
 ## Practical limits / deployment
 

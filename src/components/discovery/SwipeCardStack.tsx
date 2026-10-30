@@ -218,8 +218,8 @@ export default function SwipeCardStack({
   const visibleItems = items.slice(currentIndex, currentIndex + 2);
 
   return (
-    <div className="w-full max-w-[460px] sm:max-w-[480px] mx-auto flex flex-col items-center select-none min-w-0">
-      <div className="relative w-full h-[530px] sm:h-[570px] min-h-[500px]">
+    <div className={`${live ? 'live-discovery__stack' : ''} w-full max-w-[460px] sm:max-w-[480px] mx-auto flex flex-col items-center select-none min-w-0`}>
+      <div className={`${live ? 'live-discovery__card-frame' : ''} relative w-full h-[530px] sm:h-[570px] min-h-[500px]`}>
         {visibleItems.map((item, index) => {
           const isTop = index === 0;
           const offsetStyle = {
@@ -261,7 +261,7 @@ export default function SwipeCardStack({
                       style={{ opacity: Math.min(1, (dragOffset.x - 30) / 70) }}
                     >
                       <Heart size={16} fill="currentColor" />
-                      <span>{mode === 'student' ? 'INTERESTED' : 'SHORTLIST'}</span>
+                      <span>{live ? 'APPLY' : mode === 'student' ? 'INTERESTED' : 'SHORTLIST'}</span>
                     </div>
                   )}
 
@@ -291,6 +291,7 @@ export default function SwipeCardStack({
               {mode === 'student' ? (
                 <ProjectCardContent
                   project={item as DiscoveryProject}
+                  live={live}
                   isActive={isTop}
                   onWhyMatchesClick={(e) => {
                     e.stopPropagation();
@@ -321,7 +322,7 @@ export default function SwipeCardStack({
       </div>
 
       {/* Accessible Action Buttons */}
-      <div className="w-full mt-4 flex items-center justify-center gap-2 px-1 sm:px-2 min-w-0">
+      <div className={`${live ? 'live-discovery__actions' : ''} w-full mt-4 flex items-center justify-center gap-2 px-1 sm:px-2 min-w-0`}>
         <button
           type="button"
           disabled={!canUndo || disabled || pending}
@@ -357,7 +358,7 @@ export default function SwipeCardStack({
           title="Save for later"
           ariaLabel="Save for later"
           iconSize={16}
-        />
+        >{live && <span>Save</span>}</StarActionButton>
 
         <InterestedActionButton
           disabled={disabled || pending}

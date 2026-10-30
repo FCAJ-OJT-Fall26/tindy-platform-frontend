@@ -32,6 +32,7 @@ import { setDiscoveryFlag } from "../../services/discovery.service"
 import { formatClosingDate } from "../../services/recruitmentDeadline"
 import RuleMatchPanel from "../../components/discovery/RuleMatchPanel"
 import type { RuleMatch } from "../../types/discovery"
+import "./project-detail.css"
 
 function SectionHeading({
   title,
@@ -71,6 +72,7 @@ export function ProjectDetailScreen() {
   const explanation = useExplanation()
   const [interestModal, setInterestModal] = useState(false)
   const [showPositionManager, setShowPositionManager] = useState(false)
+  const [matchDetailsOpen, setMatchDetailsOpen] = useState(false)
 
   useEffect(() => {
     if (!remoteDetail) return
@@ -87,7 +89,7 @@ export function ProjectDetailScreen() {
   const fromFeed: RuleMatch | null = location.state?.matchOwner === authUser?.user_id ? location.state?.match ?? null : null
   const isOwner = remoteDetail.leader.user_id === authUser?.user_id
   return (
-    <>
+    <section className="project-detail-page">
       <Link className="back-link" to="/discover">
         <ArrowLeft size={14} />
         Back to projects
@@ -308,8 +310,8 @@ export function ProjectDetailScreen() {
               : <p>No active members.</p>}
           </section>
         </div>
-        <aside>
-          {fromFeed ? <RuleMatchPanel match={fromFeed} /> : <section className="panel detail-match">
+        <aside className="project-detail-sidebar">
+          {fromFeed ? <RuleMatchPanel variant="sidebar" match={fromFeed} projectName={project.name} onExplain={() => setMatchDetailsOpen(true)} /> : <section className="panel detail-match">
             <div className="insight-label">
               POSITION MATCH
             </div>
@@ -351,6 +353,7 @@ export function ProjectDetailScreen() {
         </aside>
       </div>
       {explanation.element}
+      {fromFeed && matchDetailsOpen && <Modal title="Why this matches" className="rule-match-dialog" onClose={() => setMatchDetailsOpen(false)}><RuleMatchPanel match={fromFeed} projectName={project.name} /></Modal>}
       {interestModal && <ApplyModal projectId={project.id} onClose={() => setInterestModal(false)} onConfirmed={application => {
         setInterestModal(false); applications.reload(); resource.reload(); notify(`Application confirmed: ${application.status}.`)
       }} />}
@@ -363,7 +366,7 @@ export function ProjectDetailScreen() {
           onPositionsChanged={resource.reload}
         />
       )}
-    </>
+    </section>
   )
 }
 export { ProjectDetailScreen as ProjectDetail }
