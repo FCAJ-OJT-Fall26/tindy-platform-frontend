@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react"
 import type { RuleMatch } from "../../types/discovery"
-import { ArrowUpRight, BriefcaseBusiness, Check, ChevronDown, CircleHelp, Info, Sparkles } from "lucide-react"
+import { AlertCircle, ArrowUpRight, BriefcaseBusiness, Check, ChevronDown, CircleHelp, Clock, Info, Sparkles } from "lucide-react"
 import MatchScoreRing from "./MatchScoreRing"
 import SkillIcon from "../onboarding/SkillIcon"
 import { getMatchTier } from "../../utils/matchTier"
@@ -163,6 +163,29 @@ function AnimatedFactorRow({
   )
 }
 
+function parseInsights(explanation: string) {
+  if (!explanation) return []
+  const rawParts = explanation
+    .split(/[;.]\s+/)
+    .map((p) => p.trim().replace(/\.$/, ""))
+    .filter(Boolean)
+  return rawParts.map((part) => {
+    const lower = part.toLowerCase()
+    let tone: "positive" | "warning" | "neutral" = "neutral"
+    if (lower.includes("required skill")) {
+      const isMissing = lower.includes("0/") || lower.includes("missing") || lower.includes("not matched")
+      tone = isMissing ? "warning" : "positive"
+    } else if (lower.includes("availability") || lower.includes("hours/week")) {
+      tone = "positive"
+    } else if (lower.includes("match")) {
+      tone = "positive"
+    } else if (lower.includes("differ") || lower.includes("missing") || lower.includes("0%")) {
+      tone = "warning"
+    }
+    return { text: part, tone }
+  })
+}
+
 export default function RuleMatchPanel({
   match,
   variant = "default",
@@ -260,6 +283,8 @@ export default function RuleMatchPanel({
     )
   }
 
+  const insights = parseInsights(match.explanation)
+
   return (
     <section
       className="rule-match-panel"
@@ -268,34 +293,62 @@ export default function RuleMatchPanel({
     >
       <div className="rule-match__hero">
         <MatchScoreRing score={match.match_score} large />
-        <div>
-          <span className="rule-match__eyebrow">
-            <Sparkles size={12} />RULE-BASED COMPATIBILITY
-          </span>
-          <h2>Your position match</h2>
-          {projectName && <p className="rule-match__project-name">{projectName}</p>}
-          <p>How your profile fits this project's position.</p>
-        </div>
-      </div>
-      <div className="rule-match__position">
-        <div>
-          <BriefcaseBusiness size={18} />
-          <div>
-            <strong>{match.best_position.title}</strong>
-            <span>
-              {match.best_position.role_name !== match.best_position.title
-                ? `${match.best_position.role_name} · `
-                : ""}
-              {match.best_position.experience_level.replace(/_/g, " ")} expectation
+        <div className="rule-match__hero-text">
+          <div className="rule-match__hero-meta">
+            <span className="rule-match__eyebrow">
+              <Sparkles size={12} />RULE-BASED COMPATIBILITY
             </span>
+            {projectName && <span className="rule-match__project-pill">{projectName}</span>}
           </div>
+          <h2>Your position match</h2>
+          <p>Algorithmic fit breakdown based on your profile skills and preferences.</p>
         </div>
-        <span className="rule-match__slots">
-          {match.best_position.remaining_slots}{" "}
-          {match.best_position.remaining_slots === 1 ? "slot" : "slots"} remaining
-        </span>
       </div>
-      <p className="rule-match__explanation">{match.explanation}</p>
+
+      <div className="rule-match__position-card">
+        <div className="rule-match__position-header">
+          <div className="rule-match__position-main">
+            <div className="rule-match__position-icon">
+              <BriefcaseBusiness size={18} />
+            </div>
+            <div>
+              <div className="rule-match__position-title-wrap">
+                <strong>{match.best_position.title}</strong>
+                <span className="rule-match__level-badge">
+                  {match.best_position.experience_level.replace(/_/g, " ")}
+                </span>
+              </div>
+              <span className="rule-match__role-name">
+                {match.best_position.role_name}
+              </span>
+            </div>
+          </div>
+          <span className="rule-match__slots">
+            {match.best_position.remaining_slots}{" "}
+            {match.best_position.remaining_slots === 1 ? "slot" : "slots"} remaining
+          </span>
+        </div>
+
+        {insights.length > 0 ? (
+          <div className="rule-match__insights-wrap">
+            {insights.map((ins, idx) => (
+              <span key={idx} className={`rule-match__insight-pill is-${ins.tone}`}>
+                {ins.tone === "positive" ? (
+                  <Check size={12} />
+                ) : ins.tone === "warning" ? (
+                  <AlertCircle size={12} />
+                ) : (
+                  <Info size={12} />
+                )}
+                <span>{ins.text}</span>
+              </span>
+            ))}
+          </div>
+        ) : (
+          <p className="rule-match__explanation">{match.explanation}</p>
+        )}
+      </div>
+
       {match.data_incomplete && (
         <p role="note" className="rule-match__notice">
           <Info size={16} />
@@ -304,10 +357,12 @@ export default function RuleMatchPanel({
           </span>
         </p>
       )}
+
       <div className="rule-match__section-heading">
         <h3>What shapes your score</h3>
         <span>{match.match_factors.length} factors</span>
       </div>
+
       <div className="rule-match__factors">
         {match.match_factors.map((factor) => {
           const value = factor.factor === null ? null : Number((factor.factor * 100).toFixed(2))
@@ -323,6 +378,7 @@ export default function RuleMatchPanel({
           )
         })}
       </div>
+
       <div className="rule-match__skills">
         {[
           { label: "Matched skills", skills: match.matched_skills, matched: true },
@@ -337,11 +393,11 @@ export default function RuleMatchPanel({
             {group.skills.length ? (
               <ul>
                 {group.skills.map((skill) => (
-                  <li key={skill.skill_id}>
-                    <SkillIcon name={skill.name} size={13} />
-                    <span>
-                      {skill.name}
-                      <small>{skill.is_required ? "Required" : "Optional"}</small>
+                  <li key={skill.skill_id} className="rule-match-skill-item">
+                    <SkillIcon name={skill.name} size={14} />
+                    <span className="rule-match-skill-name">{skill.name}</span>
+                    <span className={`rule-match-skill-tag ${skill.is_required ? "is-required" : "is-optional"}`}>
+                      {skill.is_required ? "Required" : "Optional"}
                     </span>
                   </li>
                 ))}
@@ -356,6 +412,7 @@ export default function RuleMatchPanel({
           </section>
         ))}
       </div>
+
       <details className="rule-match__calculation">
         <summary>
           About this calculation
@@ -364,10 +421,11 @@ export default function RuleMatchPanel({
         <p>This rule-based score uses the percentages, weights and points shown above.</p>
         <p>Experience expectation is descriptive. Experiences and certificates do not add match points.</p>
       </details>
-      <p className="rule-match__footer">
-        <Info size={14} />
+
+      <div className="rule-match__footer-banner">
+        <Info size={15} />
         <span>Compatibility describes your fit. The project leader makes the final decision.</span>
-      </p>
+      </div>
     </section>
   )
 }

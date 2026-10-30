@@ -87,6 +87,11 @@ function useAppState() {
   const saved = [...new Set([...(savedProjects.data?.map(p => p.project_id) ?? []), ...Object.keys(confirmedFlags)])]
     .filter(id => confirmedFlags[id] ?? Boolean(savedProjects.data?.some(p => p.project_id === id)))
   const saveRequests = useRef(new Map<string, { value: boolean; promise: Promise<void> }>())
+  const isProjectSaved = useCallback((id: string, initialIsSaved?: boolean): boolean => {
+    if (confirmedFlags[id] !== undefined) return confirmedFlags[id]
+    if (savedProjects.data) return savedProjects.data.some(p => p.project_id === id)
+    return initialIsSaved ?? saved.includes(id)
+  }, [confirmedFlags, savedProjects.data, saved])
   useEffect(() => {
     if (!savedProjects.data || !authUser) return
     const ids = new Set(savedProjects.data.map(p => p.project_id))
@@ -272,6 +277,7 @@ function useAppState() {
     requestProjects,
     saved,
     savedProjects,
+    isProjectSaved,
     setProjectSaved,
     toggleSave,
     interested,

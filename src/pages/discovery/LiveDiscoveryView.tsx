@@ -24,7 +24,7 @@ const loadCatalog = async (signal: AbortSignal) => {
 }
 
 export default function LiveDiscoveryView() {
-  const { authUser, notify, saved, savedProjects, setProjectSaved } = useTindy()
+  const { authUser, notify, saved, savedProjects, isProjectSaved, setProjectSaved } = useTindy()
   const navigate = useNavigate()
   const [category, setCategory] = useState("")
   const [role, setRole] = useState("")
@@ -60,7 +60,7 @@ export default function LiveDiscoveryView() {
     if (direction === "right") { setApplying(item as DiscoveryProject); return false }
     const owner = actionScope.current
     setActionError("")
-    const wasSaved = saved.includes(item.id) || Boolean(feed.items.find(p => p.project_id === item.id)?.is_saved)
+    const wasSaved = isProjectSaved(item.id, (item as DiscoveryProject).ruleMatch?.is_saved)
     try {
       if (direction === "left") await setDiscoveryFlag(item.id, "skipped", true)
       else await setProjectSaved(item.id, true)
@@ -119,11 +119,11 @@ export default function LiveDiscoveryView() {
       <ProjectDetailModal
         project={previewProject}
         isOpen={Boolean(previewProject)}
-        isSaved={Boolean(saved.includes(previewProject.id) || feed.items.find(p => p.project_id === previewProject.id)?.is_saved)}
+        isSaved={isProjectSaved(previewProject.id, previewProject.ruleMatch?.is_saved)}
         isInterested={Boolean(reviewedApplications.has(previewProject.id))}
         onClose={() => setPreviewProject(null)}
         onToggleSave={async (projectId) => {
-          const isCurrentlySaved = saved.includes(projectId) || Boolean(feed.items.find(p => p.project_id === projectId)?.is_saved);
+          const isCurrentlySaved = isProjectSaved(projectId, previewProject.ruleMatch?.is_saved);
           await setProjectSaved(projectId, !isCurrentlySaved);
           notify(isCurrentlySaved ? "Project removed from saved." : "Project saved.");
         }}
