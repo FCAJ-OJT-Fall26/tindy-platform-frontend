@@ -4236,8 +4236,9 @@ input[type=checkbox] {
   align-items: flex-start
 }
 
-.leader-project-top>div {
-  flex: 1
+.leader-project-top > .leader-project-info {
+  flex: 1;
+  min-width: 0;
 }
 
 .leader-project-top h2 {
@@ -10448,28 +10449,37 @@ button.text-link {
 
 .leader-project-top-actions {
   position: absolute;
-  top: 12px;
-  right: 12px;
+  top: 18px;
+  right: 20px;
   display: flex;
   align-items: center;
-  gap: 3px;
-  z-index: 2;
+  gap: 4px;
+  z-index: 10;
 }
 
 .leader-project-top-actions .icon-button {
-  width: 28px;
-  height: 28px;
+  width: 30px;
+  height: 30px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   border-radius: 6px;
   color: #64748b;
+  background: transparent;
+  border: none;
+  cursor: pointer;
   transition: all 0.15s ease;
 }
 
 .leader-project-top-actions .icon-button:hover {
   background: #f1f5f9;
   color: #1e293b;
+}
+
+.leader-project-top-actions .icon-button[style*="d9534f"]:hover,
+.leader-project-top-actions .icon-button.delete-btn:hover {
+  background: #fee2e2;
+  color: #dc2626;
 }
 
 .leader-projects-grid:not(.grid-cols-1) .leader-project-stats {

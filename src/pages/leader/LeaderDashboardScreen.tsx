@@ -99,9 +99,11 @@ export function LeaderDashboard() {
     try {
       await deleteProjectApi(projectId)
       setProjects(previous => previous.filter(project => project.id !== projectId))
-      resource.replace(previous => ({ ...previous!,
+      resource.replace(previous => ({
+        ...previous!,
         leading_projects: previous!.leading_projects.filter(project => project.project_id !== projectId),
-        projects: previous!.projects.filter(project => project.id !== projectId) }))
+        projects: previous!.projects.filter(project => project.id !== projectId)
+      }))
       notify('Project "' + projectName + '" archived.')
       resource.reload()
     } catch (error: unknown) {
@@ -255,7 +257,7 @@ export function LeaderDashboard() {
                     <h2>{project.name}</h2>
                     <p title={project.description}>{project.description}</p>
                   </div>
-                  <div className="leader-project-top-actions leader-project-menu-container" style={{ position: "relative" }}>
+                  <div className="leader-project-top-actions leader-project-menu-container">
                     <button
                       className="icon-button"
                       onClick={() =>
@@ -494,60 +496,59 @@ export function LeaderDashboard() {
         </>
       )}
       <section aria-label="Candidate and messaging demo preview">
-      <div className="info-banner" role="note">Demo preview — candidate shortlist, invitations and chat below use sample data. {candidateInvites.length} sample invitations · {candidateInterested.length} sample interested candidates.</div>
-      <div className="two-column">
-        <section className="panel">
-          <SectionHeading
-            title="Candidate shortlist"
-            action={
-              <Link className="text-link" to="/candidates">
-                View pipeline <ArrowRight size={13} />
-              </Link>
-            }
-          />
-          {initialCandidates
-            .filter((candidate) => !dismissed.includes(candidate.name))
-            .slice(0, 3)
-            .map((candidate) => (
-              <Link
-                className="recent-candidate"
-                key={candidate.name}
-                to={`/candidate/${encodeURIComponent(candidate.name)}`}
-              >
-                <Avatar name={candidate.name} color={candidate.color} />
-                <div>
-                  <strong>{candidate.name}</strong>
-                  <small>{candidate.role}</small>
-                </div>
-                <Badge tone="success">{candidate.match}% match</Badge>
-              </Link>
-            ))}
-        </section>
-        <section className="panel">
-          <SectionHeading title="Keep the conversation going" />
-          <div className="leader-message">
-            <Avatar name="Cao Thanh Nhan" color="teal" />
-            <div>
-              <h3>Cao Thanh Nhan</h3>
-              <p>“I’d love to learn more about the backend architecture.”</p>
-              <Link
-                className="text-link"
-                to="/messages?conversation=Cao%20Thanh%20Nhan"
-              >
-                Reply in chat <ArrowRight size={14} />
-              </Link>
+        <div className="info-banner" role="note">Demo preview — candidate shortlist, invitations and chat below use sample data. {candidateInvites.length} sample invitations · {candidateInterested.length} sample interested candidates.</div>
+        <div className="two-column">
+          <section className="panel">
+            <SectionHeading
+              title="Candidate shortlist"
+              action={
+                <Link className="text-link" to="/candidates">
+                  View pipeline <ArrowRight size={13} />
+                </Link>
+              }
+            />
+            {initialCandidates
+              .filter((candidate) => !dismissed.includes(candidate.name))
+              .slice(0, 3)
+              .map((candidate) => (
+                <Link
+                  className="recent-candidate"
+                  key={candidate.name}
+                  to={`/candidate/${encodeURIComponent(candidate.name)}`}
+                >
+                  <Avatar name={candidate.name} color={candidate.color} />
+                  <div>
+                    <strong>{candidate.name}</strong>
+                    <small>{candidate.role}</small>
+                  </div>
+                  <Badge tone="success">{candidate.match}% match</Badge>
+                </Link>
+              ))}
+          </section>
+          <section className="panel">
+            <SectionHeading title="Keep the conversation going" />
+            <div className="leader-message">
+              <Avatar name="Cao Thanh Nhan" color="teal" />
+              <div>
+                <h3>Cao Thanh Nhan</h3>
+                <p>“I’d love to learn more about the backend architecture.”</p>
+                <Link
+                  className="text-link"
+                  to="/messages?conversation=Cao%20Thanh%20Nhan"
+                >
+                  Reply in chat <ArrowRight size={14} />
+                </Link>
+              </div>
             </div>
-          </div>
-          <div className="trust-note">
-            <Users size={18} />
-            <span>
-              The best team fit goes beyond a score. Start a conversation about
-              goals, availability, and how you like to work.
-            </span>
-          </div>
-        </section>
-      </div>
-      <Link className="btn btn-secondary" to="/team">Team workspace <span className="beta">DEMO</span></Link>
+            <div className="trust-note">
+              <Users size={18} />
+              <span>
+                The best team fit goes beyond a score. Start a conversation about
+                goals, availability, and how you like to work.
+              </span>
+            </div>
+          </section>
+        </div>
       </section>
       <SaveSuccessModal
         open={showSaveSuccessModal}
