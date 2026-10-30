@@ -256,12 +256,12 @@ export function DashboardScreen() {
             <h3>Your next steps</h3>
             <Link
               className="next-step"
-              to="/messages?conversation=Minh%20Nguyen"
+              to="/messages"
             >
-              <Avatar name="Minh Nguyen" color="teal" />
+              <Avatar name="Project" color="teal" />
               <div>
                 <strong>A conversation worth having</strong>
-                <p>Minh invited you to chat about CloudDesk.</p>
+                <p>Open your conversations to see project messages.</p>
                 <span>
                   View conversation <ArrowUpRight size={12} />
                 </span>
@@ -273,7 +273,7 @@ export function DashboardScreen() {
               </span>
               <div>
                 <strong>You have a team invitation</strong>
-                <p>AI Customer Support System is ready for you.</p>
+                <p>Project invitations will appear here when you receive one.</p>
                 <span>
                   Review invitation <ArrowUpRight size={12} />
                 </span>

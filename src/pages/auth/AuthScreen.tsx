@@ -278,11 +278,6 @@ export function AuthScreen() {
         </div>
 
         <div className="auth-community">
-          <div className="avatar-stack">
-            <Avatar name="Minh Nguyen" color="teal" />
-            <Avatar name="Linh Tran" color="rose" />
-            <Avatar name="An Hoang" color="amber" />
-          </div>
           <span>Made for the FCAJ student community</span>
         </div>
       </aside>

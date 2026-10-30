@@ -964,7 +964,7 @@ export function ProjectForm({ mode, initialProject, initialDetail }: ProjectForm
                   ref={slidePane0Ref}
                   className={isWizard ? "wizard-slide-pane" : undefined}
                   aria-hidden={isWizard ? stepIndex !== 0 : undefined}
-                  inert={isWizard && stepIndex !== 0 ? "" : undefined}
+                  inert={isWizard && stepIndex !== 0}
                 >
                   <section
                     id="section-big-picture"
@@ -1159,7 +1159,7 @@ export function ProjectForm({ mode, initialProject, initialDetail }: ProjectForm
                   ref={slidePane1Ref}
                   className={isWizard ? "wizard-slide-pane" : undefined}
                   aria-hidden={isWizard ? stepIndex !== 1 : undefined}
-                  inert={isWizard && stepIndex !== 1 ? "" : undefined}
+                  inert={isWizard && stepIndex !== 1}
                 >
                   <section
                     id="section-people-skills"
@@ -1596,7 +1596,7 @@ export function ProjectForm({ mode, initialProject, initialDetail }: ProjectForm
                   ref={slidePane2Ref}
                   className={isWizard ? "wizard-slide-pane" : undefined}
                   aria-hidden={isWizard ? stepIndex !== 2 : undefined}
-                  inert={isWizard && stepIndex !== 2 ? "" : undefined}
+                  inert={isWizard && stepIndex !== 2}
                 >
                   <section
                     id="section-commitment"

@@ -39,7 +39,7 @@ export function AiStudioScreen() {
     setSummary(
       `${profile.role} with practical experience in ${skills.split(",").slice(0, 4).join(",").trim()}. ${projects.trim()} Interested in ${interests.toLowerCase()} and ready to contribute to a collaborative FCAJ project. ${experience.trim()}.`,
     )
-    notify("Demo summary generated · Review and edit before accepting")
+    notify("Summary generated · Review and edit before accepting")
   }
   return (
     <>
@@ -218,7 +218,7 @@ export function AiStudioScreen() {
           <section className="panel">
             {detected ? (
               <>
-                <Badge tone="blue">DEMO DETECTION RESULTS</Badge>
+                <Badge tone="blue">DETECTION RESULTS</Badge>
                 <h2>Skills detected</h2>
                 <p>
                   Review these illustrative results. Only confirmed skills are

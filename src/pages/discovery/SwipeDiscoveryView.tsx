@@ -683,7 +683,6 @@ export default function SwipeDiscoveryView({
       <CandidateShortlistModal
         isOpen={Boolean(shortlistModalCandidate)}
         candidate={shortlistModalCandidate}
-        projectName="EcoTrack"
         onClose={() => setShortlistModalCandidate(null)}
         onConfirmShortlist={() => {
           if (shortlistModalCandidate) {

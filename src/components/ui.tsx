@@ -425,8 +425,6 @@ export function ProjectCard({
         <div className="team-preview">
           <div className="avatar-stack">
             <Avatar name={project.leader} color={project.color} />
-            <Avatar name="An Hoang" color="neutral" />
-            <Avatar name="Linh Tran" color="green" />
           </div>
           <small>
             {project.team}/{project.capacity} members

@@ -41,7 +41,7 @@ export default function ActionModal({
             : modal === 'filters'
             ? 'Discovery Search Filters'
             : modal === 'invitation'
-            ? 'Project Invitation: EcoTrack'
+            ? 'Project Invitation'
             : modal === 'experience'
             ? 'Add Project Experience'
             : modal === 'position'
@@ -52,7 +52,7 @@ export default function ActionModal({
         {modal === 'invitation' ? (
           <>
             <p>
-              Jamie Le has formally invited you to join EcoTrack as a Frontend Developer. Weekly commitment: 10 hours/week for 8-12 weeks.
+              A project leader has invited you to join a project. Review the project details before accepting.
             </p>
             <div className="flex gap-2 mt-4">
               <button
