@@ -23,7 +23,7 @@ import {
   FileText,
 } from "lucide-react"
 import { useTindy, Project } from "../../store"
-import { Chips } from "../../components/ui"
+import { Chips, PageHeader } from "../../components/ui"
 import { getProjectByIdApi, mapProjectDetailToUiProject } from "../../services/projects.service"
 import type { ProjectDetailDto } from "../../types/project"
 
@@ -151,7 +151,7 @@ export function ProjectWorkspaceView({ projectId }: ProjectWorkspaceViewProps) {
           .slice(0, 2)
           .join("")
           .toUpperCase() || "MN",
-      avatarColor: "bg-amber-100 text-amber-800",
+      avatarColor: "bg-slate-100 text-slate-700 border border-slate-200",
       badgeText: "Sample update",
       content: `Welcome to ${activeProject.name}! Our kickoff is Friday at 5 PM. Bring your ideas — let's build something meaningful together.`,
       timestamp: "Today at 5:00 PM",
@@ -244,7 +244,7 @@ export function ProjectWorkspaceView({ projectId }: ProjectWorkspaceViewProps) {
       authorName: profile.name || "Alex Le",
       authorRole: isLeader ? "Project lead" : "Backend Developer",
       initials: myInitials,
-      avatarColor: "bg-blue-100 text-blue-800",
+      avatarColor: "bg-slate-100 text-slate-700 border border-slate-200",
       content: newUpdate.trim(),
       timestamp: "Just now",
       likes: 0,
@@ -326,7 +326,7 @@ export function ProjectWorkspaceView({ projectId }: ProjectWorkspaceViewProps) {
           role: `Project lead · ${myRole}`,
           initials: myInitials,
           isYou: true,
-          color: "bg-amber-100 text-amber-800",
+          color: "bg-slate-100 text-slate-700 border border-slate-200",
         },
         {
           id: "m-2",
@@ -334,7 +334,7 @@ export function ProjectWorkspaceView({ projectId }: ProjectWorkspaceViewProps) {
           role: "AI Engineer",
           initials: "AH",
           isYou: false,
-          color: "bg-blue-100 text-blue-800",
+          color: "bg-slate-100 text-slate-700 border border-slate-200",
         },
         {
           id: "m-3",
@@ -342,7 +342,7 @@ export function ProjectWorkspaceView({ projectId }: ProjectWorkspaceViewProps) {
           role: "UI/UX Designer",
           initials: "LT",
           isYou: false,
-          color: "bg-purple-100 text-purple-800",
+          color: "bg-slate-100 text-slate-700 border border-slate-200",
         },
       ]
     }
@@ -363,7 +363,7 @@ export function ProjectWorkspaceView({ projectId }: ProjectWorkspaceViewProps) {
         role: "Project lead",
         initials: leaderInitials,
         isYou: false,
-        color: "bg-amber-100 text-amber-800",
+        color: "bg-slate-100 text-slate-700 border border-slate-200",
       },
       {
         id: "m-you",
@@ -371,7 +371,7 @@ export function ProjectWorkspaceView({ projectId }: ProjectWorkspaceViewProps) {
         role: myRole,
         initials: myInitials,
         isYou: true,
-        color: "bg-emerald-100 text-emerald-800",
+        color: "bg-slate-100 text-slate-700 border border-slate-200",
       },
       {
         id: "m-3",
@@ -379,7 +379,7 @@ export function ProjectWorkspaceView({ projectId }: ProjectWorkspaceViewProps) {
         role: "AI Engineer",
         initials: "AH",
         isYou: false,
-        color: "bg-blue-100 text-blue-800",
+        color: "bg-slate-100 text-slate-700 border border-slate-200",
       },
       {
         id: "m-4",
@@ -387,7 +387,7 @@ export function ProjectWorkspaceView({ projectId }: ProjectWorkspaceViewProps) {
         role: "UI/UX Designer",
         initials: "LT",
         isYou: false,
-        color: "bg-purple-100 text-purple-800",
+        color: "bg-slate-100 text-slate-700 border border-slate-200",
       },
     ]
   }, [activeProject, profile.name, profile.role, authUser])
@@ -401,53 +401,45 @@ export function ProjectWorkspaceView({ projectId }: ProjectWorkspaceViewProps) {
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 font-sans">
+    <>
       {/* Top Breadcrumb */}
-      <div className="mb-3">
+      <div style={{ marginBottom: "16px" }}>
         <Link
           to="/team"
-          className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-slate-800 transition-colors"
+          className="btn btn-secondary"
+          style={{ padding: "5px 12px", fontSize: "12px", gap: "6px", display: "inline-flex", alignItems: "center" }}
         >
-          <ArrowLeft size={14} />
-          <span>My projects</span>
+          <ArrowLeft size={13} />
+          <span>Back to Team workspace</span>
         </Link>
       </div>
 
-      {/* Header Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-        <div>
-          <span className="text-[10px] font-bold tracking-widest text-slate-400 uppercase block mb-1">
-            BUILD SOMETHING TOGETHER
-          </span>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
-            Team workspace
-          </h1>
-          <p className="text-xs sm:text-sm text-slate-600 mt-1">
-            The people, plans, and conversations behind your next milestone.
-          </p>
-        </div>
+      <PageHeader
+        title={activeProject.name}
+        description="The people, plans, and conversations behind your next milestone."
+        action={
+          <div style={{ display: "flex", gap: "8px" }}>
+            {isLeader && (
+              <Link
+                to={`/project/${activeProject.id}/edit`}
+                className="btn btn-secondary"
+              >
+                <Settings size={14} />
+                <span>Manage project</span>
+                <ArrowUpRight size={13} />
+              </Link>
+            )}
 
-        <div className="flex items-center gap-2">
-          {isLeader && (
             <Link
-              to={`/project/${activeProject.id}/edit`}
+              to="/messages"
               className="btn btn-secondary"
             >
-              <Settings size={14} />
-              <span>Manage project</span>
-              <ArrowUpRight size={13} />
+              <MessageSquare size={14} />
+              <span>Open team chat</span>
             </Link>
-          )}
-
-          <Link
-            to="/messages"
-            className="btn btn-secondary"
-          >
-            <MessageSquare size={14} />
-            <span>Open team chat</span>
-          </Link>
-        </div>
-      </div>
+          </div>
+        }
+      />
 
       {/* Main 2-Column Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
@@ -662,7 +654,7 @@ export function ProjectWorkspaceView({ projectId }: ProjectWorkspaceViewProps) {
                   <form onSubmit={handlePostUpdate} className="pt-3 border-t border-slate-100">
                     <span className="text-[11px] font-bold text-slate-700 block mb-2">Share an update</span>
                     <div className="flex items-start gap-3">
-                      <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-800 flex items-center justify-center text-xs font-bold shrink-0">
+                      <div className="w-8 h-8 rounded-full bg-slate-100 text-slate-700 border border-slate-200 flex items-center justify-center text-xs font-bold shrink-0">
                         {profile.name
                           ?.split(" ")
                           .map((w) => w[0])
@@ -853,13 +845,16 @@ export function ProjectWorkspaceView({ projectId }: ProjectWorkspaceViewProps) {
                 .map((g) => (
                   <div key={g.id} className="space-y-1.5 text-xs">
                     <span
-                      className={`inline-block text-[10px] font-bold px-2 py-0.5 rounded ${
-                        g.tag === "Engineering"
-                          ? "bg-blue-50 text-blue-700"
-                          : g.tag === "Community"
-                          ? "bg-emerald-50 text-emerald-700"
-                          : "bg-purple-50 text-purple-700"
-                      }`}
+                      style={{
+                        fontSize: "10px",
+                        fontWeight: 600,
+                        padding: "1px 6px",
+                        borderRadius: "3px",
+                        background: "#f1f5f9",
+                        color: "#475569",
+                        border: "1px solid #e2e8f0",
+                        display: "inline-block",
+                      }}
                     >
                       {g.tag}
                     </span>
@@ -1027,6 +1022,6 @@ export function ProjectWorkspaceView({ projectId }: ProjectWorkspaceViewProps) {
           </div>
         </div>
       )}
-    </div>
+    </>
   )
 }
