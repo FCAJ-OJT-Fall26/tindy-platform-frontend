@@ -108,6 +108,8 @@ export default function LiveAiInspector({
   const candidate = !isProject ? (item as DiscoveryCandidate) : null;
   const match = item.match;
 
+  if (project?.matchAvailable === false) return <aside className="w-full min-w-0 bg-white rounded-xl border border-slate-200 p-5 shadow-xs"><h4 className="font-bold text-slate-900 text-sm">{project.name}</h4><p className="text-xs text-slate-500 mt-2">Match scoring is not available. Review the project requirements and saved details.</p><button className="text-link" onClick={onOpenFullDetail}>View project</button></aside>;
+
   return (
     <aside className="w-full min-w-0 bg-white rounded-xl border border-slate-200 p-5 shadow-xs flex flex-col h-fit xl:sticky xl:top-24 space-y-4">
       {/* Header */}

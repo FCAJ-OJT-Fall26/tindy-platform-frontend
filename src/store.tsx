@@ -20,6 +20,9 @@ import { authErrorMessage } from "./services/authValidation"
 import { getMyProfile, patchMyProfile } from "./services/profile.service"
 import type { ProfilePatch } from "./types/profile"
 import useRemoteResource from "./hooks/useRemoteResource"
+import { getProjectsApi, mapProjectSummaryToUiProject } from "./services/projects.service"
+
+const loadProjectCatalog = (signal: AbortSignal) => getProjectsApi({ page_size: 50 }, signal)
 
 const emptySessionProfile: Profile = { name: 'Tindy member', university: '', email: '', role: '',
   hours: '', interests: '', skills: [], experience: '', github: '', portfolio: '', goals: '',
@@ -28,8 +31,6 @@ const emptySessionProfile: Profile = { name: 'Tindy member', university: '', ema
 function useStored<T>(key: string, initial: T) {
   const [value, setValue] = useState<T>(() => {
     try {
-      // Legacy v2 state contained prototype/demo records. Production data is
-      // server-owned, so discard that local cache instead of migrating it.
       localStorage.removeItem(`tindy-v2-${key}`)
       const stored = localStorage.getItem(`tindy-v3-${key}`)
       return stored ? JSON.parse(stored) : initial
@@ -69,12 +70,16 @@ function useAppState() {
     ownerProfile.replace(updated)
   }
 
-  const [projects, setProjects] = useStored<Project[]>(
-    "projects",
-    initialProjects,
-  )
-  const [saved, setSaved] = useStored<string[]>("saved", [
-  ])
+  // API Projects are memory-only and scoped to the signed-in account.
+  const [projects, setProjects] = useState<Project[]>([])
+  const [projectsRequested, setProjectsRequested] = useState(false)
+  const requestProjects = useCallback(() => setProjectsRequested(true), [])
+  const projectCatalog = useRemoteResource(projectsRequested && authUser?.is_onboarding_completed ? authUser.user_id : null, loadProjectCatalog)
+  useEffect(() => { setProjects([]) }, [authUser?.user_id])
+  useEffect(() => {
+    if (projectCatalog.data) setProjects(projectCatalog.data.items.map(dto => mapProjectSummaryToUiProject(dto)))
+  }, [projectCatalog.data])
+  const [saved, setSaved] = useStored<string[]>("saved", [])
   const [interested, setInterested] = useStored<string[]>("interested", [])
   const [skipped, setSkipped] = useStored<string[]>("skipped", [])
   const [active, setActive] = useStored<string[]>("active", [])
@@ -158,6 +163,7 @@ function useAppState() {
     setProfile(emptySessionProfile)
     setToast('')
     setAuthUser(null)
+    setProjectsRequested(false)
     setAuthLoading(false)
     setSessionError('')
   }, [setProfile])
@@ -231,6 +237,10 @@ function useAppState() {
     sessionError,
     projects,
     setProjects,
+    projectsLoading: projectCatalog.loading,
+    projectsError: projectCatalog.error,
+    reloadProjects: projectCatalog.reload,
+    requestProjects,
     saved,
     setSaved,
     toggleSave,

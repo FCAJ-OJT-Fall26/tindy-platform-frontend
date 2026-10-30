@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react"
-import { useNavigate, Link } from "react-router"
+import { useNavigate, Link, useBlocker } from "react-router"
 import {
   ArrowLeft,
   ArrowRight,
@@ -25,12 +25,13 @@ import {
 } from "lucide-react"
 import { useTindy, Project } from "../../store"
 import { getStoredToken } from "../../services/apiClient"
+import { bindCreatedPositions, createProjectOnce, positionFromDto, projectErrorMessage, saveProjectEdits, validatePositionCatalog, type ProjectDraftPosition, type ProjectSaveProgress } from "../../services/projectEditor.service"
+import type { ProjectDetailDto, ProjectDifficultyLevel, UpdateProjectRequest } from "../../types/project"
 import { getProfessionalRolesApi, getSkillsApi } from "../../services/catalog.service"
 import {
-  createProjectApi,
-  isGuid,
+  getProjectByIdApi,
+  mapProjectDetailToUiProject,
   toApiDifficulty,
-  updateProjectApi,
 } from "../../services/projects.service"
 import type { CatalogSkill, ProfessionalRole, SelectedSkill } from "../../types/catalog"
 import SkillPickerDialog from "./SkillPickerDialog"
@@ -40,21 +41,17 @@ import FullPreviewDialog from "./FullPreviewDialog"
 import { UnsavedChangesDialog } from "./UnsavedChangesDialog"
 import { SaveConfirmDialog } from "./SaveConfirmDialog"
 
-export interface FormPositionItem {
-  id: string
-  role: string
-  title: string
-  description: string
-  count: number
-  level: string
-  requiredSkills: SelectedSkill[]
-  niceSkills: SelectedSkill[]
-}
+export type FormPositionItem = ProjectDraftPosition
 
 export interface ProjectFormProps {
   mode: "create" | "edit"
   initialProject?: Project
+  initialDetail?: ProjectDetailDto
 }
+
+type FormSection = "big-picture" | "people-skills" | "commitment"
+const FORM_STEPS: FormSection[] = ["big-picture", "people-skills", "commitment"]
+type StepErrors = Partial<Record<"name" | "tagline" | "description" | "goals" | "category" | "positions" | "capacity" | "role" | "title" | "count" | "skills" | "hours" | "duration", string>>
 
 const PROJECT_TYPES = [
   "AI & Machine Learning",
@@ -78,79 +75,67 @@ const EXPERIENCE_LEVELS = [
   "Advanced",
 ]
 
-export function ProjectForm({ mode, initialProject }: ProjectFormProps) {
+export function ProjectForm({ mode, initialProject, initialDetail }: ProjectFormProps) {
+  const isWizard = mode === "create"
   const navigate = useNavigate()
-  const { setProjects, profile, notify } = useTindy()
+  const { setProjects, profile, authUser, notify } = useTindy()
+  const draftKey = `tindy-project-draft:${authUser?.user_id}:${initialProject?.id ?? "new"}`
+  const [restored] = useState(() => {
+    try { return JSON.parse(sessionStorage.getItem(draftKey) || "null") as { fields: { name: string; tagline: string; jd: string; goals: string; type: string; hours: number; durationMonths: number; durationEdited?: boolean; capacity: number; difficulty: ProjectDifficultyLevel; positionsList: FormPositionItem[]; wizardStep?: FormSection }; progress: ProjectSaveProgress } | null } catch { return null }
+  })
+  const [activeSection, setActiveSection] = useState<FormSection>(
+    isWizard && restored?.fields.wizardStep && FORM_STEPS.includes(restored.fields.wizardStep)
+      ? restored.fields.wizardStep : "big-picture",
+  )
+  const stepIndex = FORM_STEPS.indexOf(activeSection)
+  const [stepErrors, setStepErrors] = useState<StepErrors>({})
 
   // Form fields
-  const [name, setName] = useState(initialProject?.name || "")
-  const [tagline, setTagline] = useState(initialProject?.tagline || "")
-  const [jd, setJd] = useState(initialProject?.description || "")
-  const [goals, setGoals] = useState(initialProject?.goals?.join("\n") || "")
-  const [type, setType] = useState(initialProject?.type || "Web Application")
+  const [name, setName] = useState(restored?.fields.name ?? initialProject?.name ?? "")
+  const [tagline, setTagline] = useState(restored?.fields.tagline ?? initialProject?.tagline ?? "")
+  const [jd, setJd] = useState(restored?.fields.jd ?? initialProject?.description ?? "")
+  const [goals, setGoals] = useState(restored?.fields.goals ?? initialProject?.goals?.join("\n") ?? "")
+  const [type, setType] = useState(restored?.fields.type ?? initialProject?.type ?? "Web Application")
   const parseInitialMonths = (durStr?: string): number => {
     if (!durStr) return 3
     const matched = durStr.match(/\d+/)
     return matched ? parseInt(matched[0], 10) : 3
   }
 
-  const [hours, setHours] = useState(initialProject?.hours || 10)
-  const [durationMonths, setDurationMonths] = useState<number>(() =>
-    parseInitialMonths(initialProject?.duration),
+  const [hours, setHours] = useState(restored?.fields.hours ?? initialProject?.hours ?? 10)
+  const [durationMonths, setDurationMonthsState] = useState<number>(() =>
+    restored?.fields.durationMonths ?? parseInitialMonths(initialProject?.duration),
   )
+  const [durationChanged, setDurationChanged] = useState(restored?.fields.durationEdited ?? false)
+  const setDurationMonths = (value: number) => { setDurationChanged(true); setDurationMonthsState(value) }
 
   const durationString = useMemo(() => {
+    if (!durationChanged && initialDetail) return initialDetail.duration
     if (!durationMonths || durationMonths <= 0) return "0 months"
     return `${durationMonths} month${durationMonths !== 1 ? "s" : ""}`
-  }, [durationMonths])
-  const [members, setMembers] = useState(initialProject?.team || 1)
+  }, [durationMonths, durationChanged, initialDetail])
+  const members = initialDetail?.current_team_size ?? 1
+  const [capacity, setCapacity] = useState(restored?.fields.capacity ?? initialDetail?.max_team_capacity ?? 5)
+  const [difficulty, setDifficulty] = useState<ProjectDifficultyLevel>(restored?.fields.difficulty ?? initialDetail?.difficulty_level ?? "intermediate")
   const [confirmed, setConfirmed] = useState(false)
   const [submitting, setSubmitting] = useState(false)
 
   // Positions list
-  const [positionsList, setPositionsList] = useState<FormPositionItem[]>(() => {
-    if (initialProject?.openPositions && initialProject.openPositions.length > 0) {
-      return initialProject.openPositions.map((p, idx) => ({
-        id: p.positionId || `pos-${idx + 1}`,
-        role: p.role || "Backend Developer",
-        title: p.title || p.role || "Backend Developer",
-        description: p.description || "",
-        count: p.count || 1,
-        level: p.level || "Intermediate",
-        requiredSkills: (p.requiredSkills || []).map((name) => ({
-          skill_id: `skill_${name.toLowerCase().replace(/[^a-z0-9]+/g, "_")}`,
-          name,
-        })),
-        niceSkills: (p.niceSkills || []).map((name) => ({
-          skill_id: `skill_${name.toLowerCase().replace(/[^a-z0-9]+/g, "_")}`,
-          name,
-        })),
-      }))
-    }
-    if (initialProject) {
-      const reqNames = initialProject.requiredSkills || initialProject.skills.slice(0, 3) || []
-      const niceNames = initialProject.gap || []
-      return [
-        {
-          id: "pos-1",
-          role: initialProject.role || "Backend Developer",
-          title: initialProject.role || "Backend Developer",
-          description: "",
-          count: Math.max(1, initialProject.capacity - initialProject.team),
-          level: initialProject.difficulty || "Intermediate",
-          requiredSkills: reqNames.map((n) => ({
-            skill_id: `skill_${n.toLowerCase().replace(/[^a-z0-9]+/g, "_")}`,
-            name: n,
-          })),
-          niceSkills: niceNames.map((n) => ({
-            skill_id: `skill_${n.toLowerCase().replace(/[^a-z0-9]+/g, "_")}`,
-            name: n,
-          })),
-        },
-      ]
-    }
-    return []
-  })
+  const [positionsList, setPositionsList] = useState<FormPositionItem[]>(() =>
+    restored?.fields.positionsList ?? initialDetail?.positions.map(position => positionFromDto(position)) ?? [])
+  const progressRef = useRef<ProjectSaveProgress>(restored?.progress ?? { projectId: initialDetail?.project_id, positionIds: {} })
+  const submittingRef = useRef(false)
+  const savedRef = useRef(false)
+  const [saveError, setSaveError] = useState("")
+  const [serverState, setServerState] = useState<ProjectDetailDto | null>(null)
+  const [catalogLoading, setCatalogLoading] = useState(true)
+  const [catalogError, setCatalogError] = useState("")
+  const [catalogVersion, setCatalogVersion] = useState(0)
+  const persistDraft = () => {
+    if (savedRef.current) return
+    try { sessionStorage.setItem(draftKey, JSON.stringify({ fields: { name, tagline, jd, goals, type, hours, durationMonths, durationEdited: durationChanged, capacity, difficulty, positionsList, wizardStep: activeSection }, progress: progressRef.current })) } catch {}
+  }
+  useEffect(() => { persistDraft() }, [name, tagline, jd, goals, type, hours, durationMonths, durationChanged, capacity, difficulty, positionsList, activeSection])
 
   // Active position tab index
   const [activePosIndex, setActivePosIndex] = useState<number>(0)
@@ -165,7 +150,6 @@ export function ProjectForm({ mode, initialProject }: ProjectFormProps) {
   // Catalog data
   const [catalogRoles, setCatalogRoles] = useState<ProfessionalRole[]>([])
   const [catalogSkills, setCatalogSkills] = useState<CatalogSkill[]>([])
-  const [catalogError, setCatalogError] = useState("")
 
   // Dialog states
   const [showAiDialog, setShowAiDialog] = useState(false)
@@ -178,62 +162,33 @@ export function ProjectForm({ mode, initialProject }: ProjectFormProps) {
     mode: "required" | "nice"
   } | null>(null)
 
-  // Active section tracking for sticky nav
-  const [activeSection, setActiveSection] = useState<"big-picture" | "people-skills" | "commitment">(
-    "big-picture",
-  )
-
   // Tracking dirty state
-  const [isDirty, setIsDirty] = useState(false)
+  const [isDirty, setIsDirty] = useState(Boolean(restored))
+  const blocker = useBlocker(({ currentLocation, nextLocation }) => !savedRef.current && (isDirty || submittingRef.current) && currentLocation.pathname !== nextLocation.pathname)
+  useEffect(() => {
+    const beforeUnload = (event: BeforeUnloadEvent) => { if (isDirty || submittingRef.current) { event.preventDefault(); event.returnValue = "" } }
+    window.addEventListener("beforeunload", beforeUnload)
+    return () => window.removeEventListener("beforeunload", beforeUnload)
+  }, [isDirty])
   const initialSnapshotRef = useRef<string>("")
 
   useEffect(() => {
     const controller = new AbortController()
+    setCatalogLoading(true)
     setCatalogError("")
-    getProfessionalRolesApi(undefined, controller.signal)
-      .then(setCatalogRoles)
-      .catch(() => {
-        if (!controller.signal.aborted) setCatalogError("Unable to load the project catalog. Check that the backend is running and your account is authenticated.")
+    Promise.all([getProfessionalRolesApi(undefined, controller.signal, true), getSkillsApi(undefined, undefined, controller.signal, true)])
+      .then(([roles, skills]) => {
+        if (controller.signal.aborted) return
+        setCatalogRoles(roles)
+        setCatalogSkills(skills)
+        if (!roles.length || !skills.length) setCatalogError("The active role and skill catalogs must be available before saving.")
       })
-    getSkillsApi(undefined, undefined, controller.signal)
-      .then(setCatalogSkills)
-      .catch(() => {
-        if (!controller.signal.aborted) setCatalogError("Unable to load skills. Check that the backend is running and your account is authenticated.")
-      })
+      .catch((error: unknown) => { if (!controller.signal.aborted) setCatalogError(projectErrorMessage(error)) })
+      .finally(() => { if (!controller.signal.aborted) setCatalogLoading(false) })
     return () => controller.abort()
-  }, [])
-
-  // Canonicalize initial skills with real catalog GUIDs once loaded
-  useEffect(() => {
-    if (catalogSkills.length === 0) return
-    setPositionsList((prev) =>
-      prev.map((pos) => ({
-        ...pos,
-        requiredSkills: pos.requiredSkills.map((s) => {
-          const sName = (s.name || s.skill_id).toLowerCase().trim()
-          const found = catalogSkills.find(
-            (cs) =>
-              cs.name.toLowerCase().trim() === sName ||
-              cs.skill_id === s.skill_id ||
-              cs.name.toLowerCase().replace(/[^a-z0-9]+/g, "_") ===
-                s.skill_id.replace(/^skill_/, ""),
-          )
-          return found ? { skill_id: found.skill_id, name: found.name } : s
-        }),
-        niceSkills: pos.niceSkills.map((s) => {
-          const sName = (s.name || s.skill_id).toLowerCase().trim()
-          const found = catalogSkills.find(
-            (cs) =>
-              cs.name.toLowerCase().trim() === sName ||
-              cs.skill_id === s.skill_id ||
-              cs.name.toLowerCase().replace(/[^a-z0-9]+/g, "_") ===
-                s.skill_id.replace(/^skill_/, ""),
-          )
-          return found ? { skill_id: found.skill_id, name: found.name } : s
-        }),
-      })),
-    )
-  }, [catalogSkills])
+  }, [catalogVersion])
+  const selectionError = catalogLoading || catalogError ? null : validatePositionCatalog(positionsList, catalogRoles, catalogSkills)
+  const saveBlocked = catalogLoading || Boolean(catalogError) || Boolean(selectionError)
 
   // Create initial snapshot once
   useEffect(() => {
@@ -256,6 +211,8 @@ export function ProjectForm({ mode, initialProject }: ProjectFormProps) {
   // Check dirty and reset confirmation if data changes
   const handleFieldChange = () => {
     setIsDirty(true)
+    setStepErrors({})
+    setSaveError("")
     if (confirmed) {
       setConfirmed(false)
     }
@@ -343,6 +300,7 @@ export function ProjectForm({ mode, initialProject }: ProjectFormProps) {
 
   // Accurate scroll tracking for sticky nav (smooth both downwards and upwards)
   useEffect(() => {
+    if (isWizard) return
     let ticking = false
     const handleScroll = () => {
       if (isManualScrollingRef.current) return
@@ -391,40 +349,19 @@ export function ProjectForm({ mode, initialProject }: ProjectFormProps) {
       window.removeEventListener("scroll", handleScroll)
       if (manualScrollTimerRef.current) clearTimeout(manualScrollTimerRef.current)
     }
-  }, [])
+  }, [isWizard])
 
   // Position management
   const handleAddPosition = () => {
     handleFieldChange()
-    const candidateRoles = [
-      "Backend Developer",
-      "Frontend Developer",
-      "Full-stack Developer",
-      "UI/UX Designer",
-      "Mobile Developer",
-      "AI & Data Engineer",
-      "DevOps / Cloud Engineer",
-      "QA / Tester",
-    ]
-    const nextRole =
-      candidateRoles.find((r) => !positionsList.some((p) => p.role === r)) ||
-      `Developer ${positionsList.length + 1}`
-
-    const newId = `pos-${Date.now()}`
     const newPos: FormPositionItem = {
-      id: newId,
-      role: nextRole,
-      title: nextRole,
-      description: "",
-      count: 1,
-      level: "Intermediate",
-      requiredSkills: [],
-      niceSkills: [],
+      id: "draft-" + crypto.randomUUID(), roleId: "", role: "Select a role", title: "", description: "",
+      count: 1, level: "intermediate", status: "open", requiredSkills: [], niceSkills: [],
     }
 
     setPositionsList((prev) => [...prev, newPos])
     setActivePosIndex(positionsList.length)
-    notify(`Added new position: "${nextRole}"`)
+
   }
 
   const handleUpdatePosition = (
@@ -457,7 +394,7 @@ export function ProjectForm({ mode, initialProject }: ProjectFormProps) {
     if (activePosIndex >= indexToRemove && activePosIndex > 0) {
       setActivePosIndex((prev) => prev - 1)
     }
-    notify(`Removed position: "${target.title || target.role}"`)
+    notify(`Removed from draft: "${target.title || target.role}"`)
   }
 
   // Remove individual skill chip from a position
@@ -498,7 +435,7 @@ export function ProjectForm({ mode, initialProject }: ProjectFormProps) {
         if (pickerMode === "required") {
           const removedSet = new Set(removedFromOpposite.map((n) => n.toLowerCase()))
           const cleanNice = pos.niceSkills.filter(
-            (s) => !removedSet.has((s.name || s.skill_id).toLowerCase()),
+            (s) => !removedSet.has(s.skill_id.toLowerCase()),
           )
           return {
             ...pos,
@@ -508,7 +445,7 @@ export function ProjectForm({ mode, initialProject }: ProjectFormProps) {
         } else {
           const removedSet = new Set(removedFromOpposite.map((n) => n.toLowerCase()))
           const cleanReq = pos.requiredSkills.filter(
-            (s) => !removedSet.has((s.name || s.skill_id).toLowerCase()),
+            (s) => !removedSet.has(s.skill_id.toLowerCase()),
           )
           return {
             ...pos,
@@ -555,12 +492,127 @@ export function ProjectForm({ mode, initialProject }: ProjectFormProps) {
     }
   }, [name, tagline, jd, goals, positionsList, hours, durationMonths, confirmed])
 
+  const validateWizardStep = (section: FormSection) => {
+    const errors: StepErrors = {}
+    let positionIndex: number | undefined
+    if (section === "big-picture") {
+      if (name.trim().length < 3 || name.trim().length > 150) errors.name = "Enter a project name between 3 and 150 characters."
+      if (tagline.trim().length > 255) errors.tagline = "Keep the tagline within 255 characters."
+      if (jd.trim().length < 20) errors.description = "Describe your project in at least 20 characters."
+      if (!goals.split("\n").some(goal => goal.trim())) errors.goals = "Add at least one goal for your team."
+      if (!type.trim()) errors.category = "Choose a project type."
+    } else if (section === "people-skills") {
+      if (!positionsList.length) errors.positions = "Add at least one position before continuing."
+      if (!Number.isInteger(capacity) || capacity < Math.max(1, members)) errors.capacity = "Capacity must be at least the current member count and at least 1."
+      if (catalogLoading || catalogError) errors.positions = catalogError || "Wait for the active role and skill catalogs to load."
+      if (!catalogLoading && !catalogError) {
+        for (const [index, position] of positionsList.entries()) {
+          const positionErrors: StepErrors = {}
+          if (!catalogRoles.some(role => role.professional_role_id === position.roleId)) positionErrors.role = "Select an available role from the catalog."
+          if (position.title.trim().length < 2 || position.title.trim().length > 100) positionErrors.title = "Enter a position title between 2 and 100 characters."
+          if (!Number.isInteger(position.count) || position.count < 1 || position.count > 10) positionErrors.count = "Enter a whole number of openings between 1 and 10."
+          if (!position.requiredSkills.length) positionErrors.skills = "Select at least one required skill."
+          const catalogValidation = validatePositionCatalog([position], catalogRoles, catalogSkills)
+          if (catalogValidation && !positionErrors.role) positionErrors.skills = catalogValidation
+          if (Object.keys(positionErrors).length) {
+            Object.assign(errors, positionErrors)
+            positionIndex = index
+            break
+          }
+        }
+      }
+    } else {
+      if (!Number.isInteger(hours) || hours < 1 || hours > 40) errors.hours = "Enter between 1 and 40 whole hours per week."
+      if (!Number.isInteger(durationMonths) || durationMonths < 1 || durationMonths > 36) errors.duration = "Enter a duration between 1 and 36 whole months."
+    }
+    return { errors, positionIndex }
+  }
+
+  const showStepErrors = (section: FormSection, result: ReturnType<typeof validateWizardStep>) => {
+    setStepErrors(result.errors)
+    setActiveSection(section)
+    if (result.positionIndex !== undefined) setActivePosIndex(result.positionIndex)
+    window.requestAnimationFrame(() => {
+      document.querySelector<HTMLElement>('.project-unified-form [aria-invalid="true"]')?.focus()
+    })
+  }
+
+  const goToWizardStep = (section: FormSection) => {
+    if (submittingRef.current || section === activeSection) return
+    const targetIndex = FORM_STEPS.indexOf(section)
+    if (targetIndex > stepIndex) {
+      for (const previous of FORM_STEPS.slice(0, targetIndex)) {
+        const result = validateWizardStep(previous)
+        if (Object.keys(result.errors).length) { showStepErrors(previous, result); return }
+      }
+    }
+    setStepErrors({})
+    setActiveSection(section)
+  }
+
+  const slidePane0Ref = useRef<HTMLDivElement | null>(null)
+  const slidePane1Ref = useRef<HTMLDivElement | null>(null)
+  const slidePane2Ref = useRef<HTMLDivElement | null>(null)
+  const [containerHeight, setContainerHeight] = useState<number | undefined>(undefined)
+
+  useEffect(() => {
+    if (!isWizard) return
+    const panes = [slidePane0Ref.current, slidePane1Ref.current, slidePane2Ref.current]
+    const activePane = panes[stepIndex]
+    if (!activePane) return
+
+    setContainerHeight(activePane.offsetHeight)
+
+    if (typeof ResizeObserver !== "undefined") {
+      const observer = new ResizeObserver(() => {
+        if (activePane) {
+          setContainerHeight(activePane.offsetHeight)
+        }
+      })
+      observer.observe(activePane)
+      return () => observer.disconnect()
+    }
+  }, [stepIndex, isWizard, positionsList, jd, goals, name, tagline])
+
+  const previousWizardSection = useRef(activeSection)
+  useEffect(() => {
+    if (!isWizard || previousWizardSection.current === activeSection) return
+    previousWizardSection.current = activeSection
+    const frame = window.requestAnimationFrame(() => {
+      const focusTarget = document.querySelector<HTMLElement>('.project-unified-form [aria-invalid="true"]')
+        ?? document.getElementById("project-step-title")
+      focusTarget?.focus({ preventScroll: true })
+      const navigation = document.querySelector(".project-section-nav")
+      if (navigation) {
+        const topOffset = 85
+        const elementPosition = navigation.getBoundingClientRect().top
+        const offsetPosition = elementPosition + window.pageYOffset - topOffset
+        window.scrollTo({
+          top: Math.max(0, offsetPosition),
+          behavior: "smooth",
+        })
+      }
+    })
+    return () => window.cancelAnimationFrame(frame)
+  }, [activeSection, isWizard])
+
+  const validationProps = (field: keyof StepErrors) => ({
+    "aria-invalid": stepErrors[field] ? true as const : undefined,
+    "aria-describedby": stepErrors[field] ? `project-error-${field}` : undefined,
+  })
+  const fieldError = (field: keyof StepErrors) => stepErrors[field]
+    ? <span id={`project-error-${field}`} className="project-field-error" role="alert">{stepErrors[field]}</span> : null
+
   // Scroll to section helper
   const scrollTo = (elementId: string) => {
     const sectionKeyMap: Record<string, "big-picture" | "people-skills" | "commitment"> = {
       "section-big-picture": "big-picture",
       "section-people-skills": "people-skills",
       "section-commitment": "commitment",
+    }
+    if (isWizard) {
+      goToWizardStep(sectionKeyMap[elementId] ?? "commitment")
+      return
     }
     if (sectionKeyMap[elementId]) {
       setActiveSection(sectionKeyMap[elementId])
@@ -587,14 +639,26 @@ export function ProjectForm({ mode, initialProject }: ProjectFormProps) {
   const handleSubmit = (event: React.FormEvent) => {
     event.preventDefault()
 
-    if (!name.trim() || name.trim().length < 3) {
-      notify("Project name must be at least 3 characters.")
+    if (submittingRef.current) return
+    if (isWizard) {
+      if (stepIndex < FORM_STEPS.length - 1) { goToWizardStep(FORM_STEPS[stepIndex + 1]); return }
+      for (const section of FORM_STEPS) {
+        const result = validateWizardStep(section)
+        if (Object.keys(result.errors).length) { showStepErrors(section, result); return }
+      }
+      if (saveBlocked) { setSaveError(selectionError || catalogError || "Wait for the catalog to finish loading."); return }
+      setShowSaveConfirmDialog(true)
+      return
+    }
+    if (saveBlocked) { setSaveError(selectionError || catalogError || "Wait for the catalog to finish loading."); return }
+    if (!name.trim() || name.trim().length < 3 || name.trim().length > 150) {
+      notify("Project name must be between 3 and 150 characters.")
       scrollTo("section-big-picture")
       return
     }
 
-    if (!tagline.trim() || tagline.trim().length < 10) {
-      notify("Please write a short tagline (at least 10 characters) for your project card.")
+    if (tagline.trim().length > 255) {
+      notify("Project tagline must be at most 255 characters.")
       scrollTo("section-big-picture")
       return
     }
@@ -605,12 +669,9 @@ export function ProjectForm({ mode, initialProject }: ProjectFormProps) {
       return
     }
 
-    if (positionsList.length === 0) {
-      notify("Please add at least one open position before saving or publishing.")
-      scrollTo("section-people-skills")
-      return
-    }
-
+    const invalidTitle = positionsList.find(p => p.title.trim().length < 2 || p.title.trim().length > 100)
+    if (invalidTitle) { setSaveError("Position titles must be between 2 and 100 characters."); return }
+    if (!Number.isInteger(capacity) || capacity < Math.max(1, members)) { setSaveError("Maximum team capacity must be at least the actual member count and at least 1."); return }
     const missingSkillPos = positionsList.find((p) => p.requiredSkills.length === 0)
     if (missingSkillPos) {
       const idx = positionsList.indexOf(missingSkillPos)
@@ -622,7 +683,7 @@ export function ProjectForm({ mode, initialProject }: ProjectFormProps) {
       return
     }
 
-    const zeroCountPos = positionsList.find((p) => !p.count || p.count <= 0)
+    const zeroCountPos = positionsList.find((p) => !Number.isInteger(p.count) || p.count <= 0)
     if (zeroCountPos) {
       const idx = positionsList.indexOf(zeroCountPos)
       if (idx !== -1) setActivePosIndex(idx)
@@ -639,7 +700,7 @@ export function ProjectForm({ mode, initialProject }: ProjectFormProps) {
       return
     }
 
-    if (!hours || hours <= 0) {
+    if (!Number.isInteger(hours) || hours < 1 || hours > 40) {
       notify("Weekly commitment must be at least 1 hour per week (cannot be 0).")
       scrollTo("section-commitment")
       document.getElementById("hours-input")?.focus()
@@ -659,160 +720,67 @@ export function ProjectForm({ mode, initialProject }: ProjectFormProps) {
 
   // Execute Save after user confirms in modal
   const executeSave = async () => {
-    // Auto-confirm on explicit submit click
-    if (!confirmed) {
-      setConfirmed(true)
-    }
-
+    if (submittingRef.current || saveBlocked) return
+    submittingRef.current = true
     setSubmitting(true)
-
-    const goalList = goals.split("\n").map((g) => g.trim()).filter(Boolean)
-    const stackList = autoSyncedTechStack.map((s) => s.name || s.skill_id)
-    let finalProjectId = initialProject?.id || `project-${Date.now()}`
-
-    const resolveRoleGuid = (roleName: string): string => {
-      const matched = catalogRoles.find(
-        (r) => r.name.toLowerCase() === roleName.toLowerCase(),
-      )
-      if (matched?.professional_role_id && isGuid(matched.professional_role_id)) {
-        return matched.professional_role_id
-      }
-      const firstValid = catalogRoles.find((r) => isGuid(r.professional_role_id))
-      return firstValid?.professional_role_id || "e8e72cb0-e5b2-515a-92b3-1abf59733d97"
-    }
-
-    const resolveSkillGuid = (s: SelectedSkill): string => {
-      if (isGuid(s.skill_id)) return s.skill_id
-      const matched = catalogSkills.find(
-        (cs) => cs.name.toLowerCase() === (s.name || "").toLowerCase(),
-      )
-      if (matched?.skill_id && isGuid(matched.skill_id)) {
-        return matched.skill_id
-      }
-      const firstValid = catalogSkills.find((cs) => isGuid(cs.skill_id))
-      return firstValid?.skill_id || "e0027d9c-48c9-5496-8904-658b13776f4c"
-    }
-
-    if (getStoredToken()) {
-      try {
-        if (mode === "edit" && initialProject && isGuid(initialProject.id)) {
-          await updateProjectApi(initialProject.id, {
-            name,
-            tagline: tagline.trim() || undefined,
-            description: jd,
-            category: type,
-            difficulty_level: toApiDifficulty(positionsList[0]?.level || "Intermediate"),
-            expected_commitment_hours: hours,
-            duration: durationString,
-            max_team_capacity: members + totalOpenings,
-            color_theme: initialProject.color || "indigo",
-            goals: goalList,
-          })
-        } else if (mode === "create") {
-          const created = await createProjectApi({
-            name,
-            tagline: tagline.trim() || undefined,
-            description: jd,
-            category: type,
-            difficulty_level: toApiDifficulty(positionsList[0]?.level || "Intermediate"),
-            expected_commitment_hours: hours,
-            duration: durationString,
-            initial_team_size: members,
-            max_team_capacity: members + totalOpenings,
-            color_theme: "indigo",
-            recruitment_closing_days: 14,
-            goals: goalList,
-            positions: positionsList.map((pos) => ({
-              role_id: resolveRoleGuid(pos.role),
-              title: pos.title || pos.role,
-              required_count: pos.count,
-              experience_level: toApiDifficulty(pos.level),
-              description: pos.description.trim() || undefined,
-              skills: [
-                ...pos.requiredSkills.map((s) => ({
-                  skill_id: resolveSkillGuid(s),
-                  is_required: true,
-                })),
-                ...pos.niceSkills.map((s) => ({
-                  skill_id: resolveSkillGuid(s),
-                  is_required: false,
-                })),
-              ],
-            })),
-          })
-          if (created?.project_id) {
-            finalProjectId = created.project_id
-          }
-        }
-      } catch (err: any) {
-        console.warn("Backend project sync failed; falling back to local save:", err)
-      }
-    }
-
-    const primaryPos = positionsList[0]
-    const savedProject: Project = {
-      id: finalProjectId,
-      name,
-      tagline: tagline.trim() || undefined,
-      description: jd,
-      type,
-      skills: stackList,
-      role: primaryPos?.title || primaryPos?.role || "Developer",
-      hours,
-      duration: durationString,
-      difficulty: primaryPos?.level || "Intermediate",
-      team: members,
-      capacity: members + totalOpenings,
-      leader: profile.name,
-      initials: name
-        .split(" ")
-        .filter(Boolean)
-        .slice(0, 2)
-        .map((word) => word[0])
-        .join("")
-        .toUpperCase() || "PR",
-      color: "indigo",
-      created: initialProject?.created || Date.now(),
-      closing: 14,
-      factors: initialProject?.factors || [85, 90, 80, 85, 95],
-      goals: goalList,
-      requiredSkills: primaryPos?.requiredSkills.map((s) => s.name || s.skill_id) || [],
-      gap: primaryPos?.niceSkills.map((s) => s.name || s.skill_id) || [],
-      openPositions: positionsList.map((p) => ({
-        positionId: p.id,
-        role: p.role,
-        title: p.title || p.role,
-        count: p.count,
-        level: p.level,
-        description: p.description,
-        requiredSkills: p.requiredSkills.map((s) => s.name || s.skill_id),
-        niceSkills: p.niceSkills.map((s) => s.name || s.skill_id),
-      })),
-    }
-
-    setProjects((old) =>
-      mode === "edit"
-        ? old.map((item) => (item.id === savedProject.id ? savedProject : item))
-        : [...old, savedProject],
-    )
-
-    setSubmitting(false)
-    setIsDirty(false)
+    setSaveError("")
     setShowSaveConfirmDialog(false)
-
-    // Navigate to Leader project with savedSuccess state to trigger success modal
-    navigate("/leader", {
-      state: {
-        savedSuccess: true,
-        projectName: name,
-        isCreate: mode === "create",
-      },
-      replace: true,
-    })
+    const request: UpdateProjectRequest = {
+      name: name.trim(), tagline: tagline.trim(), description: jd.trim(), category: type,
+      difficulty_level: difficulty, expected_commitment_hours: hours, duration: durationString,
+      max_team_capacity: capacity, color_theme: initialDetail?.color_theme ?? "indigo",
+      goals: goals.split("\n").map(goal => goal.trim()).filter(Boolean),
+    }
+    try {
+      if (!getStoredToken()) throw new Error("Sign in again before saving. Your draft is kept in this tab.")
+      let id = progressRef.current.projectId
+      if (!id && !progressRef.current.creationAttempt) progressRef.current.creationDraftKeys = positionsList.map(position => position.id)
+      if (!id) id = await createProjectOnce({
+        ...request, initial_team_size: 1, recruitment_closing_days: 14,
+        positions: positionsList.map(position => ({
+          role_id: position.roleId, title: position.title.trim(), description: position.description.trim(),
+          required_count: position.count, experience_level: toApiDifficulty(position.level),
+          skills: [...position.requiredSkills.map(skill => ({ skill_id: skill.skill_id, is_required: true })),
+            ...position.niceSkills.map(skill => ({ skill_id: skill.skill_id, is_required: false }))],
+        })),
+      }, progressRef.current, persistDraft)
+      let detail: ProjectDetailDto
+      if (mode === "edit") {
+        detail = await saveProjectEdits(id, request, positionsList, initialDetail?.positions.map(position => position.position_id) ?? [], progressRef.current, persistDraft)
+      } else {
+        const created = await getProjectByIdApi(id)
+        bindCreatedPositions(created, progressRef.current)
+        persistDraft()
+        detail = await saveProjectEdits(id, request, positionsList, Object.values(progressRef.current.positionIds), progressRef.current, persistDraft)
+      }
+      const mapped = mapProjectDetailToUiProject(detail)
+      setProjects(old => [...old.filter(project => project.id !== id), mapped])
+      savedRef.current = true
+      sessionStorage.removeItem(draftKey)
+      setIsDirty(false)
+      navigate("/leader", { state: { savedSuccess: true, projectName: detail.name, isCreate: mode === "create" }, replace: true })
+    } catch (error: unknown) {
+      let message = projectErrorMessage(error)
+      if (progressRef.current.projectId) {
+        message = "Some changes may already be saved. " + message + " Retry to apply only the remaining changes."
+        try {
+          const detail = await getProjectByIdApi(progressRef.current.projectId)
+          setServerState(detail)
+          const mapped = mapProjectDetailToUiProject(detail)
+          setProjects(old => [...old.filter(project => project.id !== mapped.id), mapped])
+        } catch { message += " The saved state could not be refreshed." }
+      }
+      setSaveError(message)
+      persistDraft()
+    } finally {
+      submittingRef.current = false
+      setSubmitting(false)
+    }
   }
 
   // Handle Cancel action
   const handleCancel = () => {
+    if (submittingRef.current) return
     if (isDirty) {
       setShowDiscardDialog(true)
     } else {
@@ -850,7 +818,7 @@ export function ProjectForm({ mode, initialProject }: ProjectFormProps) {
   }, [name])
 
   return (
-    <div className="project-form-container">
+    <div className={`project-form-container ${isWizard ? "project-form-wizard" : ""}`}>
       {/* 1. Header & Context Bar */}
       <div className="project-form-header">
         <div className="project-form-header-main">
@@ -921,7 +889,7 @@ export function ProjectForm({ mode, initialProject }: ProjectFormProps) {
         {/* Left Column: Form (~70%) */}
         <div className="project-form-main-col">
           {/* Sticky Section Navigation */}
-          <nav className="project-section-nav" aria-label="Form sections">
+          <nav className="project-section-nav" aria-label={isWizard ? "Project creation steps" : "Form sections"}>
             {/* Sliding active pill indicator */}
             <div
               className={`section-nav-slider slider-pos-${
@@ -935,6 +903,8 @@ export function ProjectForm({ mode, initialProject }: ProjectFormProps) {
               className={`section-nav-tab ${
                 activeSection === "big-picture" ? "active" : ""
               }`}
+              aria-current={isWizard && activeSection === "big-picture" ? "step" : undefined}
+              disabled={submitting}
               onClick={() => scrollTo("section-big-picture")}
             >
               <span className={activeSection === "big-picture" ? "nav-badge-circle" : "nav-num-plain"}>
@@ -948,6 +918,8 @@ export function ProjectForm({ mode, initialProject }: ProjectFormProps) {
               className={`section-nav-tab ${
                 activeSection === "people-skills" ? "active" : ""
               }`}
+              aria-current={isWizard && activeSection === "people-skills" ? "step" : undefined}
+              disabled={submitting}
               onClick={() => scrollTo("section-people-skills")}
             >
               <span className={activeSection === "people-skills" ? "nav-badge-circle" : "nav-num-plain"}>
@@ -961,25 +933,47 @@ export function ProjectForm({ mode, initialProject }: ProjectFormProps) {
               className={`section-nav-tab ${
                 activeSection === "commitment" ? "active" : ""
               }`}
+              aria-current={isWizard && activeSection === "commitment" ? "step" : undefined}
+              disabled={submitting}
               onClick={() => scrollTo("section-commitment")}
             >
               <span className={activeSection === "commitment" ? "nav-badge-circle" : "nav-num-plain"}>
                 3
               </span>
-              <span className="nav-tab-label">Commitment</span>
+              <span className="nav-tab-label">{isWizard ? "Commitment & review" : "Commitment"}</span>
             </button>
           </nav>
 
-          <form onSubmit={handleSubmit} className="project-unified-form">
-            {/* SECTION 01: The big picture */}
-            <section
-              id="section-big-picture"
-              className="project-form-section-card"
+          <form onSubmit={handleSubmit} noValidate={isWizard} className="project-unified-form">
+            {(catalogLoading || catalogError || selectionError || saveError) && <div className="info-banner" role={catalogLoading ? "status" : "alert"}>
+              {saveError || catalogError || selectionError || "Loading active roles and skills…"}
+              {(catalogError || selectionError) && <button type="button" onClick={() => setCatalogVersion(value => value + 1)}>Reload catalog</button>}
+            </div>}
+            {serverState && saveError && <details className="info-banner"><summary>Saved state refreshed — your pending edits are kept</summary><p>{serverState.name}: {serverState.positions.length} saved positions, {serverState.current_team_size} actual members.</p></details>}
+            <fieldset disabled={submitting} style={{ display: "contents", border: 0, padding: 0, margin: 0, minWidth: 0 }}>
+            <div
+              className={isWizard ? "wizard-slide-viewport" : "project-sections-stack"}
+              style={isWizard && containerHeight ? { height: `${containerHeight}px` } : undefined}
             >
+              <div
+                className={isWizard ? "wizard-slide-track" : undefined}
+                style={isWizard ? { transform: `translateX(-${stepIndex * 100}%)` } : undefined}
+              >
+                {/* PANE 0: The big picture */}
+                <div
+                  ref={slidePane0Ref}
+                  className={isWizard ? "wizard-slide-pane" : undefined}
+                  aria-hidden={isWizard ? stepIndex !== 0 : undefined}
+                  inert={isWizard && stepIndex !== 0}
+                >
+                  <section
+                    id="section-big-picture"
+                    className={`project-form-section-card ${isWizard ? "project-step-panel" : ""}`}
+                  >
               <div className="section-card-header">
                 <div className="section-card-header-badge">01</div>
                 <div>
-                  <h2 className="section-card-title">The big picture</h2>
+                  <h2 id={isWizard ? "project-step-title" : undefined} tabIndex={isWizard ? -1 : undefined} className="section-card-title">The big picture</h2>
                   <p className="section-card-subtitle">
                     Tell your future teammates what you’re building.
                   </p>
@@ -994,9 +988,10 @@ export function ProjectForm({ mode, initialProject }: ProjectFormProps) {
                   </label>
                   <input
                     id="project-name-input"
+                    {...validationProps("name")}
                     className="field-input"
                     placeholder="e.g. Campus Peer Learning Platform"
-                    maxLength={80}
+                    maxLength={150}
                     value={name}
                     onChange={(e) => {
                       setName(e.target.value)
@@ -1004,6 +999,7 @@ export function ProjectForm({ mode, initialProject }: ProjectFormProps) {
                     }}
                     required
                   />
+                  {fieldError("name")}
                   <span className="field-helper">
                     Choose a recognizable, concise name that describes your project.
                   </span>
@@ -1013,12 +1009,13 @@ export function ProjectForm({ mode, initialProject }: ProjectFormProps) {
                 <div className="field-group">
                   <div className="field-label-row">
                     <label className="field-label" htmlFor="project-tagline-input">
-                      Project tagline <span className="required-star">*</span>
+                      Project tagline
                     </label>
                     <span className="field-counter">{tagline.length}/140</span>
                   </div>
                   <input
                     id="project-tagline-input"
+                    {...validationProps("tagline")}
                     className="field-input"
                     placeholder="e.g. Connecting university students to build real-world software together"
                     maxLength={140}
@@ -1027,8 +1024,8 @@ export function ProjectForm({ mode, initialProject }: ProjectFormProps) {
                       setTagline(e.target.value)
                       handleFieldChange()
                     }}
-                    required
                   />
+                  {fieldError("tagline")}
                   <span className="field-helper">
                     Shown on your project card. A compelling one-sentence hook for discoverability.
                   </span>
@@ -1041,6 +1038,7 @@ export function ProjectForm({ mode, initialProject }: ProjectFormProps) {
                   </label>
                   <textarea
                     id="project-desc-input"
+                    {...validationProps("description")}
                     className="field-textarea"
                     rows={5}
                     placeholder="Describe the problem, your proposed solution, and who benefits. Share why you are excited to build this..."
@@ -1051,6 +1049,7 @@ export function ProjectForm({ mode, initialProject }: ProjectFormProps) {
                     }}
                     required
                   />
+                  {fieldError("description")}
                   <span className="field-helper">
                     Provide enough context so teammates understand the mission and why their contribution matters.
                   </span>
@@ -1084,6 +1083,7 @@ export function ProjectForm({ mode, initialProject }: ProjectFormProps) {
                   </label>
                   <textarea
                     id="project-goals-input"
+                    {...validationProps("goals")}
                     className="field-textarea"
                     rows={4}
                     placeholder="Ship functional MVP with responsive dashboard&#10;Implement end-to-end user authentication and profile management&#10;Deploy prototype on cloud with CI/CD automation"
@@ -1093,6 +1093,7 @@ export function ProjectForm({ mode, initialProject }: ProjectFormProps) {
                       handleFieldChange()
                     }}
                   />
+                  {fieldError("goals")}
                   <span className="field-helper">
                     One goal per line. Small, specific milestones work best.
                   </span>
@@ -1105,6 +1106,7 @@ export function ProjectForm({ mode, initialProject }: ProjectFormProps) {
                   </label>
                   <select
                     id="project-type-select"
+                    {...validationProps("category")}
                     className="field-select"
                     value={type}
                     onChange={(e) => {
@@ -1112,12 +1114,14 @@ export function ProjectForm({ mode, initialProject }: ProjectFormProps) {
                       handleFieldChange()
                     }}
                   >
+                    {!PROJECT_TYPES.includes(type) && <option value={type}>{type}</option>}
                     {PROJECT_TYPES.map((pt) => (
                       <option key={pt} value={pt}>
                         {pt}
                       </option>
                     ))}
                   </select>
+                  {fieldError("category")}
                 </div>
 
                 {/* Auto-synced Tech Stack */}
@@ -1139,7 +1143,7 @@ export function ProjectForm({ mode, initialProject }: ProjectFormProps) {
                     </div>
                   ) : (
                     <div className="tech-stack-empty-state">
-                      Add skills to a role below to automatically build your project stack.
+                      Add skills in People & skills to automatically build your project stack.
                     </div>
                   )}
                   <span className="field-helper">
@@ -1148,16 +1152,23 @@ export function ProjectForm({ mode, initialProject }: ProjectFormProps) {
                 </div>
               </div>
             </section>
+                </div>
 
-            {/* SECTION 02: The people & the fit */}
-            <section
-              id="section-people-skills"
-              className="project-form-section-card"
-            >
+                {/* PANE 1: The people & the fit */}
+                <div
+                  ref={slidePane1Ref}
+                  className={isWizard ? "wizard-slide-pane" : undefined}
+                  aria-hidden={isWizard ? stepIndex !== 1 : undefined}
+                  inert={isWizard && stepIndex !== 1}
+                >
+                  <section
+                    id="section-people-skills"
+                    className={`project-form-section-card ${isWizard ? "project-step-panel" : ""}`}
+                  >
               <div className="section-card-header">
                 <div className="section-card-header-badge">02</div>
                 <div>
-                  <h2 className="section-card-title">The people & the fit</h2>
+                  <h2 id={isWizard ? "project-step-title" : undefined} tabIndex={isWizard ? -1 : undefined} className="section-card-title">The people & the fit</h2>
                   <p className="section-card-subtitle">
                     Great teams are built on complementary strengths.
                   </p>
@@ -1165,15 +1176,12 @@ export function ProjectForm({ mode, initialProject }: ProjectFormProps) {
               </div>
 
               <div className="section-card-body">
-                {catalogError && (
-                  <div className="catalog-feedback" role="alert">
-                    {catalogError}
-                  </div>
-                )}
+                {fieldError("positions")}
                 {/* Team Summary Metric Bar */}
                 <div className="team-summary-banner">
                   <div className="team-summary-item">
                     <div className="team-summary-label">Current members</div>
+                    <small>{mode === "create" ? "A new project starts with its leader." : "Active members from the saved project."}</small>
                     <div className="team-summary-input-wrap">
                       <Users size={16} />
                       <input
@@ -1182,18 +1190,8 @@ export function ProjectForm({ mode, initialProject }: ProjectFormProps) {
                         max={20}
                         className="team-summary-number-input"
                         value={members}
-                        onFocus={(e) => {
-                          if (e.target.value === "0") e.target.select()
-                        }}
-                        onMouseUp={(e) => {
-                          if (e.currentTarget.value === "0") e.currentTarget.select()
-                        }}
-                        onKeyDown={(e) => {
-                          handleNumberKeyDown(e, setMembers, 20)
-                        }}
-                        onChange={(e) => {
-                          handleNumberInput(e, setMembers, 20)
-                        }}
+                        readOnly
+                        aria-label="Current members"
                       />
                     </div>
                   </div>
@@ -1214,8 +1212,9 @@ export function ProjectForm({ mode, initialProject }: ProjectFormProps) {
 
                   <div className="team-summary-item">
                     <div className="team-summary-label">Total team capacity</div>
+                    {fieldError("capacity")}
                     <div className="team-summary-stat">
-                      <span className="stat-number">{members + totalOpenings}</span>
+                      <input aria-label="Maximum team capacity" type="number" min={Math.max(1, members)} className="team-summary-number-input" value={capacity} {...validationProps("capacity")} onChange={event => { setCapacity(Number(event.target.value)); handleFieldChange() }} />
                       <span className="stat-desc">members target</span>
                     </div>
                   </div>
@@ -1244,7 +1243,7 @@ export function ProjectForm({ mode, initialProject }: ProjectFormProps) {
                           role="tab"
                           aria-selected={isActive}
                           className={`position-tab-btn ${isActive ? "active" : ""}`}
-                          onClick={() => setActivePosIndex(idx)}
+                          onClick={() => { setActivePosIndex(idx); setStepErrors({}) }}
                         >
                           <span className="position-tab-icon">
                             {getRoleIcon(pos.title, pos.role)}
@@ -1354,35 +1353,27 @@ export function ProjectForm({ mode, initialProject }: ProjectFormProps) {
                         </label>
                         <select
                           className="field-select"
-                          value={currentPos.role}
+                          id="position-role-input"
+                          {...validationProps("role")}
+                          value={currentPos.roleId}
+                          disabled={Boolean(currentPos.positionId || progressRef.current.positionIds[currentPos.id]) || catalogLoading || Boolean(catalogError)}
                           onChange={(e) => {
                             handleUpdatePosition(currentPosIndex, {
-                              role: e.target.value,
+                              roleId: e.target.value,
+                              role: catalogRoles.find(role => role.professional_role_id === e.target.value)?.name || "",
                               title:
                                 currentPos.title === currentPos.role
-                                  ? e.target.value
+                                  ? catalogRoles.find(role => role.professional_role_id === e.target.value)?.name || ""
                                   : currentPos.title,
                             })
                           }}
                         >
-                          {catalogRoles.length > 0 ? (
-                            catalogRoles.map((r) => (
-                              <option key={r.professional_role_id} value={r.name}>
-                                {r.name}
-                              </option>
-                            ))
-                          ) : (
-                            <>
-                              <option value="Frontend Developer">Frontend Developer</option>
-                              <option value="Backend Developer">Backend Developer</option>
-                              <option value="Full-stack Developer">Full-stack Developer</option>
-                              <option value="UI/UX Designer">UI/UX Designer</option>
-                              <option value="AI & Data Engineer">AI & Data Engineer</option>
-                              <option value="Mobile Developer">Mobile Developer</option>
-                              <option value="DevOps / Cloud Engineer">DevOps / Cloud Engineer</option>
-                            </>
-                          )}
+                          <option value="">Select an active role</option>
+                          {currentPos.roleId && !catalogRoles.some(role => role.professional_role_id === currentPos.roleId) && <option value={currentPos.roleId}>Unavailable role ({currentPos.roleId})</option>}
+                          {catalogRoles.map(role => <option key={role.professional_role_id} value={role.professional_role_id}>{role.name}</option>)}
                         </select>
+                        {fieldError("role")}
+                        {(currentPos.positionId || progressRef.current.positionIds[currentPos.id]) && <small>The role of an existing position cannot be changed.</small>}
                       </div>
 
                       {/* Position Title */}
@@ -1392,6 +1383,8 @@ export function ProjectForm({ mode, initialProject }: ProjectFormProps) {
                         </label>
                         <input
                           className="field-input"
+                          id="position-title-input"
+                          {...validationProps("title")}
                           value={currentPos.title}
                           placeholder="e.g. Lead Frontend Engineer"
                           onChange={(e) =>
@@ -1399,6 +1392,7 @@ export function ProjectForm({ mode, initialProject }: ProjectFormProps) {
                           }
                           required
                         />
+                        {fieldError("title")}
                       </div>
                     </div>
 
@@ -1413,6 +1407,8 @@ export function ProjectForm({ mode, initialProject }: ProjectFormProps) {
                           min={1}
                           max={10}
                           className="field-input"
+                          id="position-count-input"
+                          {...validationProps("count")}
                           value={currentPos.count}
                           onFocus={(e) => {
                             if (e.target.value === "0") e.target.select()
@@ -1436,6 +1432,7 @@ export function ProjectForm({ mode, initialProject }: ProjectFormProps) {
                           }}
                           required
                         />
+                        {fieldError("count")}
                       </div>
 
                       {/* Experience Level */}
@@ -1443,13 +1440,13 @@ export function ProjectForm({ mode, initialProject }: ProjectFormProps) {
                         <label className="field-label">Experience level</label>
                         <select
                           className="field-select"
-                          value={currentPos.level}
+                          value={toApiDifficulty(currentPos.level)}
                           onChange={(e) =>
                             handleUpdatePosition(currentPosIndex, { level: e.target.value })
                           }
                         >
                           {EXPERIENCE_LEVELS.map((lvl) => (
-                            <option key={lvl} value={lvl}>
+                            <option key={lvl} value={toApiDifficulty(lvl)}>
                               {lvl}
                             </option>
                           ))}
@@ -1479,7 +1476,8 @@ export function ProjectForm({ mode, initialProject }: ProjectFormProps) {
                     </div>
 
                     {/* Skills Section: Required & Nice to have */}
-                    <div className="role-skills-wrapper">
+                    <div className="role-skills-wrapper" role="group" tabIndex={-1} {...validationProps("skills")}>
+                      {fieldError("skills")}
                       {/* Required Skills */}
                       <div className="role-skill-subgroup required-skills-box">
                         <div className="skill-subgroup-header">
@@ -1591,16 +1589,23 @@ export function ProjectForm({ mode, initialProject }: ProjectFormProps) {
                 ) : null}
               </div>
             </section>
+                </div>
 
-            {/* SECTION 03: A realistic commitment */}
-            <section
-              id="section-commitment"
-              className="project-form-section-card"
-            >
+                {/* PANE 2: A realistic commitment & review */}
+                <div
+                  ref={slidePane2Ref}
+                  className={isWizard ? "wizard-slide-pane" : undefined}
+                  aria-hidden={isWizard ? stepIndex !== 2 : undefined}
+                  inert={isWizard && stepIndex !== 2}
+                >
+                  <section
+                    id="section-commitment"
+                    className={`project-form-section-card ${isWizard ? "project-step-panel" : ""}`}
+                  >
               <div className="section-card-header">
                 <div className="section-card-header-badge">03</div>
                 <div>
-                  <h2 className="section-card-title">A realistic commitment</h2>
+                  <h2 id={isWizard ? "project-step-title" : undefined} tabIndex={isWizard ? -1 : undefined} className="section-card-title">{isWizard ? "Commitment & review" : "A realistic commitment"}</h2>
                   <p className="section-card-subtitle">
                     Make space for learning, life, and building together.
                   </p>
@@ -1615,6 +1620,7 @@ export function ProjectForm({ mode, initialProject }: ProjectFormProps) {
                     </label>
                     <input
                       id="hours-input"
+                    {...validationProps("hours")}
                       type="number"
                       min={1}
                       max={40}
@@ -1634,6 +1640,7 @@ export function ProjectForm({ mode, initialProject }: ProjectFormProps) {
                       }}
                       required
                     />
+                  {fieldError("hours")}
                     <span className="field-helper">
                       Typical student projects target 8-15 hours/week.
                     </span>
@@ -1645,6 +1652,7 @@ export function ProjectForm({ mode, initialProject }: ProjectFormProps) {
                     </label>
                     <input
                       id="duration-input"
+                    {...validationProps("duration")}
                       type="number"
                       min={1}
                       max={36}
@@ -1664,6 +1672,7 @@ export function ProjectForm({ mode, initialProject }: ProjectFormProps) {
                       }}
                       required
                     />
+                  {fieldError("duration")}
                     <span className="field-helper">
                       Estimated sprint timeline in months (e.g. 1, 3, 6 months).
                     </span>
@@ -1682,6 +1691,19 @@ export function ProjectForm({ mode, initialProject }: ProjectFormProps) {
               </div>
             </section>
 
+            <div className="field-group"><label className="field-label" htmlFor="project-difficulty">Project difficulty</label><select id="project-difficulty" className="field-select" value={difficulty} onChange={event => { setDifficulty(event.target.value as ProjectDifficultyLevel); handleFieldChange() }}><option value="beginner_friendly">Beginner-friendly</option><option value="intermediate">Intermediate</option><option value="advanced">Advanced</option></select></div>
+            {isWizard && <section className="project-form-section-card project-review-summary" aria-label="Project review">
+              <div className="section-heading"><h3>Ready to publish?</h3><button type="button" className="action-btn secondary" onClick={() => setShowPreviewDialog(true)}><Eye size={15} /> Review full brief</button></div>
+              <dl>
+                <div><dt>Project</dt><dd>{name}</dd></div>
+                <div><dt>Category</dt><dd>{type}</dd></div>
+                <div><dt>Recruitment</dt><dd>{positionsList.length} role{positionsList.length === 1 ? "" : "s"} · {totalOpenings} opening{totalOpenings === 1 ? "" : "s"}</dd></div>
+                <div><dt>Team</dt><dd>1 leader · up to {capacity} members</dd></div>
+                <div><dt>Commitment</dt><dd>{hours} hours/week · {durationString}</dd></div>
+                <div><dt>Skills</dt><dd>{autoSyncedTechStack.map(skill => skill.name ?? skill.skill_id).join(", ")}</dd></div>
+              </dl>
+              <p className="field-helper">Your project is created only after you confirm Publish.</p>
+            </section>}
             {/* SECTION 04: Review confirmation */}
             <div id="section-confirmation" className="confirmation-review-card">
               <label className="confirmation-checkbox-label">
@@ -1701,6 +1723,9 @@ export function ProjectForm({ mode, initialProject }: ProjectFormProps) {
                 </div>
               </label>
             </div>
+                </div>
+              </div>
+            </div>
 
             {/* Bottom Action Bar Card */}
             <div className="project-form-actions-card">
@@ -1708,15 +1733,15 @@ export function ProjectForm({ mode, initialProject }: ProjectFormProps) {
                 <span className="status-dot green" />
                 <div className="status-labels-group">
                   <span className="status-main-label">
-                    {mode === "create"
-                      ? "Not published yet"
+                    {isWizard
+                      ? `Step ${stepIndex + 1} of 3`
                       : isDirty
                       ? "Unsaved edits"
                       : "Changes saved"}
                   </span>
                   <span className="status-sub-label">
-                    {mode === "create"
-                      ? "Publish to save on this device"
+                    {isWizard
+                      ? (stepIndex < 2 ? "Your input is kept between steps" : "Review and publish your project")
                       : isDirty
                       ? "Click save to persist changes"
                       : "All edits up to date"}
@@ -1734,25 +1759,31 @@ export function ProjectForm({ mode, initialProject }: ProjectFormProps) {
                   Cancel
                 </button>
 
+                {isWizard && stepIndex > 0 && <button type="button" className="action-btn secondary wizard-back-btn" onClick={() => goToWizardStep(FORM_STEPS[stepIndex - 1])} disabled={submitting}><ArrowLeft size={16} /> Back</button>}
+                {isWizard && stepIndex < 2 ? <button type="submit" className="action-btn primary continue-btn" disabled={submitting || (activeSection === "people-skills" && (catalogLoading || Boolean(catalogError)))}>
+                  Continue <ArrowRight size={16} />
+                </button> : (
                 <button
                   type="submit"
                   className={`action-btn primary submit-btn ${
                     mode === "edit" && !isDirty ? "disabled" : ""
                   }`}
-                  disabled={submitting || (mode === "edit" && !isDirty)}
+                  disabled={submitting || saveBlocked || (mode === "edit" && !isDirty)}
                   title={mode === "edit" && !isDirty ? "No changes to save" : undefined}
                 >
                   <span>
                     {submitting
                       ? "Saving..."
                       : mode === "create"
-                      ? "Publish project"
+                      ? (progressRef.current.creationAttempt ? "Check save status" : "Publish project")
                       : "Save changes"}
                   </span>
                   <ArrowRight size={16} />
                 </button>
+                )}
               </div>
             </div>
+            </fieldset>
           </form>
         </div>
 
@@ -2000,6 +2031,7 @@ export function ProjectForm({ mode, initialProject }: ProjectFormProps) {
         hours={hours}
         duration={durationString}
         currentMembers={members}
+        capacity={capacity}
         goalsList={goals.split("\n").map((g) => g.trim()).filter(Boolean)}
         allSkills={autoSyncedTechStack}
         leaderName={profile.name || "Leader"}
@@ -2010,11 +2042,14 @@ export function ProjectForm({ mode, initialProject }: ProjectFormProps) {
 
       {/* 4. Unsaved Changes Dialog */}
       <UnsavedChangesDialog
-        open={showDiscardDialog}
-        onKeepEditing={() => setShowDiscardDialog(false)}
+        open={showDiscardDialog || blocker.state === "blocked"}
+        onKeepEditing={() => { setShowDiscardDialog(false); if (blocker.state === "blocked") blocker.reset() }}
         onDiscard={() => {
+          savedRef.current = true
+          sessionStorage.removeItem(draftKey)
           setShowDiscardDialog(false)
-          navigate("/leader")
+          if (blocker.state === "blocked") blocker.proceed()
+          else navigate("/leader")
         }}
       />
 

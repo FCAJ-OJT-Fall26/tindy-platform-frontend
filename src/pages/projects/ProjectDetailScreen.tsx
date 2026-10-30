@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { Link, useParams } from "react-router"
 import {
   ArrowLeft,
@@ -23,7 +23,8 @@ import {
 } from "../../services/projects.service"
 import type { ProjectDetailDto } from "../../types/project"
 import { useExplanation } from "../../utils/useExplanation"
-import NotFoundPage from "../NotFoundPage"
+import useRemoteResource from "../../hooks/useRemoteResource"
+import { projectErrorMessage } from "../../services/projectEditor.service"
 
 function SectionHeading({
   title,
@@ -44,8 +45,6 @@ export function ProjectDetailScreen() {
   const { id } = useParams()
   const {
     authUser,
-    profile,
-    projects,
     setProjects,
     saved,
     toggleSave,
@@ -55,41 +54,25 @@ export function ProjectDetailScreen() {
     notify,
     active,
   } = useTindy()
-  const localProject = projects.find((item) => item.id === id)
-  const [remoteDetail, setRemoteDetail] = useState<ProjectDetailDto | null>(null)
+  const load = useCallback((signal: AbortSignal) => getProjectByIdApi(id ?? "", signal), [id])
+  const resource = useRemoteResource(id ?? null, load)
+  const remoteDetail = resource.data
   const explanation = useExplanation()
   const [interestModal, setInterestModal] = useState(false)
   const [showPositionManager, setShowPositionManager] = useState(false)
 
   useEffect(() => {
-    if (!id || !isGuid(id)) return
-    const controller = new AbortController()
-    getProjectByIdApi(id, controller.signal)
-      .then((dto) => {
-        setRemoteDetail(dto)
-        setProjects((old) => {
-          const existing = old.find((p) => p.id === dto.project_id)
-          const mapped = mapProjectDetailToUiProject(dto, existing)
-          return existing
-            ? old.map((p) => (p.id === dto.project_id ? mapped : p))
-            : [...old, mapped]
-        })
-      })
-      .catch(() => {
-        // Fallback to local project state when backend is unavailable
-      })
-    return () => controller.abort()
-  }, [id, setProjects])
+    if (!remoteDetail) return
+    const mapped = mapProjectDetailToUiProject(remoteDetail)
+    setProjects(old => [...old.filter(project => project.id !== mapped.id), mapped])
+  }, [remoteDetail, setProjects])
 
-  const project =
-    (remoteDetail ? mapProjectDetailToUiProject(remoteDetail, localProject) : undefined) ||
-    localProject
-  if (!project) return <NotFoundPage />
+  if (resource.loading) return <div className="info-banner" role="status">Loading project…</div>
+  if (resource.error) return <div className="info-banner" role="alert">{projectErrorMessage(resource.error)} <button onClick={resource.reload}>Retry</button> <Link to="/projects">Back to projects</Link></div>
+  if (!remoteDetail) return null
+  const project = mapProjectDetailToUiProject(remoteDetail)
   const sent = interested.includes(project.id)
-  const isOwner = Boolean(
-    (authUser?.user_id && remoteDetail?.leader?.user_id === authUser.user_id) ||
-      (profile.name && project.leader === profile.name),
-  )
+  const isOwner = remoteDetail.leader.user_id === authUser?.user_id
   return (
     <>
       <Link className="back-link" to="/discover">
@@ -104,7 +87,7 @@ export function ProjectDetailScreen() {
             </span>
             <Badge tone="success">
               <span className="online-dot" />
-              Recruiting
+              {remoteDetail.status.replace(/_/g, " ")}
             </Badge>
             <span className="muted">{project.type}</span>
           </div>
@@ -176,10 +159,7 @@ export function ProjectDetailScreen() {
           <section className="panel">
             <h2>About the project</h2>
             <p>
-              {project.description} We’re a team of FCAJ students turning a
-              shared idea into a real, deployable product. You’ll work closely
-              with other developers, contribute to technical decisions, and
-              build something you’re proud to put in your portfolio.
+              {project.description}
             </p>
             <h3>Project goals</h3>
             <ul className="goal-list">
@@ -200,7 +180,7 @@ export function ProjectDetailScreen() {
               title="Open positions"
               action={
                 <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                  <Badge>{project.capacity - project.team} openings</Badge>
+                  <Badge>{project.openings ?? 0} openings</Badge>
                   {isOwner && (
                     <Button
                       variant="secondary"
@@ -220,7 +200,7 @@ export function ProjectDetailScreen() {
                 </div>
               }
             />
-            {remoteDetail?.positions?.length
+            {remoteDetail.positions.length
               ? remoteDetail.positions.map((pos) => {
                   const reqSkills = pos.skills
                     .filter((s) => s.is_required)
@@ -228,7 +208,7 @@ export function ProjectDetailScreen() {
                   const niceSkills = pos.skills
                     .filter((s) => !s.is_required)
                     .map((s) => s.name)
-                  const openCount = Math.max(1, pos.required_count - pos.filled_count)
+                  const openCount = Math.max(0, pos.required_count - pos.filled_count)
                   return (
                     <div className="position-card" key={pos.position_id}>
                       <div className="section-heading">
@@ -282,77 +262,7 @@ export function ProjectDetailScreen() {
                     </div>
                   )
                 })
-              : project.openPositions?.length
-                ? project.openPositions.map((pos) => (
-                    <div className="position-card" key={pos.positionId}>
-                      <div className="section-heading">
-                        <h3>{pos.title}</h3>
-                        <Badge tone="blue">
-                          {pos.count} {pos.count === 1 ? "position" : "positions"}
-                        </Badge>
-                      </div>
-                      <p>
-                        {pos.description ||
-                          "Help build our next release with an ambitious, supportive team."}
-                      </p>
-                      <Chips
-                        items={
-                          pos.requiredSkills.length
-                            ? pos.requiredSkills
-                            : project.skills.slice(0, 3)
-                        }
-                      />
-                      <div className="position-meta">
-                        <span>
-                          <Clock size={13} />
-                          {project.hours} hrs/week
-                        </span>
-                        <span>{pos.level}</span>
-                      </div>
-                      <small>
-                        Nice to have:{" "}
-                        {(pos.niceSkills.length ? pos.niceSkills : project.gap).join(
-                          ", ",
-                        ) || "None"}{" "}
-                        · Collaborative development
-                      </small>
-                    </div>
-                  ))
-                : [
-                    project.role,
-                    project.role === "Frontend Developer"
-                      ? "Backend Developer"
-                      : "Frontend Developer",
-                  ].map((role, index) => (
-                    <div className="position-card" key={role}>
-                      <div className="section-heading">
-                        <h3>{role}</h3>
-                        <Badge tone="blue">1 position</Badge>
-                      </div>
-                      <p>
-                        Help build our next release with an ambitious, supportive
-                        team.
-                      </p>
-                      <Chips
-                        items={
-                          index
-                            ? ["React", "TypeScript", "Git"]
-                            : project.requiredSkills || project.skills.slice(0, 3)
-                        }
-                      />
-                      <div className="position-meta">
-                        <span>
-                          <Clock size={13} />
-                          {project.hours} hrs/week
-                        </span>
-                        <span>{project.difficulty}</span>
-                      </div>
-                      <small>
-                        Nice to have: {project.gap.join(", ")} · Collaborative
-                        development
-                      </small>
-                    </div>
-                  ))}
+              : <p>No recruitment positions.</p>}
           </section>
           <section className="panel">
             <SectionHeading
@@ -379,29 +289,7 @@ export function ProjectDetailScreen() {
                     </Badge>
                   </div>
                 ))
-              : [project.leader]
-                  .slice(0, project.team)
-                  .map((name, index) => (
-                    <div className="team-person" key={name}>
-                      <Avatar
-                        name={name}
-                        color={index ? "neutral" : project.color}
-                      />
-                      <div>
-                        <strong>{name}</strong>
-                        <p>
-                          {index === 0
-                            ? "Project leader · Backend"
-                            : index === 1
-                              ? "AI Engineer · Python, RAG"
-                              : "Frontend Developer · React"}
-                        </p>
-                      </div>
-                      <Badge tone={index === 0 ? "blue" : ""}>
-                        {index === 0 ? "LEADER" : "MEMBER"}
-                      </Badge>
-                    </div>
-                  ))}
+              : <p>No active members.</p>}
           </section>
         </div>
         <aside>
@@ -499,7 +387,7 @@ export function ProjectDetailScreen() {
               onClick={() => {
                 setInterested((old) => [...new Set([...old, project.id])])
                 setInterestModal(false)
-                notify("Interest sent · Waiting for project leader")
+                notify("Interest saved locally. Project applications are not available yet.")
               }}
             >
               Send interest <ArrowRight size={16} />
@@ -513,13 +401,7 @@ export function ProjectDetailScreen() {
           projectName={project.name}
           initialPositions={remoteDetail?.positions}
           onClose={() => setShowPositionManager(false)}
-          onPositionsChanged={() => {
-            if (id && isGuid(id)) {
-              getProjectByIdApi(id)
-                .then((dto) => setRemoteDetail(dto))
-                .catch(() => {})
-            }
-          }}
+          onPositionsChanged={resource.reload}
         />
       )}
     </>

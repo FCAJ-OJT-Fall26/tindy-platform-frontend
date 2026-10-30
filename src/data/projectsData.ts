@@ -1,7 +1,7 @@
 import { FolderKanban } from "lucide-react"
 
 export interface ProjectItem {
-  id: number
+  id: string
   name: string
   sub: string
   desc: string
@@ -14,6 +14,8 @@ export interface ProjectItem {
   people: string[]
   duration: string
   hours: string
+  team?: number
+  capacity?: number
 }
 
 // The project catalog is server-owned. This compatibility collection is empty

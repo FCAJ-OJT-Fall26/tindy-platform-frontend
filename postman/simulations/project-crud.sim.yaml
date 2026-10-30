@@ -1,0 +1,6 @@
+simulation: tindy-project-crud
+routing: path
+mocks:
+  - name: Tindy backend Project contract
+    routeKey: tindy
+    path: postman/mocks/tindy-project/config.yaml
