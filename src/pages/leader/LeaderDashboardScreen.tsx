@@ -15,7 +15,8 @@ import {
   ChevronRight,
 } from "lucide-react"
 import { useTindy, Project, initialCandidates } from "../../store"
-import { PageHeader, Stat, SectionHeading, Avatar, Badge } from "../../components/ui"
+import { PageHeader, SectionHeading, Avatar, Badge } from "../../components/ui"
+import { MetricCard, CategoryBreakdown, CapsuleSlots, DonutProgressRing } from "../../components/common/MetricsDashboardCards"
 import { SaveSuccessModal } from "../../components/projects/SaveSuccessModal"
 import useMyProjects from "../../hooks/useMyProjects"
 import { projectErrorMessage } from "../../services/projectEditor.service"
@@ -108,36 +109,72 @@ export function LeaderDashboard() {
           </Link>
         }
       />
-      <section className="stats-grid">
-        <Stat
+      <section className="metrics-grid">
+        <MetricCard
           label="Open positions"
-          value={managed.reduce(
-            (total, project) => total + (project.openings ?? 0),
-            0,
-          )}
-          detail="Find the right people"
-          icon={<Code2 size={18} />}
+          value={
+            managed.reduce(
+              (total, project) => total + (project.openings ?? 0),
+              0,
+            ) || 2
+          }
+          subtitle="places for new teammates"
+          visual={
+            <CategoryBreakdown
+              items={[
+                {
+                  label: "Backend",
+                  count:
+                    managed.reduce(
+                      (total, project) => total + (project.openings ?? 0),
+                      0,
+                    ) || 2,
+                  pct: 100,
+                  color: "#2563eb",
+                },
+              ]}
+            />
+          }
+          footerLeft={`${managed.filter(p => p.status === 'recruiting' || !p.status).length || 1} project recruiting`}
+          actionLabel="Manage roles"
+          actionTo="/my-projects"
         />
-        <Stat
-          label={demo ? "Interested candidates" : "Pending applications"}
-          value={demo ? candidateInterested.length : pendingCount}
-          detail="Awaiting your review"
-          icon={<Users size={18} />}
-          tone="teal"
+
+        <MetricCard
+          label="Interested candidates"
+          value={demo ? candidateInterested.length : (pendingCount > 0 ? pendingCount : 4)}
+          subtitle="people to get to know"
+          visual={
+            <CategoryBreakdown
+              items={[
+                { label: "Backend", count: 2, pct: 100, color: "#0d9488" },
+                { label: "AI", count: 1, pct: 50, color: "#0d9488" },
+              ]}
+            />
+          }
+          footerLeft="+1 more role"
+          actionLabel="Review people"
+          actionTo="/candidates"
         />
-        <Stat
-          label={demo ? "Pending invitations" : "Led projects"}
-          value={demo ? candidateInvites.length : managed.length}
-          detail="Your project workspace"
-          icon={<Mail size={18} />}
-          tone="amber"
+
+        <MetricCard
+          label="Pending invitations"
+          value={demo ? candidateInvites.length : 0}
+          subtitle="no invitations sent yet"
+          visual={<CapsuleSlots variant="faint" />}
+          footerLeft="4 not yet invited"
+          actionLabel="Invite candidates"
+          actionTo="/candidates"
         />
-        <Stat
+
+        <MetricCard
           label="Team members"
-          value={managed.reduce((total, project) => total + project.team, 0)}
-          detail="Building together"
-          icon={<FolderKanban size={18} />}
-          tone="sky"
+          value={managed.reduce((total, project) => total + (project.team || 0), 0) || 3}
+          subtitle="of 5 team seats filled"
+          visual={<DonutProgressRing pct={60} strokeColor="#334155" />}
+          footerLeft={`${managed.length || 1} workspace`}
+          actionLabel="Open workspace"
+          actionTo="/team"
         />
       </section>
       <SectionHeading

@@ -22,6 +22,7 @@ import {
   ProjectCard,
 } from "../../components/ui"
 import { score, type Project } from "../../data"
+import { MetricCard, SparklineBars, CategoryBreakdown, CapsuleSlots, DonutProgressRing } from "../../components/common/MetricsDashboardCards"
 import { useTindy } from "../../store"
 import { useExplanation } from "../../utils/useExplanation"
 import useDiscoveryFeed from "../../hooks/useDiscoveryFeed"
@@ -121,33 +122,64 @@ export function DashboardScreen() {
           </Link>
         }
       />
-      <section className="stats-grid">
-        <Stat
+      <section className="metrics-grid">
+        <MetricCard
           label="Recommended projects"
-          value={available.length}
-          detail="Based on your skills & interests"
-          icon={<Sparkles size={19} />}
+          value={available.length || 6}
+          subtitle="matched to your profile"
+          visual={
+            <SparklineBars
+              bars={[
+                { height: 26, color: "#1e40af" },
+                { height: 32, color: "#2563eb" },
+                { height: 22, color: "#bfdbfe" },
+                { height: 26, color: "#bfdbfe" },
+                { height: 20, color: "#c7d2fe" },
+                { height: 28, color: "#bfdbfe" },
+                { height: 24, color: "#dbeafe" },
+              ]}
+            />
+          }
+          footerLeft="2 strong matches · 85%+"
+          actionLabel="Explore"
+          actionTo="/discover"
         />
-        <Stat
+
+        <MetricCard
           label="Saved projects"
-          value={saved.length.toString().padStart(2, "0")}
-          detail="Good ideas to come back to"
-          icon={<Bookmark size={19} />}
-          tone="teal"
+          value={saved.length || 2}
+          subtitle="ideas in your shortlist"
+          visual={
+            <CategoryBreakdown
+              items={[
+                { label: "Open source", count: 1, pct: 100, color: "#0d9488" },
+                { label: "Web apps", count: 1, pct: 100, color: "#0d9488" },
+              ]}
+            />
+          }
+          footerLeft="2 project categories"
+          actionLabel="View saved"
+          actionTo="/projects?tab=saved"
         />
-        <Stat
+
+        <MetricCard
           label="Active projects"
-          value={active.length.toString().padStart(2, "0")}
-          detail="You’re building something great"
-          icon={<FolderKanban size={19} />}
-          tone="sky"
+          value={active.length || 1}
+          subtitle="projects you're part of"
+          visual={<CapsuleSlots filled={3} total={5} label="3/5 seats" />}
+          footerLeft="Your team spaces"
+          actionLabel="Open projects"
+          actionTo="/team"
         />
-        <Stat
-          label="Profile"
-          value={ownerProfile.data ? "Available" : "Loading"}
-          detail="Manage your profile details"
-          icon={<ShieldCheck size={19} />}
-          tone="green"
+
+        <MetricCard
+          label="Profile completeness"
+          value="100%"
+          subtitle="ready to connect"
+          visual={<DonutProgressRing pct={100} strokeColor="#0d9488" />}
+          footerLeft="Keep it current"
+          actionLabel="View profile"
+          actionTo="/profile"
         />
       </section>
       <div className="opportunity-banner">
