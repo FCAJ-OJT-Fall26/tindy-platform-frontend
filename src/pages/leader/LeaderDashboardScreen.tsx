@@ -16,7 +16,6 @@ import {
 } from "lucide-react"
 import { useTindy, Project, initialCandidates } from "../../store"
 import { PageHeader, Stat, SectionHeading, Avatar, Badge } from "../../components/ui"
-import LeaderPositionManagerModal from "../../components/projects/LeaderPositionManagerModal"
 import { SaveSuccessModal } from "../../components/projects/SaveSuccessModal"
 import useMyProjects from "../../hooks/useMyProjects"
 import { projectErrorMessage } from "../../services/projectEditor.service"
@@ -37,7 +36,6 @@ export function LeaderDashboard() {
   const [archivingId, setArchivingId] = useState<string | null>(null)
   const archiveBusy = useRef(false)
   const [currentPage, setCurrentPage] = useState(1)
-  const [managingPositionProject, setManagingPositionProject] = useState<Project | null>(null)
   const [showSaveSuccessModal, setShowSaveSuccessModal] = useState(false)
   const [savedSuccessProjectName, setSavedSuccessProjectName] = useState("")
   const [isSavedCreate, setIsSavedCreate] = useState(false)
@@ -252,7 +250,6 @@ export function LeaderDashboard() {
                   <Link to="/candidates" className="btn btn-primary">
                     Candidate pipeline <ArrowRight size={15} />
                   </Link>
-                  <button className="btn btn-secondary" onClick={() => setManagingPositionProject(project)}>Manage positions</button>
                   <Link to="/team" className="btn btn-secondary">
                     Team workspace
                   </Link>
@@ -370,14 +367,6 @@ export function LeaderDashboard() {
           </div>
         </section>
       </div>
-      {managingPositionProject && (
-        <LeaderPositionManagerModal
-          projectId={managingPositionProject.id}
-          projectName={managingPositionProject.name}
-          onPositionsChanged={resource.reload}
-          onClose={() => setManagingPositionProject(null)}
-        />
-      )}
       <SaveSuccessModal
         open={showSaveSuccessModal}
         projectName={savedSuccessProjectName}
