@@ -1,7 +1,7 @@
 import { FolderKanban } from 'lucide-react';
 
 export interface ProjectItem {
-  id: number;
+  id: string;
   name: string;
   sub: string;
   desc: string;
@@ -14,11 +14,13 @@ export interface ProjectItem {
   people: string[];
   duration: string;
   hours: string;
+  team?: number;
+  capacity?: number;
 }
 
 export const projects: ProjectItem[] = [
   {
-    id: 1,
+    id: 'demo:ecotrack',
     name: 'EcoTrack',
     sub: 'Actionable carbon footprint monitoring for academic campuses.',
     desc: 'An explainable AI platform helping university teams monitor building energy footprints and deliver verified sustainability milestones.',
@@ -33,7 +35,7 @@ export const projects: ProjectItem[] = [
     hours: '10 hrs/week'
   },
   {
-    id: 2,
+    id: 'demo:studybuddy',
     name: 'StudyBuddy AI',
     sub: 'Peer learning systems and algorithmic study grouping.',
     desc: 'Build an open study companion that maps course syllabus topics to real-time collaborative coding sessions.',
@@ -48,7 +50,7 @@ export const projects: ProjectItem[] = [
     hours: '8 hrs/week'
   },
   {
-    id: 3,
+    id: 'demo:devconnect',
     name: 'DevConnect',
     sub: 'Structured developer workspace and code review platform.',
     desc: 'A verified campus workspace where student developers share architectural designs, audit pull requests, and ship production software.',
@@ -63,7 +65,7 @@ export const projects: ProjectItem[] = [
     hours: '12 hrs/week'
   },
   {
-    id: 4,
+    id: 'demo:mindful',
     name: 'Mindful',
     sub: 'Clinical-grade student wellness and habits tracking.',
     desc: 'An evidence-based mental wellness application engineered with structured mood analytics and campus counseling integration.',

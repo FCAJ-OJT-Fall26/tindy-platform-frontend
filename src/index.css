@@ -13405,6 +13405,119 @@ button.text-link {
   flex-shrink: 0;
 }
 
+/* Creation wizard: share the existing form cards while showing one step. */
+.project-form-wizard .project-form-main-col,
+.project-form-wizard .section-card-header > div:last-child {
+  min-width: 0;
+}
+
+.project-form-wizard .section-nav-tab {
+  min-width: 0;
+  padding-inline: 8px;
+}
+
+.project-form-wizard .nav-tab-label {
+  white-space: normal;
+  line-height: 1.35;
+}
+
+.project-form-wizard .section-nav-tab:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+.project-step-panel {
+  animation: project-step-enter 160ms ease-out;
+}
+
+@keyframes project-step-enter {
+  from { opacity: 0; transform: translateX(6px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .project-step-panel { animation: none; }
+  .project-form-wizard .section-nav-slider { transition: none; }
+}
+
+.project-field-error {
+  display: block;
+  color: #b91c1c;
+  font-size: 12px;
+  line-height: 1.5;
+  margin-top: 6px;
+}
+
+.project-form-wizard input[aria-invalid="true"],
+.project-form-wizard textarea[aria-invalid="true"],
+.project-form-wizard select[aria-invalid="true"] {
+  border-color: #dc2626;
+}
+
+.project-form-wizard .status-labels-group {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+}
+
+.project-review-summary dl {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px 24px;
+  margin: 16px 0;
+}
+
+.project-review-summary dt {
+  color: #64748b;
+  font-size: 12px;
+  margin-bottom: 4px;
+}
+
+.project-review-summary dd {
+  margin: 0;
+  color: #1e293b;
+  font-size: 14px;
+  font-weight: 550;
+  overflow-wrap: anywhere;
+}
+
+.project-form-wizard .project-form-actions-card .continue-btn {
+  font-size: 13.5px;
+  padding: 9px 20px;
+}
+
+@media (max-width: 1024px) {
+  .project-form-wizard .project-form-sidebar-col { display: none; }
+}
+
+@media (max-width: 760px) {
+  .project-form-wizard .project-form-actions-card {
+    bottom: calc(76px + env(safe-area-inset-bottom, 0px));
+    padding: 12px;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .project-form-wizard .status-sub-label { display: none; }
+  .project-form-wizard .status-main-label { font-size: 12px; }
+  .project-form-wizard .actions-card-buttons { gap: 6px; flex-wrap: wrap; }
+  .project-form-wizard .actions-card-buttons .action-btn { padding: 8px 10px; font-size: 12px; }
+}
+
+@media (max-width: 640px) {
+  .project-form-wizard .project-form-header { flex-direction: column; align-items: flex-start; gap: 16px; }
+  .project-form-wizard .project-form-title { font-size: 25px; }
+  .project-form-wizard .project-form-section-card { padding: 20px 16px; }
+  .project-form-wizard .section-card-header { align-items: flex-start; }
+  .project-form-wizard .section-card-subtitle { overflow-wrap: anywhere; }
+  .project-form-wizard .section-nav-tab { gap: 4px; padding-inline: 2px; font-size: 11px; }
+  .project-form-wizard .nav-num-plain { width: 18px; }
+  .project-form-wizard .project-context-left { min-width: 0; }
+  .project-form-wizard .project-context-name { overflow-wrap: anywhere; }
+  .project-review-summary dl { grid-template-columns: 1fr; }
+  .project-review-summary .section-heading { align-items: flex-start; flex-wrap: wrap; gap: 12px; }
+}
+
 @media (max-width: 768px) {
   .journey-tab-context-bar {
     flex-direction: column;

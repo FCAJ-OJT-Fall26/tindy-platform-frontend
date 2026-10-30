@@ -22,6 +22,9 @@ import { authErrorMessage } from "./services/authValidation"
 import { getMyProfile, patchMyProfile } from "./services/profile.service"
 import type { ProfilePatch } from "./types/profile"
 import useRemoteResource from "./hooks/useRemoteResource"
+import { getProjectsApi, mapProjectSummaryToUiProject } from "./services/projects.service"
+
+const loadProjectCatalog = (signal: AbortSignal) => getProjectsApi({ page_size: 50 }, signal)
 
 const emptySessionProfile: Profile = { name: 'Tindy member', university: '', email: '', role: '',
   hours: '', interests: '', skills: [], experience: '', github: '', portfolio: '', goals: '',
@@ -68,20 +71,20 @@ function useAppState() {
     ownerProfile.replace(updated)
   }
 
-  const [projects, setProjects] = useStored<Project[]>(
-    "projects",
-    initialProjects,
-  )
-  const [saved, setSaved] = useStored<string[]>("saved", [
-    "campus-cloud",
-    "openfolio",
-  ])
-  const [interested, setInterested] = useStored<string[]>("interested", [
-    "studywise",
-  ])
+  // API Projects are memory-only and scoped to the signed-in account.
+  const [projects, setProjects] = useState<Project[]>([])
+  const [projectsRequested, setProjectsRequested] = useState(false)
+  const requestProjects = useCallback(() => setProjectsRequested(true), [])
+  const projectCatalog = useRemoteResource(projectsRequested && authUser?.is_onboarding_completed ? authUser.user_id : null, loadProjectCatalog)
+  useEffect(() => { setProjects([]) }, [authUser?.user_id])
+  useEffect(() => {
+    if (projectCatalog.data) setProjects(projectCatalog.data.items.map(dto => mapProjectSummaryToUiProject(dto)))
+  }, [projectCatalog.data])
+  const [saved, setSaved] = useStored<string[]>("saved", [])
+  const [interested, setInterested] = useStored<string[]>("interested", [])
   const [skipped, setSkipped] = useStored<string[]>("skipped", [])
-  const [active, setActive] = useStored<string[]>("active", ["ecotrack"])
-  const [invited, setInvited] = useStored<string[]>("invited", ["cloud-desk"])
+  const [active, setActive] = useStored<string[]>("active", [])
+  const [invited, setInvited] = useStored<string[]>("invited", [])
   const [completed] = useStored<string[]>("completed", [])
   const [mode, setMode] = useStored<string>("mode", "User")
   const [read, setRead] = useStored<number[]>("read", [])
@@ -161,6 +164,7 @@ function useAppState() {
     setProfile(emptySessionProfile)
     setToast('')
     setAuthUser(null)
+    setProjectsRequested(false)
     setAuthLoading(false)
     setSessionError('')
   }, [setProfile])
@@ -234,6 +238,10 @@ function useAppState() {
     sessionError,
     projects,
     setProjects,
+    projectsLoading: projectCatalog.loading,
+    projectsError: projectCatalog.error,
+    reloadProjects: projectCatalog.reload,
+    requestProjects,
     saved,
     setSaved,
     toggleSave,

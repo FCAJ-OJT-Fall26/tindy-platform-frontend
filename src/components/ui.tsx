@@ -271,6 +271,9 @@ export function Score({
         : "#10b981"
   const piePath = describePieSlice(center, center, pieRadius, animatedPct)
 
+  if (project?.matchAvailable === false && explicitValue === undefined)
+    return <span className="subtle-caption">Match score unavailable</span>
+
   return (
     <div className={`match-score match-tier-${activeTier.tier} ${compact ? "compact" : ""}`}>
       <div

@@ -404,6 +404,7 @@ try {
   await fault("GET", `${ownerPath}/certificates`, { status: 500 })
   await go("/profile")
   await waitFor(text("Retry certificates"))
+  await waitFor(`${text("Profile API integration")} && ${text("Updated Student")}`)
   await check(
     `${text("Profile API integration")} && ${text("Updated Student")}`,
     "A failed certificate GET does not hide the profile or experiences",

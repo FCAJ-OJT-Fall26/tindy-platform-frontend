@@ -31,8 +31,12 @@ function optionalAuthHeaders(): Record<string, string> {
 }
 
 export function isGuid(value?: string | null): boolean {
-  if (!value) return false
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value.trim())
+  if (!value || value === "00000000-0000-0000-0000-000000000000") return false
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value)
+}
+
+export function requireProjectId(id: string, kind: string): void {
+  if (!isGuid(id)) throw new Error(`${kind} ID is invalid. Reload the project and try again.`)
 }
 
 export function toApiDifficulty(uiDifficulty: string): ProjectDifficultyLevel {
@@ -58,18 +62,21 @@ export function mapProjectSummaryToUiProject(dto: ProjectSummaryDto, existing?: 
   return {
     id: dto.project_id,
     name: dto.name,
-    tagline: dto.tagline || existing?.tagline,
+    tagline: dto.tagline ?? undefined,
     description: dto.description,
     type: dto.category,
-    skills: allSkills.length ? allSkills : existing?.skills ?? [],
+    skills: allSkills,
     requiredSkills: requiredSkills.length ? requiredSkills : undefined,
-    role: primaryPosition?.title || primaryPosition?.role_name || existing?.role || "Backend Developer",
+    role: primaryPosition?.title || primaryPosition?.role_name || existing?.role || "No open positions",
     hours: dto.expected_commitment_hours,
     duration: dto.duration,
     difficulty: fromApiDifficulty(dto.difficulty_level),
     team: dto.current_team_size,
     capacity: dto.max_team_capacity,
-    leader: dto.leader?.display_name || existing?.leader || "Project Leader",
+    openings: dto.open_positions.reduce((sum, position) => sum + position.required_count, 0),
+    leader: dto.leader.display_name,
+    leaderId: dto.leader.user_id,
+    matchAvailable: false,
     initials:
       dto.initials ||
       dto.name
@@ -79,9 +86,9 @@ export function mapProjectSummaryToUiProject(dto: ProjectSummaryDto, existing?: 
         .join("")
         .toUpperCase(),
     color: dto.color_theme || existing?.color || "indigo",
-    created: existing?.created ?? 1,
+    created: Date.parse(dto.created_at),
     closing: dto.closing_days_left ?? existing?.closing ?? 14,
-    factors: existing?.factors ?? [85, 90, 90, 80, 100],
+    factors: existing?.factors ?? [0, 0, 0, 0, 0],
     goals: existing?.goals ?? [],
     gap: niceSkills,
   }
@@ -102,18 +109,21 @@ export function mapProjectDetailToUiProject(dto: ProjectDetailDto, existing?: Pr
   return {
     id: dto.project_id,
     name: dto.name,
-    tagline: dto.tagline || existing?.tagline,
+    tagline: dto.tagline ?? undefined,
     description: dto.description,
     type: dto.category,
-    skills: allSkills.length ? allSkills : existing?.skills ?? [],
+    skills: allSkills,
     requiredSkills: requiredSkills.length ? requiredSkills : undefined,
-    role: primaryPosition?.title || existing?.role || "Backend Developer",
+    role: primaryPosition?.title || existing?.role || "No open positions",
     hours: dto.expected_commitment_hours,
     duration: dto.duration,
     difficulty: fromApiDifficulty(dto.difficulty_level),
     team: dto.current_team_size,
     capacity: dto.max_team_capacity,
-    leader: dto.leader?.display_name || existing?.leader || "Project Leader",
+    openings: dto.positions.filter(position => position.status === "open").reduce((sum, position) => sum + Math.max(0, position.required_count - position.filled_count), 0),
+    leader: dto.leader.display_name,
+    leaderId: dto.leader.user_id,
+    matchAvailable: false,
     initials:
       dto.initials ||
       dto.name
@@ -123,10 +133,11 @@ export function mapProjectDetailToUiProject(dto: ProjectDetailDto, existing?: Pr
         .join("")
         .toUpperCase(),
     color: dto.color_theme || existing?.color || "indigo",
-    created: existing?.created ?? 1,
+    created: Date.parse(dto.created_at),
     closing: dto.closing_days_left ?? existing?.closing ?? 14,
-    factors: existing?.factors ?? [85, 90, 90, 80, 100],
-    goals: dto.goals?.length ? dto.goals : existing?.goals ?? [],
+    factors: existing?.factors ?? [0, 0, 0, 0, 0],
+    goals: dto.goals,
+    status: dto.status,
     gap: niceSkills,
   }
 }
@@ -142,8 +153,7 @@ export async function createProjectApi(
 ): Promise<CreateProjectResponse> {
   const res = await apiRequest<CreateProjectResponse>(projectsBase, {
     method: "POST",
-    requiresAuth: false,
-    headers: optionalAuthHeaders(),
+    requiresAuth: true,
     body: JSON.stringify(payload),
     signal,
   })
@@ -184,6 +194,7 @@ export async function getProjectByIdApi(
   projectId: string,
   signal?: AbortSignal,
 ): Promise<ProjectDetailDto> {
+  requireProjectId(projectId, "Project")
   const res = await apiRequest<ProjectDetailDto>(
     `${projectsBase}/${encodeURIComponent(projectId)}`,
     {
@@ -204,12 +215,12 @@ export async function updateProjectApi(
   payload: UpdateProjectRequest,
   signal?: AbortSignal,
 ): Promise<ProjectDetailDto> {
+  requireProjectId(projectId, "Project")
   const res = await apiRequest<ProjectDetailDto>(
     `${projectsBase}/${encodeURIComponent(projectId)}`,
     {
       method: "PUT",
-      requiresAuth: false,
-      headers: optionalAuthHeaders(),
+      requiresAuth: true,
       body: JSON.stringify(payload),
       signal,
     },
@@ -224,12 +235,12 @@ export async function deleteProjectApi(
   projectId: string,
   signal?: AbortSignal,
 ): Promise<DeleteProjectResponse> {
+  requireProjectId(projectId, "Project")
   const res = await apiRequest<DeleteProjectResponse>(
     `${projectsBase}/${encodeURIComponent(projectId)}`,
     {
       method: "DELETE",
-      requiresAuth: false,
-      headers: optionalAuthHeaders(),
+      requiresAuth: true,
       signal,
     },
   )
@@ -244,8 +255,7 @@ export async function getMyProjectsApi(
 ): Promise<MyProjectsResponse> {
   const res = await apiRequest<MyProjectsResponse>("/api/me/projects", {
     method: "GET",
-    requiresAuth: false,
-    headers: optionalAuthHeaders(),
+    requiresAuth: true,
     signal,
   })
   return res.data
@@ -260,9 +270,7 @@ export async function getProjectPositionsApi(
   projectId: string,
   signal?: AbortSignal,
 ): Promise<ProjectPositionDto[]> {
-  if (!isGuid(projectId)) {
-    return []
-  }
+  requireProjectId(projectId, "Project")
   const res = await apiRequest<ProjectPositionDto[]>(
     `${projectsBase}/${encodeURIComponent(projectId)}/positions`,
     {
@@ -283,20 +291,8 @@ export async function createProjectPositionApi(
   payload: CreatePositionRequest,
   signal?: AbortSignal,
 ): Promise<ProjectPositionDto> {
-  if (!isGuid(projectId)) {
-    return {
-      position_id: `pos-${Date.now()}`,
-      project_id: projectId,
-      role_id: payload.role_id,
-      title: payload.title,
-      description: payload.description,
-      required_count: payload.required_count,
-      filled_count: 0,
-      experience_level: payload.experience_level,
-      status: "open",
-      skills: [],
-    }
-  }
+  requireProjectId(projectId, "Project")
+  requireProjectId(payload.role_id, "Role")
   const res = await apiRequest<ProjectPositionDto>(
     `${projectsBase}/${encodeURIComponent(projectId)}/positions`,
     {
@@ -318,20 +314,8 @@ export async function updateProjectPositionApi(
   payload: UpdatePositionRequest,
   signal?: AbortSignal,
 ): Promise<ProjectPositionDto> {
-  if (!isGuid(projectId)) {
-    return {
-      position_id: positionId,
-      project_id: projectId,
-      role_id: "role_frontend",
-      title: payload.title,
-      description: payload.description,
-      required_count: payload.required_count,
-      filled_count: 0,
-      experience_level: payload.experience_level,
-      status: payload.status,
-      skills: [],
-    }
-  }
+  requireProjectId(projectId, "Project")
+  requireProjectId(positionId, "Position")
   const res = await apiRequest<ProjectPositionDto>(
     `${projectsBase}/${encodeURIComponent(projectId)}/positions/${encodeURIComponent(positionId)}`,
     {
@@ -352,7 +336,8 @@ export async function deleteProjectPositionApi(
   positionId: string,
   signal?: AbortSignal,
 ): Promise<void> {
-  if (!isGuid(projectId)) return
+  requireProjectId(projectId, "Project")
+  requireProjectId(positionId, "Position")
   await apiRequest<unknown>(
     `${projectsBase}/${encodeURIComponent(projectId)}/positions/${encodeURIComponent(positionId)}`,
     {
@@ -372,14 +357,9 @@ export async function addPositionSkillApi(
   payload: AddPositionSkillRequest,
   signal?: AbortSignal,
 ): Promise<AddPositionSkillResponse> {
-  if (!isGuid(projectId)) {
-    return {
-      position_id: positionId,
-      skill_id: payload.skill_id,
-      skill_name: "Skill",
-      is_required: payload.is_required,
-    }
-  }
+  requireProjectId(projectId, "Project")
+  requireProjectId(positionId, "Position")
+  requireProjectId(payload.skill_id, "Skill")
   const res = await apiRequest<AddPositionSkillResponse>(
     `${projectsBase}/${encodeURIComponent(projectId)}/positions/${encodeURIComponent(positionId)}/skills`,
     {
@@ -401,7 +381,9 @@ export async function removePositionSkillApi(
   skillId: string,
   signal?: AbortSignal,
 ): Promise<void> {
-  if (!isGuid(projectId)) return
+  requireProjectId(projectId, "Project")
+  requireProjectId(positionId, "Position")
+  requireProjectId(skillId, "Skill")
   await apiRequest<unknown>(
     `${projectsBase}/${encodeURIComponent(projectId)}/positions/${encodeURIComponent(positionId)}/skills/${encodeURIComponent(skillId)}`,
     {

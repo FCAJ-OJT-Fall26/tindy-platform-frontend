@@ -27,23 +27,11 @@ export default function SkillPickerDialog({
 }: SkillPickerDialogProps) {
   const [selectedList, setSelectedList] = useState<SelectedSkill[]>([])
 
-  // Resolve skill IDs against catalog so none are marked (unavailable)
   useEffect(() => {
-    if (isOpen) {
-      const cached = getCachedSkills() || availableSkills || []
-      const resolved = initialSelected.map((s) => {
-        const sName = (s.name || s.skill_id).toLowerCase().trim()
-        const matched = cached.find(
-          (cs) =>
-            cs.name.toLowerCase().trim() === sName ||
-            cs.skill_id === s.skill_id ||
-            cs.name.toLowerCase().replace(/[^a-z0-9]+/g, "_") ===
-              s.skill_id.replace(/^skill_/, ""),
-        )
-        return matched ? { skill_id: matched.skill_id, name: matched.name } : s
-      })
-      setSelectedList(resolved)
-    }
+    if (isOpen) setSelectedList(initialSelected.map(skill => {
+      const active = (availableSkills ?? getCachedSkills() ?? []).find(item => item.skill_id === skill.skill_id)
+      return active ? { skill_id: active.skill_id, name: active.name } : skill
+    }))
   }, [isOpen, initialSelected, availableSkills])
 
   if (!isOpen) return null
@@ -53,11 +41,11 @@ export default function SkillPickerDialog({
   const handleApplyClick = () => {
     // Deduplicate: identify any skill in selectedList that was in the opposite group
     const newSelectedNames = new Set(
-      selectedList.map((s) => (s.name || s.skill_id).toLowerCase()),
+      selectedList.map((s) => s.skill_id),
     )
     const removedFromOpposite = oppositeGroupSkills
-      .filter((s) => newSelectedNames.has((s.name || s.skill_id).toLowerCase()))
-      .map((s) => s.name || s.skill_id)
+      .filter((s) => newSelectedNames.has(s.skill_id))
+      .map((s) => s.skill_id)
 
     onApply(selectedList, removedFromOpposite)
     onClose()
@@ -75,7 +63,7 @@ export default function SkillPickerDialog({
           onChange={setSelectedList}
           min={0}
           max={15}
-          savedSkills={getCachedSkills() || availableSkills || []}
+          savedSkills={availableSkills ?? getCachedSkills() ?? []}
           allowInactiveSaved={true}
           selectedHeading={`${isRequired ? "Required" : "Nice-to-have"} skills (${selectedList.length}/15)`}
           subtitle={
