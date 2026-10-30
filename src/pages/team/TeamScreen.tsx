@@ -17,6 +17,8 @@ import {
 import { useTindy, Project } from "../../store"
 import useMyProjects from "../../hooks/useMyProjects"
 import { ProjectWorkspaceView } from "./ProjectWorkspaceView"
+import { Chips } from "../../components/ui"
+import { Code2 } from "lucide-react"
 
 export function TeamScreen() {
   const { projectId } = useParams<{ projectId?: string }>()
@@ -107,14 +109,14 @@ export function TeamScreen() {
         <div className="flex items-center gap-2">
           <Link
             to="/create-project"
-            className="px-3.5 py-2 rounded-lg border border-slate-300 text-xs font-semibold text-slate-700 bg-white hover:bg-slate-50 transition-colors flex items-center gap-1.5 shadow-2xs"
+            className="btn btn-secondary"
           >
             <Plus size={14} />
             <span>Create project</span>
           </Link>
           <Link
             to="/messages"
-            className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold flex items-center gap-2 transition-colors shadow-2xs"
+            className="btn btn-secondary"
           >
             <MessageSquare size={14} />
             <span>Open team chat</span>
@@ -192,71 +194,75 @@ export function TeamScreen() {
       {(filterTab === "all" || filterTab === "leading") && leadingList.length > 0 && (
         <div className="mb-10 space-y-4">
           <div className="flex items-center gap-2">
-            <span className="text-xs font-extrabold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
-              <span>👑 Teams you lead</span>
+            <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+              TEAMS YOU LEAD
             </span>
-            <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
-              Project Leader ({leadingList.length})
+            <span className="text-[11px] font-semibold px-2 py-0.5 rounded-md bg-amber-50 text-amber-800 border border-amber-200">
+              Leader ({leadingList.length})
             </span>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {leadingList.map((proj) => (
-              <div
-                key={proj.project_id}
-                className="bg-white rounded-xl border border-slate-200 p-5 shadow-xs hover:border-slate-300 hover:shadow-sm transition-all flex flex-col justify-between space-y-4"
-              >
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 bg-slate-100 px-2 py-0.5 rounded">
-                      {proj.category || "AI & Machine Learning"}
+          <div className="project-grid">
+            {leadingList.map((proj) => {
+              const initials = proj.name ? proj.name.slice(0, 2).toUpperCase() : "PR"
+              return (
+                <article className="project-card" key={proj.project_id}>
+                  <div className="project-card-top">
+                    <span className="project-mark indigo">
+                      {initials}
                     </span>
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
-                      You are Leader
-                    </span>
-                  </div>
-
-                  <h3 className="text-lg font-extrabold text-slate-900 tracking-tight">
-                    {proj.name}
-                  </h3>
-                  {proj.tagline && (
-                    <p className="text-xs text-slate-600 mt-1 line-clamp-2">{proj.tagline}</p>
-                  )}
-
-                  <div className="flex items-center gap-4 text-xs text-slate-500 mt-3 pt-3 border-t border-slate-100">
-                    <span className="flex items-center gap-1.5">
-                      <Users size={13} />
-                      <strong>{proj.current_team_size}</strong> / {proj.max_team_capacity} members
-                    </span>
-                    {proj.pending_applications_count > 0 && (
-                      <span className="text-blue-600 font-semibold">
-                        {proj.pending_applications_count} pending applications
+                    <div className="card-category">
+                      {proj.category || "Software Engineering"}
+                      <span className="recruiting">
+                        <i />
+                        You are Leader
                       </span>
-                    )}
+                    </div>
                   </div>
-                </div>
 
-                {/* Actions: Manage Project + Open Workspace */}
-                <div className="flex items-center justify-between pt-2 border-t border-slate-100">
-                  <Link
-                    to={`/project/${proj.project_id}/edit`}
-                    className="px-3 py-1.5 rounded-lg border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-100 transition-colors flex items-center gap-1.5"
-                  >
-                    <Settings size={13} />
-                    <span>Manage project</span>
-                    <ArrowUpRight size={13} />
+                  <Link className="project-title" to={`/team/${proj.project_id}`}>
+                    {proj.name}
                   </Link>
+                  <p className="project-description">
+                    {proj.tagline || "Active collaborative team workspace."}
+                  </p>
 
-                  <Link
-                    to={`/team/${proj.project_id}`}
-                    className="px-4 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-2xs"
-                  >
-                    <span>Open workspace</span>
-                    <ArrowRight size={13} />
-                  </Link>
-                </div>
-              </div>
-            ))}
+                  <Chips items={proj.skills && proj.skills.length > 0 ? proj.skills : ["PostgreSQL", ".NET", "C#"]} />
+
+                  <div className="project-attributes">
+                    <span>
+                      <Code2 size={14} />
+                      Project Leader
+                    </span>
+                    <span>
+                      <Users size={14} />
+                      {proj.current_team_size}/{proj.max_team_capacity} members
+                    </span>
+                  </div>
+
+                  <div className="project-card-bottom" style={{ borderTop: "1px solid #f1f5f9", paddingTop: "12px", marginTop: "12px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                    <Link
+                      to={`/project/${proj.project_id}/edit`}
+                      className="btn btn-secondary"
+                      style={{ padding: "6px 12px", fontSize: "12px", gap: "5px" }}
+                    >
+                      <Settings size={13} />
+                      <span>Manage project</span>
+                      <ArrowUpRight size={13} />
+                    </Link>
+
+                    <Link
+                      to={`/team/${proj.project_id}`}
+                      className="btn btn-primary"
+                      style={{ padding: "6px 14px", fontSize: "12px", gap: "6px" }}
+                    >
+                      <span>Open workspace</span>
+                      <ArrowRight size={13} />
+                    </Link>
+                  </div>
+                </article>
+              )
+            })}
           </div>
         </div>
       )}
@@ -265,58 +271,65 @@ export function TeamScreen() {
       {(filterTab === "all" || filterTab === "member") && joinedList.length > 0 && (
         <div className="space-y-4">
           <div className="flex items-center gap-2">
-            <span className="text-xs font-extrabold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
-              <span>🤝 Teams you joined</span>
+            <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+              TEAMS YOU JOINED
             </span>
-            <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
-              Team Member ({joinedList.length})
+            <span className="text-[11px] font-semibold px-2 py-0.5 rounded-md bg-blue-50 text-blue-800 border border-blue-200">
+              Member ({joinedList.length})
             </span>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {joinedList.map((proj) => (
-              <div
-                key={proj.project_id}
-                className="bg-white rounded-xl border border-slate-200 p-5 shadow-xs hover:border-slate-300 hover:shadow-sm transition-all flex flex-col justify-between space-y-4"
-              >
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 bg-slate-100 px-2 py-0.5 rounded">
+          <div className="project-grid">
+            {joinedList.map((proj) => {
+              const initials = proj.name ? proj.name.slice(0, 2).toUpperCase() : "TM"
+              return (
+                <article className="project-card" key={proj.project_id}>
+                  <div className="project-card-top">
+                    <span className="project-mark teal">
+                      {initials}
+                    </span>
+                    <div className="card-category">
                       {proj.category || "Web Application"}
-                    </span>
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
-                      Role: {proj.my_role || "Member"}
-                    </span>
+                      <span className="recruiting">
+                        <i />
+                        {proj.my_role || "Member"}
+                      </span>
+                    </div>
                   </div>
 
-                  <h3 className="text-lg font-extrabold text-slate-900 tracking-tight">
+                  <Link className="project-title" to={`/team/${proj.project_id}`}>
                     {proj.name}
-                  </h3>
+                  </Link>
+                  <p className="project-description">
+                    Led by <strong>{proj.leader_name}</strong>. Active collaborative team workspace.
+                  </p>
 
-                  <div className="flex items-center gap-4 text-xs text-slate-500 mt-3 pt-3 border-t border-slate-100">
+                  <Chips items={proj.skills && proj.skills.length > 0 ? proj.skills : ["React", "TypeScript", "Tailwind CSS"]} />
+
+                  <div className="project-attributes">
                     <span>
-                      Led by <strong>{proj.leader_name}</strong>
+                      <Code2 size={14} />
+                      {proj.my_role || "Team Member"}
                     </span>
-                    <span>•</span>
-                    <span className="flex items-center gap-1.5">
-                      <Users size={13} />
-                      {proj.current_team_size} members
+                    <span>
+                      <Users size={14} />
+                      {proj.current_team_size}/{proj.max_team_capacity} members
                     </span>
                   </div>
-                </div>
 
-                {/* Actions: Open Workspace */}
-                <div className="flex items-center justify-end pt-2 border-t border-slate-100">
-                  <Link
-                    to={`/team/${proj.project_id}`}
-                    className="px-4 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-2xs"
-                  >
-                    <span>Open workspace</span>
-                    <ArrowRight size={13} />
-                  </Link>
-                </div>
-              </div>
-            ))}
+                  <div className="project-card-bottom" style={{ borderTop: "1px solid #f1f5f9", paddingTop: "12px", marginTop: "12px", display: "flex", alignItems: "center", justifyItems: "flex-end", justifyContent: "flex-end" }}>
+                    <Link
+                      to={`/team/${proj.project_id}`}
+                      className="btn btn-primary"
+                      style={{ padding: "6px 14px", fontSize: "12px", gap: "6px" }}
+                    >
+                      <span>Open workspace</span>
+                      <ArrowRight size={13} />
+                    </Link>
+                  </div>
+                </article>
+              )
+            })}
           </div>
         </div>
       )}

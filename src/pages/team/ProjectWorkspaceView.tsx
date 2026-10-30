@@ -23,6 +23,7 @@ import {
   FileText,
 } from "lucide-react"
 import { useTindy, Project } from "../../store"
+import { Chips } from "../../components/ui"
 import { getProjectByIdApi, mapProjectDetailToUiProject } from "../../services/projects.service"
 import type { ProjectDetailDto } from "../../types/project"
 
@@ -298,36 +299,76 @@ export function ProjectWorkspaceView({ projectId }: ProjectWorkspaceViewProps) {
     }
   }
 
-  // Roster of members
+  // Roster of members - deduplicate & merge roles for leader with preferred role
   const rosterMembers = useMemo(() => {
-    const leaderInitials =
-      activeProject.leader
-        ?.split(" ")
-        .map((w) => w[0])
-        .slice(0, 2)
-        .join("")
-        .toUpperCase() || "MN"
+    const isCurrentLeader =
+      (activeProject.leader &&
+        profile.name &&
+        activeProject.leader.trim().toLowerCase() === profile.name.trim().toLowerCase()) ||
+      (authUser && activeProject.leaderId === authUser.user_id)
+
+    const myRole = profile.role || "Backend Developer"
+    const myName = profile.name || "Alex Le"
     const myInitials =
-      profile.name
-        ?.split(" ")
+      myName
+        .split(" ")
         .map((w) => w[0])
         .slice(0, 2)
         .join("")
         .toUpperCase() || "AL"
 
+    if (isCurrentLeader) {
+      // Current user is leader: merge leader title and preferred role into ONE entry
+      return [
+        {
+          id: "m-leader-you",
+          name: myName,
+          role: `Project lead · ${myRole}`,
+          initials: myInitials,
+          isYou: true,
+          color: "bg-amber-100 text-amber-800",
+        },
+        {
+          id: "m-2",
+          name: "An Hoang",
+          role: "AI Engineer",
+          initials: "AH",
+          isYou: false,
+          color: "bg-blue-100 text-blue-800",
+        },
+        {
+          id: "m-3",
+          name: "Linh Tran",
+          role: "UI/UX Designer",
+          initials: "LT",
+          isYou: false,
+          color: "bg-purple-100 text-purple-800",
+        },
+      ]
+    }
+
+    const leaderName = activeProject.leader || "Minh Nguyen"
+    const leaderInitials =
+      leaderName
+        .split(" ")
+        .map((w) => w[0])
+        .slice(0, 2)
+        .join("")
+        .toUpperCase() || "MN"
+
     return [
       {
-        id: "m-1",
-        name: activeProject.leader || "Minh Nguyen",
+        id: "m-leader",
+        name: leaderName,
         role: "Project lead",
         initials: leaderInitials,
-        isYou: activeProject.leader === profile.name,
+        isYou: false,
         color: "bg-amber-100 text-amber-800",
       },
       {
-        id: "m-2",
-        name: profile.name || "Alex Le",
-        role: "Backend Developer",
+        id: "m-you",
+        name: myName,
+        role: myRole,
         initials: myInitials,
         isYou: true,
         color: "bg-emerald-100 text-emerald-800",
@@ -349,7 +390,7 @@ export function ProjectWorkspaceView({ projectId }: ProjectWorkspaceViewProps) {
         color: "bg-purple-100 text-purple-800",
       },
     ]
-  }, [activeProject, profile.name])
+  }, [activeProject, profile.name, profile.role, authUser])
 
   if (loading) {
     return (
@@ -390,7 +431,7 @@ export function ProjectWorkspaceView({ projectId }: ProjectWorkspaceViewProps) {
           {isLeader && (
             <Link
               to={`/project/${activeProject.id}/edit`}
-              className="px-3.5 py-2 rounded-lg border border-slate-300 text-xs font-semibold text-slate-700 bg-white hover:bg-slate-50 transition-colors flex items-center gap-1.5 shadow-2xs"
+              className="btn btn-secondary"
             >
               <Settings size={14} />
               <span>Manage project</span>
@@ -400,7 +441,7 @@ export function ProjectWorkspaceView({ projectId }: ProjectWorkspaceViewProps) {
 
           <Link
             to="/messages"
-            className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold flex items-center gap-2 transition-colors shadow-2xs"
+            className="btn btn-secondary"
           >
             <MessageSquare size={14} />
             <span>Open team chat</span>
@@ -514,15 +555,8 @@ export function ProjectWorkspaceView({ projectId }: ProjectWorkspaceViewProps) {
 
                 <div className="grid grid-cols-1 sm:grid-cols-4 gap-2 items-center">
                   <span className="text-slate-500 font-medium">Stack</span>
-                  <div className="sm:col-span-3 flex flex-wrap gap-1.5">
-                    {(activeProject.skills || [".NET", "AWS", "PostgreSQL", "RAG", "LLM"]).map((s) => (
-                      <span
-                        key={s}
-                        className="px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 text-[11px] font-medium border border-slate-200"
-                      >
-                        {s}
-                      </span>
-                    ))}
+                  <div className="sm:col-span-3">
+                    <Chips items={activeProject.skills || [".NET", "AWS", "PostgreSQL", "RAG", "LLM"]} />
                   </div>
                 </div>
               </div>
@@ -651,7 +685,7 @@ export function ProjectWorkspaceView({ projectId }: ProjectWorkspaceViewProps) {
                           <button
                             type="submit"
                             disabled={!newUpdate.trim()}
-                            className="px-3.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 disabled:opacity-40 text-white text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs"
+                            className="btn btn-primary" style={{ padding: "6px 14px", fontSize: "12px", gap: "6px" }}
                           >
                             <Send size={12} />
                             <span>Post update</span>
@@ -733,15 +767,6 @@ export function ProjectWorkspaceView({ projectId }: ProjectWorkspaceViewProps) {
               </span>
             </div>
 
-            <button
-              type="button"
-              onClick={() => setShowInviteModal(true)}
-              className="w-full py-2 rounded-lg border border-slate-200 text-xs font-bold text-slate-700 bg-white hover:bg-slate-50 hover:border-slate-300 transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs"
-            >
-              <Plus size={14} />
-              <span>Invite member</span>
-            </button>
-
             {/* Roster list */}
             <div className="space-y-3 pt-1">
               {rosterMembers.map((m) => (
@@ -763,6 +788,16 @@ export function ProjectWorkspaceView({ projectId }: ProjectWorkspaceViewProps) {
                 </div>
               ))}
             </div>
+
+            {/* Invite member button moved to the BOTTOM of member list */}
+            <button
+              type="button"
+              onClick={() => setShowInviteModal(true)}
+              className="w-full py-2 rounded-lg border border-slate-200 text-xs font-semibold text-slate-700 bg-white hover:bg-slate-50 hover:border-slate-300 transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs"
+            >
+              <Plus size={14} />
+              <span>Invite member</span>
+            </button>
 
             <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-xs text-slate-400">
               <Link
