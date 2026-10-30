@@ -17,14 +17,14 @@ import { ProjectItem } from '../../data/projectsData';
 interface WorkspaceProjectDetailModalProps {
   detail: ProjectItem | null;
   isMyProject?: boolean;
-  saved: number[];
-  interested: number[];
+  saved: string[];
+  interested: string[];
   onClose: () => void;
   onOpenMessages?: (projectName: string) => void;
   onNavigateTeam?: () => void;
-  onSkip?: (id: number) => void;
-  onToggleSave?: (id: number) => void;
-  onMarkInterested?: (id: number) => void;
+  onSkip?: (id: string) => void;
+  onToggleSave?: (id: string) => void;
+  onMarkInterested?: (id: string) => void;
 }
 
 export default function WorkspaceProjectDetailModal({

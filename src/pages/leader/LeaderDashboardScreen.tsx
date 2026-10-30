@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Link, useLocation } from "react-router"
 import {
   Sparkles,
@@ -14,17 +14,15 @@ import {
   ChevronLeft,
   ChevronRight,
 } from "lucide-react"
-import { useTindy, Project, initialProjects, initialCandidates } from "../../store"
+import { useTindy, Project, initialCandidates } from "../../store"
 import { PageHeader, Stat, SectionHeading, Avatar, Badge } from "../../components/ui"
-import LeaderPositionManagerModal from "../../components/projects/LeaderPositionManagerModal"
 import { SaveSuccessModal } from "../../components/projects/SaveSuccessModal"
-import { getStoredToken } from "../../services/apiClient"
-import { deleteProjectApi, toApiDifficulty } from "../../services/projects.service"
+import useMyProjects from "../../hooks/useMyProjects"
+import { projectErrorMessage } from "../../services/projectEditor.service"
+import { deleteProjectApi } from "../../services/projects.service"
 
 export function LeaderDashboard() {
   const {
-    profile,
-    projects,
     setProjects,
     candidateInvites,
     candidateInterested,
@@ -33,8 +31,11 @@ export function LeaderDashboard() {
   } = useTindy()
 
   const location = useLocation()
+  const resource = useMyProjects()
+  const [archiveError, setArchiveError] = useState("")
+  const [archivingId, setArchivingId] = useState<string | null>(null)
+  const archiveBusy = useRef(false)
   const [currentPage, setCurrentPage] = useState(1)
-  const [managingPositionProject, setManagingPositionProject] = useState<Project | null>(null)
   const [showSaveSuccessModal, setShowSaveSuccessModal] = useState(false)
   const [savedSuccessProjectName, setSavedSuccessProjectName] = useState("")
   const [isSavedCreate, setIsSavedCreate] = useState(false)
@@ -50,9 +51,8 @@ export function LeaderDashboard() {
     }
   }, [location.state])
 
-  const managed = projects.filter(
-    (project) => project.id === "cloud-desk" || project.leader === profile.name,
-  )
+  const leadingIds = new Set(resource.data?.leading_projects.filter(project => project.status !== "archived").map(project => project.project_id))
+  const managed = resource.data?.projects.filter(project => leadingIds.has(project.id)) ?? []
 
   const totalPages = Math.max(1, Math.ceil(managed.length / PROJECTS_PER_PAGE))
 
@@ -70,15 +70,24 @@ export function LeaderDashboard() {
   const pageItemsCount = currentProjects.length
 
   const handleDeleteProject = async (projectId: string, projectName: string) => {
-    if (getStoredToken() && !projectId.startsWith("sim-proj-")) {
-      try {
-        await deleteProjectApi(projectId)
-      } catch {
-        // Keep local archive working when backend is offline
-      }
+    if (archiveBusy.current || !window.confirm('Archive project "' + projectName + '"? Its recruitment positions will close.')) return
+    archiveBusy.current = true
+    setArchivingId(projectId)
+    setArchiveError("")
+    try {
+      await deleteProjectApi(projectId)
+      setProjects(previous => previous.filter(project => project.id !== projectId))
+      resource.replace(previous => ({ ...previous!,
+        leading_projects: previous!.leading_projects.filter(project => project.project_id !== projectId),
+        projects: previous!.projects.filter(project => project.id !== projectId) }))
+      notify('Project "' + projectName + '" archived.')
+      resource.reload()
+    } catch (error: unknown) {
+      setArchiveError(projectErrorMessage(error))
+    } finally {
+      archiveBusy.current = false
+      setArchivingId(null)
     }
-    setProjects((prev) => prev.filter((p) => p.id !== projectId))
-    notify(`Project "${projectName}" removed.`)
   }
 
   return (
@@ -98,7 +107,7 @@ export function LeaderDashboard() {
         <Stat
           label="Open positions"
           value={managed.reduce(
-            (total, project) => total + project.capacity - project.team,
+            (total, project) => total + (project.openings ?? 0),
             0,
           )}
           detail="Find the right people"
@@ -145,7 +154,8 @@ export function LeaderDashboard() {
           </span>
         }
       />
-      {managed.length === 0 ? (
+      {(resource.error || archiveError) && <div className="info-banner" role="alert">{archiveError || projectErrorMessage(resource.error)} <button onClick={resource.reload}>Refresh projects</button></div>}
+      {resource.loading && !resource.data ? <div className="info-banner" role="status">Loading your projects…</div> : resource.error && !resource.data ? null : managed.length === 0 ? (
         <div
           className="panel empty-state"
           style={{
@@ -181,7 +191,7 @@ export function LeaderDashboard() {
                   </span>
                   <div className="leader-project-info">
                     <div className="leader-project-badge-row">
-                      <Badge tone="success">RECRUITING</Badge>
+                      <Badge tone="success">{(project.status ?? "recruiting").replace(/_/g, " ").toUpperCase()}</Badge>
                     </div>
                     <h2>{project.name}</h2>
                     <p title={project.description}>{project.description}</p>
@@ -192,8 +202,9 @@ export function LeaderDashboard() {
                       onClick={() =>
                         handleDeleteProject(project.id, project.name)
                       }
-                      title="Close or archive project"
-                      aria-label="Delete project"
+                      title="Archive Project"
+                      aria-label="Archive Project"
+                      disabled={archivingId !== null}
                       style={{ color: "#d9534f" }}
                     >
                       <Trash2 size={16} />
@@ -217,7 +228,7 @@ export function LeaderDashboard() {
                   </span>
                   <span>
                     <Code2 size={16} />
-                    <strong>{project.capacity - project.team}</strong> open
+                    <strong>{project.openings ?? 0}</strong> open
                     positions
                   </span>
                   <Link
@@ -334,7 +345,19 @@ export function LeaderDashboard() {
         </section>
         <section className="panel">
           <SectionHeading title="Keep the conversation going" />
-          <p>No candidate conversations yet.</p>
+          <div className="leader-message">
+            <Avatar name="Cao Thanh Nhan" color="teal" />
+            <div>
+              <h3>Cao Thanh Nhan</h3>
+              <p>“I’d love to learn more about the backend architecture.”</p>
+              <Link
+                className="text-link"
+                to="/messages?conversation=Cao%20Thanh%20Nhan"
+              >
+                Reply in chat <ArrowRight size={14} />
+              </Link>
+            </div>
+          </div>
           <div className="trust-note">
             <Users size={18} />
             <span>
@@ -344,40 +367,6 @@ export function LeaderDashboard() {
           </div>
         </section>
       </div>
-      {managingPositionProject && (
-        <LeaderPositionManagerModal
-          projectId={managingPositionProject.id}
-          projectName={managingPositionProject.name}
-          projectRole={managingPositionProject.role}
-          projectSkills={managingPositionProject.skills}
-          initialPositions={
-            managingPositionProject.openPositions?.map((op) => ({
-              position_id: op.positionId,
-              project_id: managingPositionProject.id,
-              role_id: op.role,
-              title: op.title,
-              description: op.description,
-              required_count: op.count,
-              filled_count: 0,
-              experience_level: toApiDifficulty(op.level),
-              status: "open" as const,
-              skills: [
-                ...op.requiredSkills.map((name) => ({
-                  skill_id: `skill-${name.toLowerCase().replace(/\s+/g, "_")}`,
-                  name,
-                  is_required: true,
-                })),
-                ...op.niceSkills.map((name) => ({
-                  skill_id: `skill-${name.toLowerCase().replace(/\s+/g, "_")}`,
-                  name,
-                  is_required: false,
-                })),
-              ],
-            }))
-          }
-          onClose={() => setManagingPositionProject(null)}
-        />
-      )}
       <SaveSuccessModal
         open={showSaveSuccessModal}
         projectName={savedSuccessProjectName}

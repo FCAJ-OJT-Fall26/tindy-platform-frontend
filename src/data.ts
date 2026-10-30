@@ -12,7 +12,11 @@ export type Project = {
   difficulty: string
   team: number
   capacity: number
+  openings?: number
   leader: string
+  leaderId?: string
+  matchAvailable?: boolean
+  status?: import("./types/project").ProjectStatus
   initials: string
   color: string
   created: number

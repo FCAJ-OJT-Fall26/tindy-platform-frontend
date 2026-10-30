@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useRef, useCallback } from "react"
 import {
   Plus,
   Trash2,
@@ -24,7 +24,7 @@ import {
   removePositionSkillApi,
   fromApiDifficulty,
   toApiDifficulty,
-  isGuid,
+  getProjectByIdApi,
 } from "../../services/projects.service"
 import {
   getProfessionalRolesApi,
@@ -35,18 +35,8 @@ import type {
   PositionStatus,
   ProjectDifficultyLevel,
 } from "../../types/project"
+import { positionFromDto, projectErrorMessage, saveProjectEdits, type ProjectSaveProgress } from "../../services/projectEditor.service"
 import type { ProfessionalRole, CatalogSkill } from "../../types/catalog"
-
-const FALLBACK_ROLES: ProfessionalRole[] = [
-  { professional_role_id: "role_frontend", name: "Frontend Developer", description: null, display_order: 1 },
-  { professional_role_id: "role_backend", name: "Backend Developer", description: null, display_order: 2 },
-  { professional_role_id: "role_fullstack", name: "Fullstack Developer", description: null, display_order: 3 },
-  { professional_role_id: "role_mobile", name: "Mobile Developer", description: null, display_order: 4 },
-  { professional_role_id: "role_uiux", name: "UI/UX Designer", description: null, display_order: 5 },
-  { professional_role_id: "role_ai_engineer", name: "AI / RAG Engineer", description: null, display_order: 6 },
-  { professional_role_id: "role_devops", name: "DevOps Engineer", description: null, display_order: 7 },
-  { professional_role_id: "role_qa", name: "QA / Test Engineer", description: null, display_order: 8 },
-]
 
 export interface LeaderPositionManagerModalProps {
   projectId: string
@@ -69,246 +59,134 @@ export default function LeaderPositionManagerModal({
 }: LeaderPositionManagerModalProps) {
   const { notify } = useTindy()
 
-  const [positions, setPositions] = useState<ProjectPositionDto[]>(
-    initialPositions ?? [],
-  )
-  const [loading, setLoading] = useState(false)
+  const [positions, setPositions] = useState<ProjectPositionDto[]>(initialPositions ?? [])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState("")
   const [busyPosId, setBusyPosId] = useState<string | null>(null)
-
-  // Catalog
-  const [roles, setRoles] = useState<ProfessionalRole[]>(FALLBACK_ROLES)
+  const busy = useRef(false)
+  const progress = useRef<ProjectSaveProgress>({ positionIds: {} })
+  const [roles, setRoles] = useState<ProfessionalRole[]>([])
   const [availableSkills, setAvailableSkills] = useState<CatalogSkill[]>([])
-
-  // New position form visibility & state
+  const [catalogLoading, setCatalogLoading] = useState(true)
+  const [catalogError, setCatalogError] = useState("")
+  const [version, setVersion] = useState(0)
   const [isAddingPosition, setIsAddingPosition] = useState(false)
-  const [newRoleId, setNewRoleId] = useState("role_frontend")
+  const [newRoleId, setNewRoleId] = useState("")
   const [newTitle, setNewTitle] = useState("")
   const [newCount, setNewCount] = useState(1)
   const [newLevel, setNewLevel] = useState<ProjectDifficultyLevel>("intermediate")
   const [newDescription, setNewDescription] = useState("")
   const [addingSubmitting, setAddingSubmitting] = useState(false)
-
-  // Editing existing position state
   const [editingPosId, setEditingPosId] = useState<string | null>(null)
   const [editTitle, setEditTitle] = useState("")
   const [editCount, setEditCount] = useState(1)
   const [editLevel, setEditLevel] = useState<ProjectDifficultyLevel>("intermediate")
   const [editDesc, setEditDesc] = useState("")
-
-  // Quick skill add state
   const [activeSkillPosId, setActiveSkillPosId] = useState<string | null>(null)
   const [selectedSkillId, setSelectedSkillId] = useState("")
   const [skillIsRequired, setSkillIsRequired] = useState(true)
+  const catalogBlocked = catalogLoading || Boolean(catalogError)
 
-  // Load catalog & positions
   const fetchPositions = useCallback(async () => {
-    if (!isGuid(projectId)) {
-      if (initialPositions && initialPositions.length > 0) {
-        setPositions(initialPositions)
-      } else {
-        setPositions([])
-      }
-      return
-    }
-    setLoading(true)
-    try {
-      const data = await getProjectPositionsApi(projectId)
-      if (Array.isArray(data) && data.length > 0) {
-        setPositions(data)
-      } else if (initialPositions && initialPositions.length > 0) {
-        setPositions(initialPositions)
-      }
-    } catch {
-      if (initialPositions && initialPositions.length > 0) {
-        setPositions(initialPositions)
-      }
-    } finally {
-      setLoading(false)
-    }
-  }, [projectId, initialPositions])
-
+    const data = await getProjectPositionsApi(projectId)
+    setPositions(data)
+    return data
+  }, [projectId])
   useEffect(() => {
-    fetchPositions()
-    getProfessionalRolesApi()
-      .then((data) => {
-        if (data?.length) setRoles(data)
+    let active = true
+    setLoading(true)
+    getProjectPositionsApi(projectId).then(data => { if (active) setPositions(data) })
+      .catch(error => { if (active) { setPositions([]); setError(projectErrorMessage(error)) } })
+      .finally(() => { if (active) setLoading(false) })
+    setCatalogLoading(true)
+    setCatalogError("")
+    Promise.all([getProfessionalRolesApi(undefined, undefined, true), getSkillsApi(undefined, undefined, undefined, true)])
+      .then(([roles, skills]) => {
+        if (!active) return
+        setRoles(roles); setAvailableSkills(skills)
+        if (!roles.length || !skills.length) setCatalogError("Active role and skill catalogs are unavailable.")
       })
-      .catch(() => {})
-    getSkillsApi()
-      .then((data) => {
-        if (data?.length) setAvailableSkills(data)
-      })
-      .catch(() => {})
-  }, [fetchPositions])
+      .catch(error => { if (active) setCatalogError(projectErrorMessage(error)) })
+      .finally(() => { if (active) setCatalogLoading(false) })
+    return () => { active = false }
+  }, [projectId, version])
 
-  // Update position status (open, filled, closed)
-  const handleStatusChange = async (pos: ProjectPositionDto, nextStatus: PositionStatus) => {
-    if (pos.status === nextStatus) return
-    setBusyPosId(pos.position_id)
+  const runMutation = async (id: string, action: () => Promise<unknown>, message: string) => {
+    if (busy.current || loading) return false
+    busy.current = true; setBusyPosId(id); setError("")
     try {
-      await updateProjectPositionApi(projectId, pos.position_id, {
-        title: pos.title,
-        required_count: pos.required_count,
-        experience_level: pos.experience_level,
-        status: nextStatus,
-        description: pos.description || undefined,
-      })
-      setPositions((prev) =>
-        prev.map((p) => (p.position_id === pos.position_id ? { ...p, status: nextStatus } : p)),
-      )
-      notify(`Status changed to ${nextStatus.toUpperCase()}`)
+      await action()
+      await fetchPositions()
       onPositionsChanged?.()
-    } catch (err: unknown) {
-      notify(err instanceof Error ? err.message : "Failed to update position status")
-    } finally {
-      setBusyPosId(null)
+      notify(message)
+      return true
+    } catch (error: unknown) {
+      let message = projectErrorMessage(error)
+      try { await fetchPositions(); onPositionsChanged?.() }
+      catch { message += " Saved positions could not be refreshed." }
+      setError("The operation was not fully confirmed. Some changes may already be saved. " + message)
+      return false
+    } finally { busy.current = false; setBusyPosId(null) }
+  }
+  const handleStatusChange = (position: ProjectPositionDto, status: PositionStatus) => {
+    if (position.status === status) return
+    void runMutation(position.position_id, () => updateProjectPositionApi(projectId, position.position_id, {
+      title: position.title, required_count: position.required_count, experience_level: position.experience_level,
+      status, description: position.description ?? "",
+    }), "Position status updated")
+  }
+  const handleDeletePosition = (id: string, title: string) => {
+    if (window.confirm('Delete position "' + title + '"?'))
+      void runMutation(id, () => deleteProjectPositionApi(projectId, id), "Position deleted")
+  }
+  const startEditing = (position: ProjectPositionDto) => {
+    setEditingPosId(position.position_id); setEditTitle(position.title); setEditCount(position.required_count)
+    setEditLevel(position.experience_level); setEditDesc(position.description ?? "")
+  }
+  const handleSaveEdit = async (id: string) => {
+    if (editTitle.trim().length < 2 || editTitle.trim().length > 100 || !Number.isInteger(editCount) || editCount < 1) {
+      setError("Position title must have 2–100 characters and headcount must be at least 1."); return
+    }
+    const position = positions.find(position => position.position_id === id)
+    if (!position) return
+    if (await runMutation(id, () => updateProjectPositionApi(projectId, id, {
+      title: editTitle.trim(), required_count: editCount, experience_level: editLevel, status: position.status, description: editDesc,
+    }), "Position details updated")) setEditingPosId(null)
+  }
+  const handleAddSkill = async (id: string) => {
+    if (catalogBlocked || !availableSkills.some(skill => skill.skill_id === selectedSkillId)) { setError("Select an active catalog skill."); return }
+    if (await runMutation(id, () => addPositionSkillApi(projectId, id, { skill_id: selectedSkillId, is_required: skillIsRequired }), "Position skill saved")) {
+      setActiveSkillPosId(null); setSelectedSkillId("")
     }
   }
-
-  // Delete position
-  const handleDeletePosition = async (posId: string, title: string) => {
-    if (!window.confirm(`Are you sure you want to delete position "${title}"?`)) return
-    setBusyPosId(posId)
-    try {
-      await deleteProjectPositionApi(projectId, posId)
-      setPositions((prev) => prev.filter((p) => p.position_id !== posId))
-      notify(`Position "${title}" deleted`)
-      onPositionsChanged?.()
-    } catch (err: unknown) {
-      notify(err instanceof Error ? err.message : "Failed to delete position")
-    } finally {
-      setBusyPosId(null)
+  const handleRemoveSkill = (id: string, skillId: string, name: string) => {
+    void runMutation(id, () => removePositionSkillApi(projectId, id, skillId), "Removed skill " + name)
+  }
+  const handleCreateNewPosition = async (event: React.FormEvent) => {
+    event.preventDefault()
+    if (busy.current || catalogBlocked) return
+    if (!roles.some(role => role.professional_role_id === newRoleId) || newTitle.trim().length < 2 || newTitle.trim().length > 100 || !Number.isInteger(newCount) || newCount < 1) {
+      setError("Choose an active role, a title of 2–100 characters and headcount of at least 1."); return
     }
-  }
-
-  // Edit position details
-  const startEditing = (pos: ProjectPositionDto) => {
-    setEditingPosId(pos.position_id)
-    setEditTitle(pos.title)
-    setEditCount(pos.required_count)
-    setEditLevel(pos.experience_level)
-    setEditDesc(pos.description || "")
-  }
-
-  const handleSaveEdit = async (posId: string) => {
-    setBusyPosId(posId)
-    const current = positions.find((p) => p.position_id === posId)
-    try {
-      await updateProjectPositionApi(projectId, posId, {
-        title: editTitle || current?.title || "Role",
-        required_count: editCount || 1,
-        experience_level: editLevel,
-        status: current?.status || "open",
-        description: editDesc,
-      })
-      setPositions((prev) =>
-        prev.map((p) =>
-          p.position_id === posId
-            ? {
-                ...p,
-                title: editTitle,
-                required_count: editCount,
-                experience_level: editLevel,
-                description: editDesc,
-              }
-            : p,
-        ),
-      )
-      setEditingPosId(null)
-      notify("Position details updated")
-      onPositionsChanged?.()
-    } catch (err: unknown) {
-      notify(err instanceof Error ? err.message : "Failed to save position")
-    } finally {
-      setBusyPosId(null)
-    }
-  }
-
-  // Add skill to position
-  const handleAddSkill = async (posId: string) => {
-    if (!selectedSkillId) return
-    setBusyPosId(posId)
-    try {
-      const res = await addPositionSkillApi(projectId, posId, {
-        skill_id: selectedSkillId,
-        is_required: skillIsRequired,
-      })
-      setPositions((prev) =>
-        prev.map((p) => {
-          if (p.position_id !== posId) return p
-          const exists = p.skills.some((s) => s.skill_id === selectedSkillId)
-          if (exists) return p
-          return {
-            ...p,
-            skills: [
-              ...p.skills,
-              {
-                skill_id: res.skill_id,
-                name: res.skill_name || "Skill",
-                is_required: res.is_required,
-              },
-            ],
-          }
-        }),
-      )
-      setActiveSkillPosId(null)
-      setSelectedSkillId("")
-      notify("Skill added to position")
-      onPositionsChanged?.()
-    } catch (err: unknown) {
-      notify(err instanceof Error ? err.message : "Failed to add skill")
-    } finally {
-      setBusyPosId(null)
-    }
-  }
-
-  // Remove skill from position
-  const handleRemoveSkill = async (posId: string, skillId: string, skillName: string) => {
-    setBusyPosId(posId)
-    try {
-      await removePositionSkillApi(projectId, posId, skillId)
-      setPositions((prev) =>
-        prev.map((p) =>
-          p.position_id === posId
-            ? { ...p, skills: p.skills.filter((s) => s.skill_id !== skillId) }
-            : p,
-        ),
-      )
-      notify(`Removed skill ${skillName}`)
-      onPositionsChanged?.()
-    } catch (err: unknown) {
-      notify(err instanceof Error ? err.message : "Failed to remove skill")
-    } finally {
-      setBusyPosId(null)
-    }
-  }
-
-  // Create brand new position
-  const handleCreateNewPosition = async (e: React.FormEvent) => {
-    e.preventDefault()
     setAddingSubmitting(true)
-    const roleObj = roles.find((r) => r.professional_role_id === newRoleId)
-    const title = newTitle.trim() || roleObj?.name || "New Role"
-    try {
-      const created = await createProjectPositionApi(projectId, {
-        role_id: newRoleId,
-        title,
-        required_count: Number(newCount) || 1,
-        experience_level: newLevel,
-        description: newDescription.trim() || undefined,
-      })
-      setPositions((prev) => [...prev, { ...created, skills: created.skills || [] }])
-      notify(`Position "${title}" created successfully`)
-      setIsAddingPosition(false)
-      setNewTitle("")
-      setNewDescription("")
-      setNewCount(1)
-      onPositionsChanged?.()
-    } catch (err: unknown) {
-      notify(err instanceof Error ? err.message : "Failed to create position")
-    } finally {
-      setAddingSubmitting(false)
+    const success = await runMutation("new", async () => {
+      const project = await getProjectByIdApi(projectId)
+      await saveProjectEdits(projectId, { ...project, tagline: project.tagline ?? "", color_theme: project.color_theme ?? "indigo" },
+        [...project.positions.filter(position => position.position_id !== progress.current.positionIds["manager-new"]).map(position => positionFromDto(position)), {
+          id: "manager-new", roleId: newRoleId, role: newTitle, title: newTitle, count: newCount, level: newLevel,
+          description: newDescription, status: "open", requiredSkills: [], niceSkills: [],
+        }], [], progress.current, () => {})
+    }, "Position created")
+    setAddingSubmitting(false)
+    if (success) {
+      progress.current = { positionIds: {} }; setIsAddingPosition(false); setNewRoleId(""); setNewTitle("")
+      setNewDescription(""); setNewCount(1)
     }
+  }
+  const requestClose = () => {
+    if (busy.current) return
+    if ((isAddingPosition || editingPosId) && !window.confirm("Discard the unsaved position input? Changes already confirmed by the server will remain.")) return
+    onClose()
   }
 
   const getStatusBadge = (status: PositionStatus) => {
@@ -325,15 +203,17 @@ export default function LeaderPositionManagerModal({
   }
 
   return (
-    <Modal title={`Manage Positions — ${projectName}`} onClose={onClose} wide>
+    <Modal title={`Manage Positions — ${projectName}`} onClose={requestClose} wide>
       <div className="position-manager-modal">
+      <fieldset disabled={busyPosId !== null} style={{ display: "contents", border: 0, padding: 0, margin: 0, minWidth: 0 }}>
+        {(error || catalogError || catalogLoading) && <div className="info-banner" role={catalogLoading ? "status" : "alert"}>{error || catalogError || "Loading active catalogs…"} <button disabled={busyPosId !== null} onClick={() => { setError(""); setVersion(value => value + 1) }}>Reload</button></div>}
         <div className="position-manager-intro">
           <p>
             Configure open recruitment roles, adjust headcount, change recruitment status (Open,
             Filled, Closed), and manage specific skill expectations.
           </p>
           {!isAddingPosition && (
-            <Button variant="secondary" onClick={() => setIsAddingPosition(true)}>
+            <Button variant="secondary" disabled={catalogBlocked || loading || busyPosId !== null} onClick={() => setIsAddingPosition(true)}>
               <Plus size={16} /> Add new position
             </Button>
           )}
@@ -361,6 +241,7 @@ export default function LeaderPositionManagerModal({
                 Select role archetype *
                 <select
                   value={newRoleId}
+                  disabled={catalogBlocked || Boolean(progress.current.positionIds["manager-new"])}
                   onChange={(e) => {
                     setNewRoleId(e.target.value)
                     const r = roles.find((x) => x.professional_role_id === e.target.value)
@@ -368,6 +249,7 @@ export default function LeaderPositionManagerModal({
                   }}
                   required
                 >
+                  <option value="">Select an active role</option>
                   {roles.map((r) => (
                     <option key={r.professional_role_id} value={r.professional_role_id}>
                       {r.name}
@@ -427,11 +309,11 @@ export default function LeaderPositionManagerModal({
                 variant="ghost"
                 type="button"
                 onClick={() => setIsAddingPosition(false)}
-                disabled={addingSubmitting}
+                disabled={addingSubmitting || catalogBlocked || busyPosId !== null}
               >
                 Cancel
               </Button>
-              <Button type="submit" disabled={addingSubmitting}>
+              <Button type="submit" disabled={addingSubmitting || catalogBlocked || busyPosId !== null}>
                 {addingSubmitting ? "Adding..." : "Add position"}
               </Button>
             </div>
@@ -451,7 +333,7 @@ export default function LeaderPositionManagerModal({
         ) : (
           <div className="position-manager-list">
             {positions.map((pos) => {
-              const isBusy = busyPosId === pos.position_id
+              const isBusy = busyPosId !== null
               const isEditing = editingPosId === pos.position_id
               const isAddingSkill = activeSkillPosId === pos.position_id
 
@@ -469,7 +351,7 @@ export default function LeaderPositionManagerModal({
                       </div>
                       <div className="pos-meta-sub">
                         <span>
-                          <Briefcase size={13} /> {pos.role_id}
+                          <Briefcase size={13} /> {roles.find(role => role.professional_role_id === pos.role_id)?.name ?? "Role unavailable"} (read-only)
                         </span>
                         <span>
                           <Clock size={13} /> Level: {fromApiDifficulty(pos.experience_level)}
@@ -636,7 +518,7 @@ export default function LeaderPositionManagerModal({
                           type="button"
                           variant="secondary"
                           onClick={() => handleAddSkill(pos.position_id)}
-                          disabled={!selectedSkillId || isBusy}
+                          disabled={catalogBlocked || !availableSkills.some(skill => skill.skill_id === selectedSkillId) || isBusy}
                         >
                           Add
                         </Button>
@@ -679,10 +561,11 @@ export default function LeaderPositionManagerModal({
         )}
 
         <div className="position-manager-footer">
-          <Button variant="secondary" onClick={onClose}>
+          <Button variant="secondary" disabled={busyPosId !== null} onClick={requestClose}>
             Close
           </Button>
         </div>
+      </fieldset>
       </div>
     </Modal>
   )

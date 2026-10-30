@@ -29,6 +29,7 @@ export interface ProjectTeamMember {
 }
 
 export interface DiscoveryProject {
+  matchAvailable?: boolean;
   id: string;
   name: string;
   tagline: string;

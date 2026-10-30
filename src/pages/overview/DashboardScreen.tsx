@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react"
+import { useEffect, useState, type ReactNode } from "react"
 import { Link } from "react-router"
 import {
   ArrowRight,
@@ -97,7 +97,8 @@ function UserIcon() {
 }
 
 export function DashboardScreen() {
-  const { profile, projects, saved, active, skipped } = useTindy()
+  const { profile, projects, saved, active, skipped, requestProjects, projectsLoading, projectsError, reloadProjects } = useTindy()
+  useEffect(() => { requestProjects() }, [requestProjects])
   const [tab, setTab] = useState("For you")
   const available = projects
     .filter((project) => !skipped.includes(project.id))
@@ -196,7 +197,7 @@ export function DashboardScreen() {
             </span>
           </div>
           <div key={tab} className="tab-pane-transition">
-            {available.length ? (
+            {projectsLoading ? <div className="info-banner" role="status">Loading projects…</div> : projectsError ? <div className="info-banner" role="alert">Projects could not be loaded. <button onClick={reloadProjects}>Retry</button></div> : available.length ? (
               <Cards projects={available.slice(0, 4)} />
             ) : (
               <EmptyState

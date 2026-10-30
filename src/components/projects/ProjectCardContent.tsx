@@ -67,7 +67,7 @@ export default function ProjectCardContent({
         </div>
 
         {/* AI Match Score Highlight Block */}
-        <div className={`px-3.5 py-2 sm:py-2.5 rounded-xl border flex items-center justify-between transition-colors ${
+        {project.matchAvailable === false ? <div className="px-3.5 py-2 rounded-xl border bg-slate-50 text-xs text-slate-600">Match score is not available.</div> : <div className={`px-3.5 py-2 sm:py-2.5 rounded-xl border flex items-center justify-between transition-colors ${
           match.overall < 35
             ? 'bg-rose-50/70 border-rose-200'
             : match.overall <= 65
@@ -92,6 +92,7 @@ export default function ProjectCardContent({
           </button>
         </div>
 
+        }
         {/* Roles & Key Tech Stack */}
         <div className="space-y-2">
           <div className="flex items-center gap-2">

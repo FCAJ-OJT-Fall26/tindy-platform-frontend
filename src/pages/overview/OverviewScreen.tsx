@@ -18,10 +18,10 @@ import { projects } from '../../data/projectsData';
 import ProjectSaveButton from '../../components/common/ProjectSaveButton';
 
 interface OverviewScreenProps {
-  saved: number[];
-  interested: number[];
-  skipped: number[];
-  onToggleSave: (id: number) => void;
+  saved: string[];
+  interested: string[];
+  skipped: string[];
+  onToggleSave: (id: string) => void;
   onSelectDetail: (project: typeof projects[number]) => void;
   onCreateProject: () => void;
   onOpenFilters: () => void;
@@ -242,7 +242,7 @@ export default function OverviewScreen({
                   (filter !== 'Best matches' || project.score >= 90)
               )
               .sort((first, second) =>
-                filter === 'Recently added' ? second.id - first.id : second.score - first.score
+                filter === 'Recently added' ? second.id.localeCompare(first.id) : second.score - first.score
               )
               .map(card)}
           </div>
