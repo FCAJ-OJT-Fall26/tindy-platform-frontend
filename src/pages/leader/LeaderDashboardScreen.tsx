@@ -130,6 +130,7 @@ export function LeaderDashboard() {
       />
       <section className="metrics-grid">
         <MetricCard
+          index={0}
           label="Open positions"
           value={
             managed.reduce(
@@ -160,6 +161,7 @@ export function LeaderDashboard() {
         />
 
         <MetricCard
+          index={1}
           label="Interested candidates"
           value={demo ? candidateInterested.length : (pendingCount > 0 ? pendingCount : 4)}
           subtitle="people to get to know"
@@ -177,6 +179,7 @@ export function LeaderDashboard() {
         />
 
         <MetricCard
+          index={2}
           label="Pending invitations"
           value={demo ? candidateInvites.length : 0}
           subtitle="no invitations sent yet"
@@ -187,6 +190,7 @@ export function LeaderDashboard() {
         />
 
         <MetricCard
+          index={3}
           label="Team members"
           value={managed.reduce((total, project) => total + (project.team || 0), 0) || 3}
           subtitle="of 5 team seats filled"

@@ -2,6 +2,91 @@ import React from "react"
 import { Link } from "react-router"
 import "./metric-cards.css"
 
+/* --- Animated Metric Counter (Ease-out transitions from 0 to value) --- */
+
+export function AnimatedMetricValue({ value }: { value: React.ReactNode }) {
+  const [displayValue, setDisplayValue] = React.useState<React.ReactNode>(() => {
+    if (typeof value === "number") return 0
+    if (typeof value === "string") {
+      const match = value.match(/^(\d+)(.*)$/)
+      if (match) return `0${match[2]}`
+    }
+    return value
+  })
+
+  const prevValueRef = React.useRef<number>(0)
+
+  React.useEffect(() => {
+    if (typeof value === "number") {
+      const start = prevValueRef.current
+      const end = value
+      prevValueRef.current = end
+      if (start === end) {
+        setDisplayValue(end)
+        return
+      }
+
+      const duration = 750
+      const startTime = performance.now()
+      let rafId: number
+
+      const step = (now: number) => {
+        const elapsed = now - startTime
+        const progress = Math.min(1, elapsed / duration)
+        const ease = progress === 1 ? 1 : 1 - Math.pow(2, -10 * progress)
+        const current = Math.round(start + (end - start) * ease)
+        setDisplayValue(current)
+
+        if (progress < 1) {
+          rafId = requestAnimationFrame(step)
+        }
+      }
+
+      rafId = requestAnimationFrame(step)
+      return () => cancelAnimationFrame(rafId)
+    }
+
+    if (typeof value === "string") {
+      const match = value.match(/^(\d+)(.*)$/)
+      if (match) {
+        const start = prevValueRef.current
+        const end = parseInt(match[1], 10)
+        const suffix = match[2]
+        prevValueRef.current = end
+
+        if (start === end) {
+          setDisplayValue(value)
+          return
+        }
+
+        const duration = 750
+        const startTime = performance.now()
+        let rafId: number
+
+        const step = (now: number) => {
+          const elapsed = now - startTime
+          const progress = Math.min(1, elapsed / duration)
+          const ease = progress === 1 ? 1 : 1 - Math.pow(2, -10 * progress)
+          const current = Math.round(start + (end - start) * ease)
+          setDisplayValue(`${current}${suffix}`)
+
+          if (progress < 1) {
+            rafId = requestAnimationFrame(step)
+          }
+        }
+
+        rafId = requestAnimationFrame(step)
+        return () => cancelAnimationFrame(rafId)
+      }
+      setDisplayValue(value)
+    } else {
+      setDisplayValue(value)
+    }
+  }, [value])
+
+  return <span className="metric-animated-value">{displayValue}</span>
+}
+
 /* --- Shared Micro Visual Components --- */
 
 export function SparklineBars({
@@ -23,7 +108,11 @@ export function SparklineBars({
         <span
           key={i}
           className="metric-bar-pill"
-          style={{ height: `${bar.height}px`, backgroundColor: bar.color }}
+          style={{
+            height: `${bar.height}px`,
+            backgroundColor: bar.color,
+            animationDelay: `${i * 50 + 100}ms`,
+          }}
         />
       ))}
     </div>
@@ -41,7 +130,9 @@ export function CategoryBreakdown({
         <div key={i} className="metric-breakdown-item">
           <div className="metric-breakdown-meta">
             <span>{item.label}</span>
-            <strong>{item.count}</strong>
+            <strong>
+              <AnimatedMetricValue value={item.count} />
+            </strong>
           </div>
           <div className="metric-breakdown-track">
             <div
@@ -49,6 +140,7 @@ export function CategoryBreakdown({
               style={{
                 width: `${Math.max(8, Math.min(100, item.pct))}%`,
                 backgroundColor: item.color || "#0d9488",
+                animationDelay: `${i * 100 + 150}ms`,
               }}
             />
           </div>
@@ -74,7 +166,11 @@ export function CapsuleSlots({
       <div className="metric-capsules-wrap" aria-hidden="true">
         <div className="metric-capsules-row">
           {Array.from({ length: 6 }).map((_, i) => (
-            <span key={i} className="metric-capsule-pill faint" />
+            <span
+              key={i}
+              className="metric-capsule-pill faint"
+              style={{ animationDelay: `${i * 40 + 80}ms` }}
+            />
           ))}
         </div>
       </div>
@@ -88,6 +184,7 @@ export function CapsuleSlots({
           <span
             key={i}
             className={`metric-capsule-pill ${i < filled ? "filled" : "empty"}`}
+            style={{ animationDelay: `${i * 50 + 100}ms` }}
           />
         ))}
       </div>
@@ -110,7 +207,17 @@ export function DonutProgressRing({
   const radius = 17
   const circumference = 2 * Math.PI * radius
   const clamped = Math.max(0, Math.min(100, pct))
-  const dashoffset = circumference * (1 - clamped / 100)
+  const targetOffset = circumference * (1 - clamped / 100)
+
+  // Start with full circumference so the stroke draws clockwise on mount
+  const [dashoffset, setDashoffset] = React.useState(circumference)
+
+  React.useEffect(() => {
+    const frame = requestAnimationFrame(() => {
+      setDashoffset(targetOffset)
+    })
+    return () => cancelAnimationFrame(frame)
+  }, [targetOffset])
 
   return (
     <div
@@ -152,6 +259,7 @@ export interface MetricCardProps {
   footerLeft: string
   actionLabel: string
   actionTo: string
+  index?: number
 }
 
 export function MetricCard({
@@ -162,13 +270,19 @@ export function MetricCard({
   footerLeft,
   actionLabel,
   actionTo,
+  index = 0,
 }: MetricCardProps) {
   return (
-    <article className="metric-card">
+    <article
+      className="metric-card"
+      style={{ animationDelay: `${index * 70}ms` }}
+    >
       <div className="metric-card-header">{label}</div>
       <div className="metric-card-body">
         <div className="metric-card-main">
-          <div className="metric-card-value">{value}</div>
+          <div className="metric-card-value">
+            <AnimatedMetricValue value={value} />
+          </div>
           <div className="metric-card-subtitle">{subtitle}</div>
         </div>
         <div className="metric-card-visual">{visual}</div>

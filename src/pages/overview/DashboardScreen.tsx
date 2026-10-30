@@ -124,6 +124,7 @@ export function DashboardScreen() {
       />
       <section className="metrics-grid">
         <MetricCard
+          index={0}
           label="Recommended projects"
           value={available.length || 6}
           subtitle="matched to your profile"
@@ -146,6 +147,7 @@ export function DashboardScreen() {
         />
 
         <MetricCard
+          index={1}
           label="Saved projects"
           value={saved.length || 2}
           subtitle="ideas in your shortlist"
@@ -163,6 +165,7 @@ export function DashboardScreen() {
         />
 
         <MetricCard
+          index={2}
           label="Active projects"
           value={active.length || 1}
           subtitle="projects you're part of"
@@ -173,6 +176,7 @@ export function DashboardScreen() {
         />
 
         <MetricCard
+          index={3}
           label="Profile completeness"
           value="100%"
           subtitle="ready to connect"
