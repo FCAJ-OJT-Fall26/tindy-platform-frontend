@@ -3,7 +3,7 @@ import { useNavigate, Link, useBlocker } from "react-router"
 import {
   ArrowLeft,
   ArrowRight,
-  Sparkles,
+  Bot,
   Plus,
   Trash2,
   ChevronDown,
@@ -895,7 +895,7 @@ export function ProjectForm({ mode, initialProject, initialDetail }: ProjectForm
       return <Palette size={16} />
     }
     if (text.includes("ai") || text.includes("data") || text.includes("machine")) {
-      return <Sparkles size={16} />
+      return <Bot size={16} />
     }
     if (text.includes("cloud") || text.includes("devops") || text.includes("infra")) {
       return <Layers size={16} />
@@ -1157,7 +1157,7 @@ export function ProjectForm({ mode, initialProject, initialDetail }: ProjectForm
                   {/* AI Writing Assistance Callout */}
                   <div className="ai-assist-callout">
                     <div className="ai-assist-icon">
-                      <Sparkles size={18} />
+                      <Bot size={18} />
                     </div>
                     <div className="ai-assist-content">
                       <div className="ai-assist-title">A little help getting started?</div>
@@ -1170,7 +1170,7 @@ export function ProjectForm({ mode, initialProject, initialDetail }: ProjectForm
                       className="ai-assist-btn"
                       onClick={() => setShowAiDialog(true)}
                     >
-                      <Sparkles size={14} />
+                      <Bot size={14} />
                       <span>Help me write</span>
                     </button>
                   </div>

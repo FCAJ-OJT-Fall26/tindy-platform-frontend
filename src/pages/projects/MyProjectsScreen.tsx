@@ -9,7 +9,7 @@ import {
   Crown,
   FolderKanban,
   Mail,
-  Sparkles,
+  
   Users,
 } from "lucide-react"
 import { Badge, Button, EmptyState, Modal, PageHeader, ProjectCard } from "../../components/ui"
@@ -227,7 +227,6 @@ export function MyProjectsScreen() {
           <>
             {tab === "Interested" && (
               <div className="info-banner">
-                <Sparkles size={18} />
                 <span>
                   Applications and interest sent. Awaiting project leaders to review your profile.
                 </span>

@@ -9,7 +9,7 @@ import {
   FolderKanban,
   GraduationCap,
   SlidersHorizontal,
-  Sparkles,
+  
   Users,
 } from "lucide-react"
 import { Avatar, Badge, Button, Chips, Modal, Score, ProjectSaveButton, SkipActionButton } from "../../components/ui"

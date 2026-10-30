@@ -7,7 +7,7 @@ import {
   X,
   SlidersHorizontal,
   Clock,
-  Sparkles,
+  
   Tag,
   AlertCircle,
   Briefcase,
@@ -224,7 +224,7 @@ export default function LeaderPositionManagerModal({
           <form className="position-create-card panel" onSubmit={handleCreateNewPosition}>
             <div className="position-create-header">
               <h4>
-                <Sparkles size={16} /> Add New Position to Project
+                Add New Position to Project
               </h4>
               <button
                 type="button"

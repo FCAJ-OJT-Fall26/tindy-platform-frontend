@@ -10,7 +10,7 @@ import {
   Code2,
   ExternalLink,
   Info,
-  Sparkles,
+  
   Users,
   X,
   TriangleAlert,

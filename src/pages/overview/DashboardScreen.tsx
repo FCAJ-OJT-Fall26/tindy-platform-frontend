@@ -11,7 +11,7 @@ import {
   Mail,
   Plus,
   ShieldCheck,
-  Sparkles,
+  
 } from "lucide-react"
 import {
   Avatar,
@@ -192,7 +192,6 @@ export function DashboardScreen() {
         </div>
         <div>
           <Badge tone="blue">
-            <Sparkles size={11} />
             SMARTER CONNECTIONS
           </Badge>
           <h2>Your next great project starts with the right fit.</h2>
@@ -221,7 +220,7 @@ export function DashboardScreen() {
                   onClick={() => setTab(item)}
                   key={item}
                 >
-                  {item === "For you" && <Sparkles size={13} />} {item}
+                  {item}
                 </button>
               ))}
             </div>

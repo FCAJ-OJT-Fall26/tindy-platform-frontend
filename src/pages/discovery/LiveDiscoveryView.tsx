@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { Link, useNavigate } from "react-router"
-import { ArrowUpRight, Bookmark, ChevronDown, RefreshCw, SlidersHorizontal, Sparkles } from "lucide-react"
+import { ArrowUpRight, Bookmark, ChevronDown, RefreshCw, SlidersHorizontal } from "lucide-react"
 import useDiscoveryFeed from "../../hooks/useDiscoveryFeed"
 import useRemoteResource from "../../hooks/useRemoteResource"
 import { useTindy } from "../../store"
@@ -96,10 +96,10 @@ export default function LiveDiscoveryView() {
   const viewActiveProject = () => { if (active) setPreviewProject(active) }
   return <div className="live-discovery" data-live-discovery data-loaded-count={projects.length}>
     <header className="live-discovery__header">
-      <div><span className="live-discovery__pill"><Sparkles size={12} />INTERACTIVE MATCHING STACK</span><h1>Discover Projects That Fit You</h1><p>Discover your next team. Skip, save, or explore a position before you apply.</p></div>
+      <div><span className="live-discovery__pill">INTERACTIVE MATCHING STACK</span><h1>Discover Projects That Fit You</h1><p>Discover your next team. Skip, save, or explore a position before you apply.</p></div>
       <div className="live-discovery__header-actions"><DiscoverySegmentedControl value="student" options={[{ value: "student", label: "Find Projects" }, { value: "leader", label: "Find Teammates", sublabel: "Demo" }]} ariaLabel="Discovery Mode Switcher" onChange={value => { if (value === "leader") navigate("/discover?mode=teammates") }} /><button className="live-discovery__refresh" onClick={refresh}><RefreshCw size={14} />Refresh</button></div>
     </header>
-    <div className="live-discovery__mobile-tools"><button aria-expanded={filtersOpen} aria-controls="live-discovery-filters" onClick={() => setFiltersOpen(v => !v)}><SlidersHorizontal size={15} />Filters{([category, role, skill].filter(Boolean).length + (minScore > 0 ? 1 : 0)) > 0 && <span>{[category, role, skill].filter(Boolean).length + (minScore > 0 ? 1 : 0)}</span>}<ChevronDown size={14} /></button><button disabled={!active?.ruleMatch} onClick={() => setExplanation(active?.ruleMatch ?? null)}><Sparkles size={15} />Match insights</button></div>
+    <div className="live-discovery__mobile-tools"><button aria-expanded={filtersOpen} aria-controls="live-discovery-filters" onClick={() => setFiltersOpen(v => !v)}><SlidersHorizontal size={15} />Filters{([category, role, skill].filter(Boolean).length + (minScore > 0 ? 1 : 0)) > 0 && <span>{[category, role, skill].filter(Boolean).length + (minScore > 0 ? 1 : 0)}</span>}<ChevronDown size={14} /></button><button disabled={!active?.ruleMatch} onClick={() => setExplanation(active?.ruleMatch ?? null)}>Match insights</button></div>
     <div className="live-discovery__layout">
       <div id="live-discovery-filters" className={`live-discovery__filter-column${filtersOpen ? " is-open" : ""}`}>{filters}</div>
       <section className="live-discovery__feed" aria-label="Project discovery feed">
@@ -112,7 +112,7 @@ export default function LiveDiscoveryView() {
           onResetStack={refresh} />}
         {!feed.loading && !feed.error && projects.length === 0 && <section className="panel text-center"><h2>No eligible projects right now</h2><p>Refresh or adjust the filters to find more projects.</p><button className="btn btn-primary" onClick={refresh}>Refresh feed</button></section>}
       </section>
-      <aside className="live-discovery__inspector">{active?.ruleMatch ? <RuleMatchPanel variant="discovery" match={active.ruleMatch} projectName={active.name} onExplain={() => setExplanation(active.ruleMatch ?? null)} onViewDetails={viewActiveProject} /> : <section className="live-discovery__inspector-empty"><Sparkles size={23} /><h2>A closer look at your fit</h2><p>Select a project to see how its position matches your profile.</p></section>}</aside>
+      <aside className="live-discovery__inspector">{active?.ruleMatch ? <RuleMatchPanel variant="discovery" match={active.ruleMatch} projectName={active.name} onExplain={() => setExplanation(active.ruleMatch ?? null)} onViewDetails={viewActiveProject} /> : <section className="live-discovery__inspector-empty"><h2>A closer look at your fit</h2><p>Select a project to see how its position matches your profile.</p></section>}</aside>
     </div>
     
     {previewProject && (

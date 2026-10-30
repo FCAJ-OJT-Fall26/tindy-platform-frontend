@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react"
 import { NavLink, Link, useLocation } from "react-router"
-import {
-  ChevronDown,
+import { ChevronDown,
   LayoutDashboard,
   Compass,
   Bookmark,
@@ -10,11 +9,10 @@ import {
   MessageSquare,
   Bell,
   Settings,
-  Sparkles,
+  Bot,
   X,
   ArrowUpRight,
-  LogOut,
-} from "lucide-react"
+  LogOut, } from "lucide-react"
 import { useNavigate } from "react-router"
 import { Brand } from "../ui"
 import { useTindy } from "../../store"
@@ -158,7 +156,7 @@ export default function Sidebar({ mobile, onClose }: SidebarProps) {
           to="/ai"
           className={({ isActive }) => `nav-item ${isActive ? "active" : ""}`}
         >
-          <Sparkles size={18} />
+          <Bot size={18} />
           AI Studio<span className="beta">BETA</span>
         </NavLink>
       </div>

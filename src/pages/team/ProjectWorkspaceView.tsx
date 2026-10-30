@@ -12,7 +12,7 @@ import {
   Send,
   Settings,
   Clock,
-  Sparkles,
+  
   ExternalLink,
   X,
   Layers,

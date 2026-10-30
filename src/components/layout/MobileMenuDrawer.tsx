@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink } from 'react-router';
-import { X, User, Sparkles } from 'lucide-react';
+import { X, User, Bot } from 'lucide-react';
 import { navItems } from './Sidebar';
 
 function LogoImg() {
@@ -84,7 +84,7 @@ export default function MobileMenuDrawer({ isOpen, onClose }: MobileMenuDrawerPr
                 }`
               }
             >
-              <Sparkles size={17} />
+              <Bot size={17} />
               <span>AI studio</span>
               <span className="ml-auto text-[9px] font-bold px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-700 border border-indigo-200">
                 NEW

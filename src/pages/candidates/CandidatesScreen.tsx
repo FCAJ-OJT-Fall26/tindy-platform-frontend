@@ -2,7 +2,7 @@ import { useState } from "react"
 import { useSearchParams, Link } from "react-router"
 import {
   ArrowUpRight,
-  Sparkles,
+  
   Mail,
   Check,
   Bookmark,
@@ -91,7 +91,6 @@ export function Candidates() {
           <>
             {tab === "Interested" && (
               <div className="info-banner">
-                <Sparkles size={18} />
                 <span>
                   These students have expressed interest in joining your project.
                   Review their qualifications and reach out.

@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react"
-import { Sparkles, Check, RotateCcw, Info, ArrowRight } from "lucide-react"
+import { Bot, Check, RotateCcw, Info, ArrowRight } from "lucide-react"
 import { Modal, Button } from "../ui"
 
 export interface AiWritingDialogProps {
@@ -54,7 +54,7 @@ This is a peer-to-peer workspace where you can safely experiment, review code wi
         {/* Intro Banner */}
         <div className="ai-writing-banner">
           <div className="banner-icon-wrap">
-            <Sparkles size={18} />
+            <Bot size={18} />
           </div>
           <div className="banner-content">
             <h4>Generate a draft, then make it your own</h4>
@@ -109,7 +109,7 @@ This is a peer-to-peer workspace where you can safely experiment, review code wi
               onClose()
             }}
           >
-            <Sparkles size={14} /> Use this draft
+            <Bot size={14} /> Use this draft
           </Button>
         </div>
       </div>

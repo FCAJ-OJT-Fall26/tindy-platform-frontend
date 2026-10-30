@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react"
 import { Link, useLocation, useSearchParams } from "react-router"
 import {
-  Sparkles,
+  Clock,
   Settings,
   Plus,
   Code2,
@@ -426,7 +426,7 @@ export function LeaderDashboard() {
                       textDecoration: "none",
                     }}
                   >
-                    <Sparkles size={16} />
+                    <Clock size={16} />
                     <strong>{pendingFor(project.id)}</strong> pending applications
                   </Link>
                 </div>

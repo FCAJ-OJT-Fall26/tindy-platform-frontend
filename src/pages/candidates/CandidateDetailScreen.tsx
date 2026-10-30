@@ -5,7 +5,7 @@ import {
   MessageSquare,
   ArrowUpRight,
   ShieldCheck,
-  Sparkles,
+  
   Check,
   TriangleAlert,
   ArrowRight,
@@ -135,7 +135,6 @@ export function CandidateDetail() {
         <aside>
           <section className="panel">
             <div className="insight-label">
-              <Sparkles size={15} />
               AI MATCH ANALYSIS
             </div>
             <h2>{candidate.match}% match</h2>

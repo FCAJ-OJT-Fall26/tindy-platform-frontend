@@ -2,7 +2,7 @@ import { Link } from "react-router"
 import {
   LayoutDashboard,
   Compass,
-  Sparkles,
+  Bot,
   FolderKanban,
   Users,
   Mail,
@@ -90,7 +90,7 @@ export function NotFound() {
           to="/ai"
           style={{ padding: "11px 20px" }}
         >
-          <Sparkles size={16} />
+          <Bot size={16} />
           AI Studio
         </Link>
       </div>

@@ -5,7 +5,7 @@ import {
   CheckCircle2,
   Calendar,
   X,
-  Sparkles,
+  
 } from "lucide-react"
 import type { SelectedSkill } from "../../types/catalog"
 import SkillIcon from "../onboarding/SkillIcon"
@@ -97,7 +97,7 @@ export default function FullPreviewDialog({
           {/* Hero Section */}
           <div className="light-preview-hero">
             <div className="light-preview-hero-icon-box">
-              <Sparkles size={24} className="light-preview-sparkle-icon" />
+              
             </div>
 
             <div className="light-preview-hero-info">

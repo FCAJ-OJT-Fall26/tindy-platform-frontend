@@ -4,7 +4,7 @@ import {
   FileText,
   Plus,
   ShieldCheck,
-  Sparkles,
+  Bot,
   Upload,
 } from "lucide-react"
 import {
@@ -55,11 +55,6 @@ export function AiStudioScreen() {
             className={tab === item ? "active" : ""}
             onClick={() => setTab(item)}
           >
-            {item === "Profile builder" ? (
-              <Sparkles size={15} />
-            ) : (
-              <FileText size={15} />
-            )}{" "}
             {item}
           </button>
         ))}
@@ -109,13 +104,12 @@ export function AiStudioScreen() {
               onClick={generate}
               disabled={!skills.trim() || !projects.trim()}
             >
-              <Sparkles size={16} />
+              <Bot size={16} />
               Generate profile
             </Button>
           </section>
           <section className="panel generated-panel">
             <Badge tone="blue">
-              <Sparkles size={12} />
               AI GENERATED SUMMARY
             </Badge>
             {summary ? (
@@ -212,7 +206,7 @@ export function AiStudioScreen() {
                 setSelected(detectedSkills.flatMap((group) => group.items))
               }}
             >
-              Extract skills <Sparkles size={15} />
+              Extract skills
             </Button>
           </section>
           <section className="panel">
