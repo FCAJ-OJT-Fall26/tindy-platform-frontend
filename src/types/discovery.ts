@@ -32,6 +32,7 @@ export interface ProjectTeamMember {
 
 export interface DiscoveryProject {
   ruleMatch?: RuleMatch;
+  is_saved?: boolean;
   closingDate?: string;
   matchAvailable?: boolean;
   id: string;

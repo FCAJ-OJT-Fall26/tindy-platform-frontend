@@ -142,7 +142,7 @@ export function mapProjectDetailToUiProject(dto: ProjectDetailDto, existing?: Pr
     created: Date.parse(dto.created_at),
     closing: dto.closing_days_left ?? existing?.closing ?? 14,
     factors: existing?.factors ?? [0, 0, 0, 0, 0],
-    goals: dto.goals,
+    goals: dto.goals ?? existing?.goals ?? [],
     status: dto.status,
     gap: niceSkills,
   }

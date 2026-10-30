@@ -76,6 +76,76 @@ const EXPERIENCE_LEVELS = [
   "Advanced",
 ]
 
+interface DraftFields {
+  name?: string
+  tagline?: string
+  jd?: string
+  goals?: string
+  type?: string
+  hours?: number
+  durationMonths?: number
+  durationEdited?: boolean
+  capacity?: number
+  difficulty?: ProjectDifficultyLevel
+  positionsList?: FormPositionItem[]
+  wizardStep?: FormSection
+  deadlineMode?: DeadlineMode
+  deadlineDate?: string
+  deadlineEdited?: boolean
+}
+
+function hasDraftChanges(
+  draft: DraftFields | null | undefined,
+  detail: ProjectDetailDto | undefined,
+  project: Project | undefined,
+): boolean {
+  if (!draft || !detail) return false
+  if ((draft.name ?? '').trim() !== (detail.name ?? '').trim()) return true
+  if ((draft.tagline ?? '').trim() !== (detail.tagline ?? '').trim()) return true
+  if ((draft.jd ?? '').trim() !== (detail.description ?? '').trim()) return true
+  if (draft.type && draft.type !== detail.category) return true
+  if (typeof draft.hours === 'number' && draft.hours !== detail.expected_commitment_hours) return true
+  if (typeof draft.capacity === 'number' && draft.capacity !== detail.max_team_capacity) return true
+  if (draft.difficulty && draft.difficulty !== detail.difficulty_level) return true
+
+  const detailGoals = (detail.goals ?? []).join('\n').trim()
+  if ((draft.goals ?? '').trim() !== detailGoals) return true
+
+  if (draft.deadlineEdited && draft.deadlineDate && detail.recruitment_closing_date && draft.deadlineDate !== detail.recruitment_closing_date) {
+    return true
+  }
+
+  if (draft.durationEdited && typeof draft.durationMonths === 'number') {
+    const durMatch = detail.duration ? detail.duration.match(/\d+/) : null
+    const originalMonths = durMatch ? parseInt(durMatch[0], 10) : 3
+    if (draft.durationMonths !== originalMonths) return true
+  }
+
+  const draftPos = draft.positionsList ?? []
+  const detailPos = detail.positions ?? []
+  if (draftPos.length !== detailPos.length) return true
+
+  for (let i = 0; i < draftPos.length; i++) {
+    const dp = draftPos[i]
+    const sp = detailPos[i]
+    if (!dp || !sp) return true
+    if ((dp.title ?? '').trim() !== (sp.title ?? '').trim()) return true
+    if (dp.roleId !== sp.role_id) return true
+    if (dp.count !== sp.required_count) return true
+    if (dp.level !== sp.experience_level) return true
+
+    const dpReq = (dp.requiredSkills || []).map((s) => s.skill_id).sort().join(',')
+    const spReq = (sp.skills || []).filter((s) => s.is_required).map((s) => s.skill_id).sort().join(',')
+    if (dpReq !== spReq) return true
+
+    const dpNice = (dp.niceSkills || []).map((s) => s.skill_id).sort().join(',')
+    const spNice = (sp.skills || []).filter((s) => !s.is_required).map((s) => s.skill_id).sort().join(',')
+    if (dpNice !== spNice) return true
+  }
+
+  return false
+}
+
 export function ProjectForm({ mode, initialProject, initialDetail }: ProjectFormProps) {
   const isWizard = mode === "create"
   const navigate = useNavigate()
@@ -92,20 +162,20 @@ export function ProjectForm({ mode, initialProject, initialDetail }: ProjectForm
   const [stepErrors, setStepErrors] = useState<StepErrors>({})
 
   // Form fields
-  const [name, setName] = useState(restored?.fields.name ?? initialProject?.name ?? "")
-  const [tagline, setTagline] = useState(restored?.fields.tagline ?? initialProject?.tagline ?? "")
-  const [jd, setJd] = useState(restored?.fields.jd ?? initialProject?.description ?? "")
-  const [goals, setGoals] = useState(restored?.fields.goals ?? initialProject?.goals?.join("\n") ?? "")
-  const [type, setType] = useState(restored?.fields.type ?? initialProject?.type ?? "Web Application")
+  const [name, setName] = useState(restored?.fields.name ?? initialDetail?.name ?? initialProject?.name ?? "")
+  const [tagline, setTagline] = useState(restored?.fields.tagline ?? initialDetail?.tagline ?? initialProject?.tagline ?? "")
+  const [jd, setJd] = useState(restored?.fields.jd ?? initialDetail?.description ?? initialProject?.description ?? "")
+  const [goals, setGoals] = useState(restored?.fields.goals ?? initialDetail?.goals?.join("\n") ?? initialProject?.goals?.join("\n") ?? "")
+  const [type, setType] = useState(restored?.fields.type ?? initialDetail?.category ?? initialProject?.type ?? "Web Application")
   const parseInitialMonths = (durStr?: string): number => {
     if (!durStr) return 3
     const matched = durStr.match(/\d+/)
     return matched ? parseInt(matched[0], 10) : 3
   }
 
-  const [hours, setHours] = useState(restored?.fields.hours ?? initialProject?.hours ?? 10)
+  const [hours, setHours] = useState(restored?.fields.hours ?? initialDetail?.expected_commitment_hours ?? initialProject?.hours ?? 10)
   const [durationMonths, setDurationMonthsState] = useState<number>(() =>
-    restored?.fields.durationMonths ?? parseInitialMonths(initialProject?.duration),
+    restored?.fields.durationMonths ?? parseInitialMonths(initialDetail?.duration ?? initialProject?.duration),
   )
   const [durationChanged, setDurationChanged] = useState(restored?.fields.durationEdited ?? false)
   const setDurationMonths = (value: number) => { setDurationChanged(true); setDurationMonthsState(value) }
@@ -138,8 +208,11 @@ export function ProjectForm({ mode, initialProject, initialDetail }: ProjectForm
   const [catalogLoading, setCatalogLoading] = useState(true)
   const [catalogError, setCatalogError] = useState("")
   const [catalogVersion, setCatalogVersion] = useState(0)
+  const isDirtyRef = useRef(false)
+
   const persistDraft = () => {
     if (savedRef.current) return
+    if (mode === "edit" && !isDirtyRef.current) return
     try { sessionStorage.setItem(draftKey, JSON.stringify({ fields: { name, tagline, jd, goals, type, hours, durationMonths, durationEdited: durationChanged, capacity, difficulty, positionsList, wizardStep: activeSection, deadlineMode, deadlineDate, deadlineEdited }, progress: progressRef.current })) } catch {}
   }
   useEffect(() => { persistDraft() }, [name, tagline, jd, goals, type, hours, durationMonths, durationChanged, capacity, difficulty, positionsList, activeSection, deadlineMode, deadlineDate, deadlineEdited, today])
@@ -170,7 +243,19 @@ export function ProjectForm({ mode, initialProject, initialDetail }: ProjectForm
   } | null>(null)
 
   // Tracking dirty state
-  const [isDirty, setIsDirty] = useState(Boolean(restored))
+  const [isDirty, setIsDirty] = useState(() => {
+    if (mode === "create") {
+      return Boolean(restored?.fields.name || restored?.fields.jd || restored?.fields.positionsList?.length)
+    }
+    const hasChanges = hasDraftChanges(restored?.fields, initialDetail, initialProject)
+    if (!hasChanges && restored) {
+      try {
+        sessionStorage.removeItem(draftKey)
+      } catch {}
+    }
+    return hasChanges
+  })
+  isDirtyRef.current = isDirty
   const blocker = useBlocker(({ currentLocation, nextLocation }) => !savedRef.current && (isDirty || submittingRef.current) && currentLocation.pathname !== nextLocation.pathname)
   useEffect(() => {
     const beforeUnload = (event: BeforeUnloadEvent) => { if (isDirty || submittingRef.current) { event.preventDefault(); event.returnValue = "" } }
@@ -798,6 +883,7 @@ export function ProjectForm({ mode, initialProject, initialDetail }: ProjectForm
     if (isDirty) {
       setShowDiscardDialog(true)
     } else {
+      try { sessionStorage.removeItem(draftKey) } catch {}
       navigate("/leader")
     }
   }

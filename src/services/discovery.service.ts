@@ -37,7 +37,7 @@ export function mapDiscoveryCard(card: DiscoveryCardDto): DiscoveryProject {
     duration: card.duration, teamSize: card.current_team_size, maxTeamSize: card.max_team_capacity,
     teamMembers: [], goals: [], techStack: skills.map(s => s.name), leadName: card.leader.display_name,
     leadRole: "Project Leader", leadAvatar: card.leader.avatar_url ?? "", color: "blue", matchAvailable: true,
-    ruleMatch: card, closingDate: card.recruitment_closing_date,
+    ruleMatch: card, is_saved: card.is_saved, closingDate: card.recruitment_closing_date,
     match: { overall: card.match_score, verdict: "Rule-based match", factors: [],
       strongMatches: card.matched_skills.map(s => s.name), skillGaps: card.missing_skills.map(s => ({ skill: s.name, note: s.is_required ? "Required skill not matched" : "Optional skill not matched" })),
       explanationSummary: card.explanation },

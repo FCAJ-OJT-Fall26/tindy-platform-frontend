@@ -60,7 +60,7 @@ export default function LiveDiscoveryView() {
     if (direction === "right") { setApplying(item as DiscoveryProject); return false }
     const owner = actionScope.current
     setActionError("")
-    const wasSaved = isProjectSaved(item.id, (item as DiscoveryProject).ruleMatch?.is_saved)
+    const wasSaved = isProjectSaved(item.id, (item as DiscoveryProject).is_saved)
     try {
       if (direction === "left") await setDiscoveryFlag(item.id, "skipped", true)
       else await setProjectSaved(item.id, true)
@@ -119,11 +119,11 @@ export default function LiveDiscoveryView() {
       <ProjectDetailModal
         project={previewProject}
         isOpen={Boolean(previewProject)}
-        isSaved={isProjectSaved(previewProject.id, previewProject.ruleMatch?.is_saved)}
+        isSaved={isProjectSaved(previewProject.id, previewProject.is_saved)}
         isInterested={Boolean(reviewedApplications.has(previewProject.id))}
         onClose={() => setPreviewProject(null)}
         onToggleSave={async (projectId) => {
-          const isCurrentlySaved = isProjectSaved(projectId, previewProject.ruleMatch?.is_saved);
+          const isCurrentlySaved = isProjectSaved(projectId, previewProject.is_saved);
           await setProjectSaved(projectId, !isCurrentlySaved);
           notify(isCurrentlySaved ? "Project removed from saved." : "Project saved.");
         }}
