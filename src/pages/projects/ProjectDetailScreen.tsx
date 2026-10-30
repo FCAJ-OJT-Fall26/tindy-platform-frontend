@@ -121,55 +121,80 @@ export function ProjectDetailScreen() {
         <div className="detail-header-actions">
           <div className="detail-primary-actions">
             {isOwner ? (
-              <Link className="btn btn-primary" to={`/project/${project.id}/edit`}>
-                Manage your project <ArrowRight size={16} />
-              </Link>
+              <>
+                <Link className="btn btn-primary" to={`/project/${project.id}/edit`}>
+                  Manage project <ArrowRight size={16} />
+                </Link>
+                <Link className="btn btn-secondary" to={`/project/${project.id}/applications`}>
+                  <Users size={15} />
+                  Candidate pipeline
+                </Link>
+              </>
             ) : (
-              <Button disabled={!!blocked || applications.loading || !!applications.error} title={blocked ?? undefined} onClick={() => setInterestModal(true)}>
-                {sent ? (
-                  <>
-                    <Check size={16} />
-                    Application pending
-                  </>
-                ) : (
-                  <>
-                    Apply to Position <ArrowRight size={16} />
-                  </>
-                )}
-              </Button>
+              <>
+                <Button
+                  disabled={!!blocked || applications.loading || !!applications.error}
+                  title={blocked ?? undefined}
+                  onClick={() => setInterestModal(true)}
+                >
+                  {sent ? (
+                    <>
+                      <Check size={16} />
+                      Application pending
+                    </>
+                  ) : (
+                    <>
+                      Apply to Position <ArrowRight size={16} />
+                    </>
+                  )}
+                </Button>
+                <ProjectSaveButton
+                  saved={saved.includes(project.id)}
+                  onToggle={() => toggleSave(project.id)}
+                  variant="button"
+                  size={16}
+                  projectName={project.name}
+                />
+              </>
             )}
-            <ProjectSaveButton
-              saved={saved.includes(project.id)}
-              onToggle={() => toggleSave(project.id)}
-              variant="button"
-              size={16}
-              projectName={project.name}
-            />
           </div>
-          <div className="detail-sub-actions">
-            {blocked && !isOwner && <span>{blocked}</span>}
-            {Boolean(applications.error) && <p role="alert">Application status unavailable. <button onClick={applications.reload}>Retry</button></p>}
-            {actionError && <p role="alert">{actionError}</p>}
-            {isOwner && <Link className="text-link" to={`/project/${project.id}/applications`}>Manage Applications</Link>}
-            {sent && (
-              <span className="detail-status-pill">
-                <Clock size={11} />
-                Waiting for project leader
-              </span>
-            )}
-            <SkipActionButton
-              onClick={async () => {
-                try { await setDiscoveryFlag(project.id, "skipped", true); notify("Project skipped."); navigate("/discover") }
-                catch (error) { setActionError(projectErrorMessage(error)) }
-              }}
-              className="detail-skip-btn"
-              title="Skip recommendation"
-              ariaLabel="Skip for now"
-              showIcon={false}
-            >
-              Skip for now
-            </SkipActionButton>
-          </div>
+          {!isOwner && (
+            <div className="detail-sub-actions">
+              {Boolean(applications.error) && (
+                <p role="alert">
+                  Application status unavailable. <button onClick={applications.reload}>Retry</button>
+                </p>
+              )}
+              {actionError && <p role="alert">{actionError}</p>}
+              {sent ? (
+                <span className="detail-status-pill">
+                  <Clock size={11} />
+                  Waiting for leader review
+                </span>
+              ) : (
+                <>
+                  {blocked && <span className="detail-blocked-note">{blocked}</span>}
+                  <SkipActionButton
+                    onClick={async () => {
+                      try {
+                        await setDiscoveryFlag(project.id, "skipped", true);
+                        notify("Project skipped.");
+                        navigate("/discover");
+                      } catch (error) {
+                        setActionError(projectErrorMessage(error));
+                      }
+                    }}
+                    className="detail-skip-btn"
+                    title="Skip recommendation"
+                    ariaLabel="Skip for now"
+                    showIcon={false}
+                  >
+                    Skip for now
+                  </SkipActionButton>
+                </>
+              )}
+            </div>
+          )}
         </div>
       </div>
       <div className="detail-layout">

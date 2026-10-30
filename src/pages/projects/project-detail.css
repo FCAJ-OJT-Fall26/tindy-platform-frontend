@@ -42,3 +42,11 @@
   .project-detail-page .position-card > .section-heading { align-items: flex-start; gap: 10px; }
   .project-detail-page .position-card h3 { font-size: 14px; }
 }
+
+.project-detail-page .detail-blocked-note {
+  font-size: 11px;
+  color: #64748b;
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+}
