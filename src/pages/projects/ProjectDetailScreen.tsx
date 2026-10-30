@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react"
-import { Link, useParams } from "react-router"
+import { Link, useLocation, useNavigate, useParams } from "react-router"
 import {
   ArrowLeft,
   ArrowRight,
@@ -25,6 +25,14 @@ import type { ProjectDetailDto } from "../../types/project"
 import { useExplanation } from "../../utils/useExplanation"
 import useRemoteResource from "../../hooks/useRemoteResource"
 import { projectErrorMessage } from "../../services/projectEditor.service"
+import ApplyModal from "../../components/projects/ApplyModal"
+import useMyApplications from "../../hooks/useMyApplications"
+import { applicationBlocker } from "../../types/application"
+import { setDiscoveryFlag } from "../../services/discovery.service"
+import { formatClosingDate } from "../../services/recruitmentDeadline"
+import RuleMatchPanel from "../../components/discovery/RuleMatchPanel"
+import type { RuleMatch } from "../../types/discovery"
+import "./project-detail.css"
 
 function SectionHeading({
   title,
@@ -43,6 +51,10 @@ function SectionHeading({
 
 export function ProjectDetailScreen() {
   const { id } = useParams()
+  const navigate = useNavigate()
+  const location = useLocation()
+  const applications = useMyApplications()
+  const [actionError, setActionError] = useState("")
   const {
     authUser,
     setProjects,
@@ -55,11 +67,12 @@ export function ProjectDetailScreen() {
     active,
   } = useTindy()
   const load = useCallback((signal: AbortSignal) => getProjectByIdApi(id ?? "", signal), [id])
-  const resource = useRemoteResource(id ?? null, load)
+  const resource = useRemoteResource(id && authUser ? `${authUser.user_id}:${id}` : null, load)
   const remoteDetail = resource.data
   const explanation = useExplanation()
   const [interestModal, setInterestModal] = useState(false)
   const [showPositionManager, setShowPositionManager] = useState(false)
+  const [matchDetailsOpen, setMatchDetailsOpen] = useState(false)
 
   useEffect(() => {
     if (!remoteDetail) return
@@ -71,10 +84,12 @@ export function ProjectDetailScreen() {
   if (resource.error) return <div className="info-banner" role="alert">{projectErrorMessage(resource.error)} <button onClick={resource.reload}>Retry</button> <Link to="/projects">Back to projects</Link></div>
   if (!remoteDetail) return null
   const project = mapProjectDetailToUiProject(remoteDetail)
-  const sent = interested.includes(project.id)
+  const sent = applications.data?.some(a => a.project_id === project.id && a.status === "pending") ?? false
+  const blocked = applicationBlocker(remoteDetail, authUser?.user_id ?? "", applications.data ?? [])
+  const fromFeed: RuleMatch | null = location.state?.matchOwner === authUser?.user_id ? location.state?.match ?? null : null
   const isOwner = remoteDetail.leader.user_id === authUser?.user_id
   return (
-    <>
+    <section className="project-detail-page">
       <Link className="back-link" to="/discover">
         <ArrowLeft size={14} />
         Back to projects
@@ -110,15 +125,15 @@ export function ProjectDetailScreen() {
                 Manage your project <ArrowRight size={16} />
               </Link>
             ) : (
-              <Button disabled={sent} onClick={() => setInterestModal(true)}>
+              <Button disabled={!!blocked || applications.loading || !!applications.error} title={blocked ?? undefined} onClick={() => setInterestModal(true)}>
                 {sent ? (
                   <>
                     <Check size={16} />
-                    Interest sent
+                    Application pending
                   </>
                 ) : (
                   <>
-                    Interested <ArrowRight size={16} />
+                    Apply to Position <ArrowRight size={16} />
                   </>
                 )}
               </Button>
@@ -132,6 +147,10 @@ export function ProjectDetailScreen() {
             />
           </div>
           <div className="detail-sub-actions">
+            {blocked && !isOwner && <span>{blocked}</span>}
+            {Boolean(applications.error) && <p role="alert">Application status unavailable. <button onClick={applications.reload}>Retry</button></p>}
+            {actionError && <p role="alert">{actionError}</p>}
+            {isOwner && <Link className="text-link" to={`/project/${project.id}/applications`}>Manage Applications</Link>}
             {sent && (
               <span className="detail-status-pill">
                 <Clock size={11} />
@@ -139,10 +158,9 @@ export function ProjectDetailScreen() {
               </span>
             )}
             <SkipActionButton
-              onClick={() => {
-                setSkipped((old) => [...old, project.id])
-                notify("Project skipped — removed from recommendations")
-                window.history.back()
+              onClick={async () => {
+                try { await setDiscoveryFlag(project.id, "skipped", true); notify("Project skipped."); navigate("/discover") }
+                catch (error) { setActionError(projectErrorMessage(error)) }
               }}
               className="detail-skip-btn"
               title="Skip recommendation"
@@ -292,39 +310,13 @@ export function ProjectDetailScreen() {
               : <p>No active members.</p>}
           </section>
         </div>
-        <aside>
-          <section className="panel detail-match">
+        <aside className="project-detail-sidebar">
+          {fromFeed ? <RuleMatchPanel variant="sidebar" match={fromFeed} projectName={project.name} onExplain={() => setMatchDetailsOpen(true)} /> : <section className="panel detail-match">
             <div className="insight-label">
-              <Sparkles size={14} /> AI RECOMMENDED
+              POSITION MATCH
             </div>
-            <Score project={project} />
-            <div className="quick-matches">
-              <p>
-                <Check size={14} />
-                Your technical skills align
-              </p>
-              <p>
-                <Check size={14} />
-                Relevant project experience
-              </p>
-              <p>
-                <Clock size={14} />
-                {project.hours <= 10
-                  ? "Fits your weekly availability"
-                  : "May need extra weekly availability"}
-              </p>
-            </div>
-            <Button
-              variant="secondary"
-              className="full"
-              onClick={() => explanation.open(project)}
-            >
-              Why this matches you <ArrowRight size={14} />
-            </Button>
-            <small className="evidence-caption">
-              Weighted factors. Transparent reasoning.
-            </small>
-          </section>
+            <p>See your current rule-based match and explanation in Discovery.</p><Link className="btn btn-secondary" to="/discover">Open Discovery</Link>
+          </section>}
           <section className="panel commitment-panel">
             <h3>At a glance</h3>
             <div>
@@ -351,7 +343,7 @@ export function ProjectDetailScreen() {
                 Community<strong>First Cloud AI Journey</strong>
               </span>
             </div>
-            <p>Recruitment closes in {project.closing} days</p>
+            <p>Recruitment {remoteDetail.is_recruitment_open ? "closes" : "closed"} on {formatClosingDate(remoteDetail.recruitment_closing_date)} (Vietnam time)</p>
           </section>
           {active.includes(project.id) && (
             <Link className="btn btn-primary full" to="/team">
@@ -361,40 +353,10 @@ export function ProjectDetailScreen() {
         </aside>
       </div>
       {explanation.element}
-      {interestModal && (
-        <Modal title="Project interest" onClose={() => setInterestModal(false)}>
-          <span className="icon-tile teal">
-            <FolderKanban size={23} />
-          </span>
-          <h2>Interested in this project?</h2>
-          <p>
-            The project leader will be able to review your profile, skills, and
-            availability. Your interest starts a conversation — it’s not a
-            commitment.
-          </p>
-          <div className="interest-preview">
-            <Avatar name={project.leader} color={project.color} />
-            <div>
-              <strong>{project.name}</strong>
-              <small>{project.leader} · Project leader</small>
-            </div>
-          </div>
-          <div className="modal-actions">
-            <Button variant="secondary" onClick={() => setInterestModal(false)}>
-              Cancel
-            </Button>
-            <Button
-              onClick={() => {
-                setInterested((old) => [...new Set([...old, project.id])])
-                setInterestModal(false)
-                notify("Interest saved locally. Project applications are not available yet.")
-              }}
-            >
-              Send interest <ArrowRight size={16} />
-            </Button>
-          </div>
-        </Modal>
-      )}
+      {fromFeed && matchDetailsOpen && <Modal title="Why this matches" className="rule-match-dialog" onClose={() => setMatchDetailsOpen(false)}><RuleMatchPanel match={fromFeed} projectName={project.name} /></Modal>}
+      {interestModal && <ApplyModal projectId={project.id} onClose={() => setInterestModal(false)} onConfirmed={application => {
+        setInterestModal(false); applications.reload(); resource.reload(); notify(`Application confirmed: ${application.status}.`)
+      }} />}
       {showPositionManager && (
         <LeaderPositionManagerModal
           projectId={project.id}
@@ -404,7 +366,7 @@ export function ProjectDetailScreen() {
           onPositionsChanged={resource.reload}
         />
       )}
-    </>
+    </section>
   )
 }
 export { ProjectDetailScreen as ProjectDetail }

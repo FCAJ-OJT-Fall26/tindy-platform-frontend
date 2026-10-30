@@ -1,0 +1,161 @@
+/* Live Project Discovery only. Keep the mock teammate presentation independent. */
+.live-discovery {
+  --discovery-ink: #17243b;
+  --discovery-muted: #718198;
+  --discovery-border: #dfe7f1;
+  --discovery-green: #059669;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  min-width: 0;
+  padding-bottom: 48px;
+  color: var(--discovery-ink);
+}
+
+.live-discovery button, .live-discovery a { -webkit-tap-highlight-color: transparent; }
+.live-discovery button:focus-visible, .live-discovery a:focus-visible { outline: 3px solid #a5b4fc; outline-offset: 3px; }
+.live-discovery__header { display: flex; align-items: center; justify-content: space-between; gap: 24px; padding: 24px; background: #fff; border: 1px solid var(--discovery-border); border-radius: 16px; }
+.live-discovery__header h1 { margin: 10px 0 7px; font-size: clamp(22px, 2vw, 29px); font-weight: 750; line-height: 1.22; letter-spacing: -.9px; }
+.live-discovery__header p { margin: 0; color: var(--discovery-muted); font-size: 13px; line-height: 1.6; }
+.live-discovery__pill { display: inline-flex; align-items: center; gap: 5px; padding: 5px 8px; border: 1px solid #dce5f1; border-radius: 5px; background: #f3f6fb; color: #34445e; font-size: 9px; font-weight: 750; line-height: 1.25; letter-spacing: .6px; text-transform: uppercase; }
+.live-discovery__header-actions { display: flex; flex-direction: column; align-items: flex-end; gap: 10px; flex-shrink: 0; }
+.live-discovery__header-actions .discovery-segmented-indicator { display: none; }
+.live-discovery__header-actions .discovery-segmented-btn { padding: 11px 14px; font-size: 13px; font-weight: 600; }
+.live-discovery__header-actions .discovery-segmented-btn[aria-selected="true"] { border-radius: 7px; background: #17243b; color: #fff; box-shadow: 0 1px 3px #17243b26; }
+.live-discovery__refresh { display: inline-flex; align-items: center; gap: 6px; padding: 4px; background: none; border: 0; color: #64748b; font-size: 12px; cursor: pointer; }
+.live-discovery__refresh:hover { color: #243ca2; }
+.live-discovery__layout { display: grid; grid-template-columns: minmax(0, 1fr); gap: 24px; align-items: start; }
+.live-discovery__filter-column { display: none; min-width: 0; }
+.live-discovery__filter-column.is-open { display: block; }
+.live-discovery__eyebrow { display: block; color: #77869e; font-size: 10px; font-weight: 750; line-height: 1.5; letter-spacing: .5px; }
+.live-discovery__muted { color: var(--discovery-muted); font-size: 12px; }
+.live-discovery__filters, .live-match-inspector, .live-discovery__inspector-empty { background: #fff; border: 1px solid var(--discovery-border); border-radius: 13px; box-shadow: 0 2px 3px #17243b03; }
+.live-discovery__filters { padding: 22px 18px; }
+.live-discovery__filter-heading { margin-bottom: 25px; }
+.live-discovery__filter-heading h2 { margin: 7px 0 5px; font-size: 19px; font-weight: 700; letter-spacing: -.4px; }
+.live-discovery__filter-heading p { margin: 0; font-size: 12px; line-height: 1.65; color: var(--discovery-muted); }
+.live-discovery__filters .field-group { display: flex; flex-direction: column; gap: 8px; margin: 0 0 21px; font-size: 10px; font-weight: 750; text-transform: uppercase; color: #5e6f8b; letter-spacing: .35px; }
+.live-discovery__filters .field-select { width: 100%; min-width: 0; height: 43px; padding: 0 11px; border: 1px solid #dce4ef; border-radius: 7px; background: #f8fafd; color: #263750; font-size: 13px; font-weight: 450; letter-spacing: 0; text-transform: none; }
+.live-discovery__filters .field-select:focus { border-color: #9aabd2; outline: 2px solid #e4eafa; }
+.live-discovery__reset, .live-discovery__saved-link { display: flex; justify-content: center; align-items: center; gap: 7px; width: 100%; padding: 11px 7px; border: 1px solid var(--discovery-border); border-radius: 7px; background: #fff; color: #415775; font-size: 12px; text-decoration: none; cursor: pointer; }
+.live-discovery__reset:hover, .live-discovery__saved-link:hover { background: #f6f8fd; border-color: #b6c5df; }
+.live-discovery__session { margin: 24px 0 18px; padding-top: 20px; border-top: 1px solid #edf1f6; }
+.live-discovery__session dl { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin: 10px 0 0; }
+.live-discovery__session dl div { padding: 10px; border: 1px solid #e4ebf4; border-radius: 6px; background: #f8fafd; }
+.live-discovery__session dt { color: var(--discovery-muted); font-size: 10px; }
+.live-discovery__session dd { margin: 4px 0 0; font-size: 16px; font-weight: 650; font-variant-numeric: tabular-nums; }
+.live-discovery__saved-link { border: 0; padding-bottom: 1px; font-weight: 550; }
+.live-discovery__feed { min-width: 0; display: flex; flex-direction: column; align-items: stretch; gap: 16px; }
+.live-discovery .live-discovery__stack { width: 100%; max-width: 580px; }
+.live-discovery .live-discovery__card-frame { height: 650px; min-height: 650px; }
+.live-discovery__inspector { display: none; min-width: 0; }
+.live-discovery__inspector-empty { padding: 28px 22px; text-align: center; color: var(--discovery-muted); }
+.live-discovery__inspector-empty svg { margin: 0 auto 12px; color: #96a7c2; }
+.live-discovery__inspector-empty h2 { font-size: 15px; color: #415775; margin-bottom: 8px; }
+.live-discovery__inspector-empty p { font-size: 12px; line-height: 1.7; }
+.live-discovery__mobile-tools { display: flex; gap: 10px; }
+.live-discovery__mobile-tools button { display: flex; align-items: center; justify-content: center; gap: 7px; flex: 1; padding: 11px 8px; border: 1px solid var(--discovery-border); border-radius: 8px; background: #fff; font-size: 12px; color: #415775; cursor: pointer; }
+.live-discovery__mobile-tools button:disabled { opacity: .5; cursor: default; }
+.live-discovery__mobile-tools button span { padding: 0 5px; border-radius: 4px; background: #eef2ff; color: #304fc5; }
+
+.live-project-card { display: flex; flex-direction: column; height: 100%; background: #fff; color: var(--discovery-ink); }
+.live-project-card__top { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 13px 20px; border-bottom: 1px solid #e7edf5; }
+.live-project-card__top .live-discovery__pill { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 68%; }
+.live-project-card__team { display: inline-flex; align-items: center; gap: 4px; font-size: 10px; color: #74839b; white-space: nowrap; }
+.live-project-card__team strong { color: #415775; font-weight: 600; }
+.live-project-card__body { display: flex; flex: 1; flex-direction: column; gap: 22px; min-height: 0; padding: 23px; overflow-y: auto; scrollbar-width: thin; }
+.live-project-card__intro h3 { margin: 0; color: #17243b; font-size: 23px; font-weight: 750; line-height: 1.3; letter-spacing: -.65px; }
+.live-project-card__tagline { margin: 7px 0 0; color: #435571; font-size: 13px; font-weight: 550; line-height: 1.65; }
+.live-project-card__description { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; margin: 8px 0 0; color: #6c7d96; font-size: 13px; line-height: 1.8; }
+.live-project-card__match { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px; border: 1px solid #dfe8f4; border-radius: 11px; background: #f8fafd; }
+.live-project-card__match-label { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.live-project-card__match-label > div:last-child strong, .live-project-card__match-label > div:last-child span { display: block; }
+.live-project-card__match-label > div:last-child strong { color: #087b5c; font-size: 13px; font-weight: 700; }
+.live-project-card__match-label > div:last-child span { margin-top: 4px; color: #7a8ba4; font-size: 10px; }
+.live-project-card__match button { display: inline-flex; align-items: center; justify-content: center; gap: 4px; padding: 9px 10px; border: 1px solid #dce4ef; border-radius: 7px; background: #fff; color: #263750; font-size: 11px; font-weight: 550; cursor: pointer; }
+.live-project-card__match button:hover { background: #f1f5fb; }
+.live-project-card__position { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.live-project-card__position strong { display: flex; align-items: center; gap: 7px; margin-top: 6px; font-size: 15px; font-weight: 650; line-height: 1.4; }
+.live-project-card__position strong svg { flex-shrink: 0; color: #7487a4; }
+.live-project-card__slots { padding: 5px 8px; border: 1px solid #d9ebe3; border-radius: 5px; background: #f2faf7; color: #14815f; font-size: 10px; font-weight: 600; white-space: nowrap; }
+.live-project-card__skills > div { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 8px; }
+.live-project-card__skill { display: inline-flex; align-items: center; gap: 6px; padding: 5px 8px; border: 1px solid #dfe6f0; border-radius: 5px; background: #f6f8fc; color: #52637e; font-size: 11px; font-weight: 550; }
+.live-project-card__skill.is-matched { color: #fff; background: #17243b; border-color: #17243b; }
+.live-project-card__skills p { margin: 9px 0 0; color: #8190a5; font-size: 11px; line-height: 1.65; }
+.live-project-card__bottom { margin-top: auto; padding-top: 15px; border-top: 1px solid #edf1f6; }
+.live-project-card__meta { display: flex; align-items: center; justify-content: space-between; gap: 12px; color: #52637e; font-size: 12px; }
+.live-project-card__meta span:first-child { display: inline-flex; align-items: center; gap: 6px; color: #263750; font-weight: 550; }
+.live-project-card__meta svg { color: #8b9bb3; }
+.live-project-card__deadline { display: flex; align-items: center; flex-wrap: wrap; gap: 5px; margin: 10px 0 0; color: #73849d; font-size: 10px; }
+.live-project-card__deadline span { color: #96a2b4; }
+.live-project-card__footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; padding: 14px 20px; border: 0; border-top: 1px solid #e4ebf5; background: #f8fafd; color: #8190a5; text-align: left; font-size: 10px; cursor: pointer; }
+.live-project-card__footer strong { display: flex; align-items: center; gap: 5px; color: #263750; white-space: nowrap; font-size: 11px; font-weight: 650; }
+.live-project-card__footer:hover { background: #f0f4fa; }
+
+.live-discovery .live-discovery__actions { gap: 10px; padding: 0; margin-top: 22px; }
+.live-discovery__actions > button { height: 46px; min-height: 46px; border-radius: 9px; font-size: 13px; }
+.live-discovery__actions > button:first-child { width: 42px; flex: 0 0 42px; }
+.live-discovery__actions .skip-micro-btn { background: #fff; border-color: #e4cbd1; color: #be5268; }
+.live-discovery__actions .star-micro-btn { width: auto; min-width: 80px; padding: 0 12px; gap: 7px; background: #fff; border-color: #cde0ee; color: #4b82a5; }
+.live-discovery__actions .interested-micro-btn { max-width: 170px; background: #ecfdf5; border-color: #72d3b2; color: #047858; }
+.live-discovery__actions .interested-micro-btn:hover { background: #d1fae5; }
+
+@media (min-width: 960px) {
+  .live-discovery__layout { grid-template-columns: 210px minmax(0, 1fr); gap: 24px; }
+  .live-discovery__filter-column { display: block; }
+  .live-discovery__inspector { display: block; grid-column: 2; }
+  .live-discovery__mobile-tools { display: none; }
+}
+
+@media (min-width: 1280px) {
+  .live-discovery__layout { grid-template-columns: minmax(200px, 240px) minmax(0, 1fr) minmax(240px, 280px); gap: 24px; }
+  .live-discovery__inspector { grid-column: auto; }
+}
+
+@media (max-width: 1100px) {
+  .live-discovery__header { flex-wrap: wrap; gap: 18px; }
+  .live-discovery__header-actions { width: 100%; flex-direction: row; justify-content: space-between; align-items: center; }
+}
+
+@media (max-width: 600px) {
+  .live-discovery { gap: 17px; padding-bottom: 55px; }
+  .live-discovery__header { padding: 20px 17px; gap: 16px; }
+  .live-discovery__header h1 { font-size: 24px; margin-top: 11px; }
+  .live-discovery__header p { font-size: 12px; }
+  .live-discovery__header-actions { flex-wrap: wrap; gap: 10px; }
+  .live-discovery__header-actions .discovery-segmented-control { width: 100%; }
+  .live-discovery__header-actions .discovery-segmented-btn { flex: 1; min-width: 0; padding: 10px 6px; font-size: 12px; }
+  .live-discovery__header-actions .live-discovery__refresh { margin-left: auto; }
+  .live-discovery__layout { gap: 18px; }
+  .live-discovery .live-discovery__card-frame { height: 630px; min-height: 630px; }
+  .live-project-card__top { padding: 12px 15px; }
+  .live-project-card__team { font-size: 9px; }
+  .live-project-card__team strong { font-size: 11px; }
+  .live-project-card__body { padding: 20px 16px; gap: 20px; }
+  .live-project-card__intro h3 { font-size: 20px; }
+  .live-project-card__tagline, .live-project-card__description { font-size: 12px; }
+  .live-project-card__match { padding: 12px 10px; gap: 7px; }
+  .live-project-card__match-label { gap: 7px; }
+  .live-project-card__match-label > div:last-child strong { font-size: 11px; }
+  .live-project-card__match-label > div:last-child span { max-width: 85px; font-size: 9px; line-height: 1.5; }
+  .live-project-card__match button { max-width: 100px; padding: 8px; font-size: 10px; line-height: 1.5; }
+  .live-project-card__match .rule-match-ring { flex-basis: 48px; height: 48px; width: 48px; }
+  .live-project-card__position strong { font-size: 13px; }
+  .live-project-card__footer { padding: 13px 15px; }
+  .live-project-card__footer > span { max-width: 160px; font-size: 9px; line-height: 1.6; }
+  /* Leave room for the existing fixed scroll-to-top control, beside Apply. */
+  .live-discovery .live-discovery__actions { gap: 7px; padding-right: 44px; }
+  .live-discovery__actions .star-micro-btn { min-width: 70px; padding: 0 9px; }
+}
+
+@media (max-width: 380px) {
+  .live-discovery__actions > button { font-size: 12px; }
+  .live-discovery__actions > button:first-child { width: 34px; flex-basis: 34px; }
+  .live-discovery__actions .star-micro-btn { min-width: 40px; width: 40px; padding: 0; }
+  .live-discovery__actions .star-micro-btn > span:last-child { display: none; }
+  .live-discovery__actions .interested-micro-btn { min-width: 80px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .live-discovery .rule-match-ring__value, .live-discovery .live-match-inspector__track > span { transition: none; }
+}

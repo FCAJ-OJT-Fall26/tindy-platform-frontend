@@ -196,6 +196,22 @@ try {
   await writeFile('.tmp-project-results/project-wizard-mobile.png', Buffer.from(wizardShot.data, 'base64'))
   await send("Emulation.setDeviceMetricsOverride", { width: 1440, height: 1080, deviceScaleFactor: 1, mobile: false })
   pass("Refresh restores the current creation step; preview remains available and the mobile wizard fits the viewport")
+  const dateChecks = await evaluate(`(async () => { const dates = await import('/src/services/recruitmentDeadline.ts'); return { today: dates.vietnamDate(), tomorrow: dates.addCalendarDays(dates.vietnamDate(),1), before: dates.vietnamDate(new Date('2026-10-30T16:59:59Z')), after: dates.vietnamDate(new Date('2026-10-30T17:00:00Z')), invalid: dates.validFutureDate('2026-02-30','2026-01-01') }; })()`)
+  assert.equal(dateChecks.before, "2026-10-30"); assert.equal(dateChecks.after, "2026-10-31"); assert.equal(dateChecks.invalid, false)
+  for (const days of [7, 14, 30]) {
+    await setValue('#recruitment-deadline-mode', String(days))
+    assert.equal(await evaluate(`document.querySelector('.project-review-summary').textContent.includes(new Intl.DateTimeFormat('en',{year:'numeric',month:'long',day:'numeric',timeZone:'UTC'}).format(new Date(Date.parse(${JSON.stringify(dateChecks.today)}+'T00:00:00Z')+${days}*86400000)))`), true)
+  }
+  await setValue('#recruitment-deadline-mode', 'custom')
+  await setValue('#recruitment-closing-date', dateChecks.today)
+  await click('.submit-btn'); await wait("Boolean(document.querySelector('#project-error-deadline'))")
+  assert.equal(await evaluate("Boolean(document.querySelector('#save-dialog-title'))"), false)
+  await setValue('#recruitment-closing-date', dateChecks.tomorrow)
+  await visit('/create-project'); await wait("Boolean(document.querySelector('#recruitment-closing-date'))")
+  assert.equal(await evaluate("document.querySelector('#recruitment-closing-date').value"), dateChecks.tomorrow)
+  assert.equal(await evaluate("document.querySelector('#recruitment-closing-date').min"), dateChecks.tomorrow)
+  await setValue('#recruitment-deadline-mode', '14')
+  pass("Vietnam midnight conversion, 7/14/30 presets, future-only custom validation and deadline draft restoration")
   await reset()
   await draft()
   await visit("/create-project")
@@ -223,6 +239,9 @@ try {
   assert.equal(created.positions[0].description, "Develop REST APIs")
   assert.equal(created.positions[0].role_id, ROLE)
   assert.equal(created.positions[0].skills[0].skill_id, SKILL)
+  const creationRequest = fixtureState.requests.filter(request => request.method === 'POST' && request.path === '/api/projects').at(-1).body
+  assert.match(creationRequest.recruitment_closing_date, /^\d{4}-\d{2}-\d{2}$/)
+  assert.equal('recruitment_closing_days' in creationRequest, false)
   pass("Create retry after explicit rejection saves real UUID, catalog IDs, one Leader and Position description")
 
   await draft({ ...draftFields, positionsList: [{ ...draftPosition, roleId: "99999999-9999-4999-8999-999999999999" }] })

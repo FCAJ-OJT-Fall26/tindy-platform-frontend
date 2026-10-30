@@ -20,12 +20,13 @@ import { Brand } from "../ui"
 import { useTindy } from "../../store"
 
 export const navItems = [
-  { to: "/", label: "Dashboard", icon: LayoutDashboard },
-  { to: "/discover", label: "Discover Projects", icon: Compass },
-  { to: "/projects", label: "My Projects", icon: FolderKanban },
-  { to: "/candidates", label: "Candidates", icon: Users },
-  { to: "/messages", label: "Messages", icon: MessageSquare },
-  { to: "/notifications", label: "Notifications", icon: Bell },
+  { to: "/", label: "Dashboard", icon: LayoutDashboard, preview: false },
+  { to: "/discover", label: "Discover Projects", icon: Compass, preview: false },
+  { to: "/projects", label: "My Projects", icon: FolderKanban, preview: false },
+  { to: "/candidates", label: "Candidates", icon: Users, preview: true },
+  { to: "/messages", label: "Messages", icon: MessageSquare, preview: true },
+  { to: "/notifications", label: "Notifications", icon: Bell, preview: true },
+  { to: "/team", label: "Team Workspace", icon: Users, preview: true },
 ]
 
 interface SidebarProps {
@@ -34,7 +35,7 @@ interface SidebarProps {
 }
 
 export default function Sidebar({ mobile, onClose }: SidebarProps) {
-  const { logout, loggingOut } = useTindy()
+  const { read, logout, loggingOut } = useTindy()
   const location = useLocation()
   const navigate = useNavigate()
 
@@ -133,6 +134,13 @@ export default function Sidebar({ mobile, onClose }: SidebarProps) {
             >
               <item.icon size={18} />
               <span>{item.label}</span>
+              {item.preview && <span className="beta">DEMO</span>}
+              {item.label === "Messages" && (
+                <span className="nav-count">2</span>
+              )}
+              {item.label === "Notifications" && read.length < 4 && (
+                <span className="nav-dot" />
+              )}
             </NavLink>
           ))}
         </nav>

@@ -5,7 +5,7 @@
 
 export type ProjectDifficultyLevel = "beginner_friendly" | "intermediate" | "advanced"
 
-export type ProjectStatus = "recruiting" | "in_progress" | "completed" | "archived"
+export type ProjectStatus = "draft" | "recruiting" | "in_progress" | "completed" | "archived"
 
 export type PositionStatus = "open" | "filled" | "closed"
 
@@ -13,7 +13,7 @@ export interface ProjectLeaderSummary {
   user_id: string
   display_name: string
   avatar_url?: string | null
-  initials?: string
+  initials?: string | null
 }
 
 export interface ProjectTeamMemberDto {
@@ -54,7 +54,13 @@ export interface OpenPositionSummaryDto {
   nice_to_have_skills: string[]
 }
 
-export interface ProjectSummaryDto {
+export interface RecruitmentDeadlineDto {
+  recruitment_closing_date: string
+  recruitment_closes_at: string
+  is_recruitment_open: boolean
+}
+
+export interface ProjectSummaryDto extends RecruitmentDeadlineDto {
   project_id: string
   name: string
   tagline?: string | null
@@ -87,7 +93,7 @@ export interface PagedProjectsResponse {
   pagination: PaginationMeta
 }
 
-export interface ProjectDetailDto {
+export interface ProjectDetailDto extends RecruitmentDeadlineDto {
   project_id: string
   name: string
   tagline?: string | null
@@ -134,12 +140,13 @@ export interface CreateProjectRequest {
   initial_team_size: number
   max_team_capacity: number
   color_theme?: string
-  recruitment_closing_days?: number
+  recruitment_closing_date?: string
   goals: string[]
   positions: CreateProjectPositionInput[]
 }
 
-export interface CreateProjectResponse {
+export interface CreateProjectResponse extends RecruitmentDeadlineDto {
+  closing_days_left: number
   project_id: string
   name: string
   tagline?: string | null
@@ -153,6 +160,7 @@ export interface CreateProjectResponse {
 }
 
 export interface UpdateProjectRequest {
+  recruitment_closing_date?: string
   name: string
   tagline?: string
   description: string

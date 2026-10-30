@@ -1,4 +1,8 @@
 export type Project = {
+  recruitmentClosingDate?: string
+  recruitmentClosesAt?: string
+  isRecruitmentOpen?: boolean
+  serverMatch?: import("./types/discovery").RuleMatch
   id: string
   name: string
   tagline?: string

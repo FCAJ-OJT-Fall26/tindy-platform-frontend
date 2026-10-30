@@ -114,7 +114,7 @@ try {
     } else if (message.method === "Fetch.requestPaused") {
       const { requestId, request } = message.params
       const url = new URL(request.url)
-      let responseBody = projectApiFixture(url.pathname)
+      let responseBody = projectApiFixture(url.pathname, request.method)
       if (url.pathname === "/api/me") {
         responseBody = { success: true, message: "OK", data: user }
       }
@@ -129,9 +129,9 @@ try {
             { name: "Content-Type", value: "application/json" },
           ],
           body: Buffer.from(JSON.stringify(responseBody)).toString("base64"),
-        })
+        }).catch(error => { if (!error.message.includes('Invalid InterceptionId')) throw error })
       } else {
-        await send("Fetch.continueRequest", { requestId })
+        await send("Fetch.continueRequest", { requestId }).catch(error => { if (!error.message.includes('Invalid InterceptionId')) throw error })
       }
     } else if (message.method === "Runtime.exceptionThrown") {
       pageErrors.push(message.params.exceptionDetails)
@@ -299,8 +299,11 @@ try {
 
   // Test 6: ProjectCard Icon Variant (Overview / Dashboard / Interests)
   await delay(650)
-  await send("Page.navigate", { url: `${origin}/interests` })
+  await send("Page.navigate", { url: `${origin}/` })
   await waitForBrowser(evalInBrowser, "Boolean(document.querySelector('.project-save-icon-btn'))")
+  await evalInBrowser("(() => { const button=document.querySelector('.project-save-icon-btn');if(button.getAttribute('aria-pressed')==='true') button.click(); })()")
+  await waitForBrowser(evalInBrowser, "document.querySelector('.project-save-icon-btn')?.getAttribute('aria-pressed')==='false'")
+  await delay(650)
 
   const iconCardState = await evalInBrowser(`
     (() => {

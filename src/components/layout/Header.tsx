@@ -149,6 +149,7 @@ export default function Header({ title, onOpenMobileMenu }: HeaderProps) {
           to="/notifications"
           className="icon-button bell-link"
           aria-label="Notifications"
+          title="Notifications — Demo preview"
         >
           <Bell size={19} />
           {read.length < 4 && <i />}

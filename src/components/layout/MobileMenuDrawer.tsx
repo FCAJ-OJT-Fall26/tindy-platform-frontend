@@ -56,6 +56,7 @@ export default function MobileMenuDrawer({ isOpen, onClose }: MobileMenuDrawerPr
             >
               <item.icon size={17} />
               <span>{item.label}</span>
+              {item.preview && <span className="ml-auto text-[9px] font-bold text-slate-500">DEMO</span>}
             </NavLink>
           ))}
           <div className="pt-2">

@@ -1,5 +1,7 @@
 import { createBrowserRouter, RouterProvider, Navigate } from "react-router"
+import type { ReactNode } from "react"
 import { TindyProvider } from "./store"
+import ProjectApplicationsScreen from "./pages/leader/ProjectApplicationsScreen"
 import { Layout } from "./components/layout"
 import RequireAuth from "./components/auth/RequireAuth"
 import OAuthCallbackScreen from "./pages/auth/OAuthCallbackScreen"
@@ -26,6 +28,10 @@ import {
   TermsOfService,
 } from "./pages"
 
+function DemoPreview({ children }: { children: ReactNode }) {
+  return <><div className="info-banner" role="note">Demo preview — sample data and interactions. This workflow is not connected to the backend yet.</div>{children}</>
+}
+
 const router = createBrowserRouter([
   {
     element: <Layout />,
@@ -38,8 +44,8 @@ const router = createBrowserRouter([
           { path: "interests", element: <Navigate to="/projects?tab=Interested" replace /> },
           { path: "saved", element: <Navigate to="/projects?tab=Saved" replace /> },
           { path: "projects", Component: MyProjects },
-          { path: "candidates", Component: Candidates },
-          { path: "candidate/:id", Component: CandidateDetail },
+          { path: "candidates", element: <DemoPreview><Candidates /></DemoPreview> },
+          { path: "candidate/:id", element: <DemoPreview><CandidateDetail /></DemoPreview> },
           { path: "project/:id", Component: ProjectDetail },
           { path: "profile", Component: ProfileScreen },
           { path: "users/:userId", Component: ProfileScreen },
@@ -48,9 +54,10 @@ const router = createBrowserRouter([
           { path: "leader", Component: LeaderDashboard },
           { path: "create-project", Component: CreateProject },
           { path: "project/:id/edit", Component: CreateProject },
-          { path: "messages", Component: Messages },
-          { path: "notifications", Component: Notifications },
-          { path: "team", Component: TeamScreen },
+          { path: "project/:id/applications", Component: ProjectApplicationsScreen },
+          { path: "messages", element: <DemoPreview><Messages /></DemoPreview> },
+          { path: "notifications", element: <DemoPreview><Notifications /></DemoPreview> },
+          { path: "team", element: <DemoPreview><TeamScreen /></DemoPreview> },
           { path: "components", Component: ComponentLibrary },
         ],
       },
