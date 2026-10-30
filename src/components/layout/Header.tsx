@@ -2,7 +2,6 @@ import { useState, useRef, useEffect } from "react"
 import {
   Menu,
   ChevronRight,
-  Search,
   Bell,
   ChevronDown,
   User,
@@ -10,12 +9,16 @@ import {
   LogOut,
   GraduationCap,
   Clock,
+  CheckCheck,
+  Check,
+  ArrowRight,
 } from "lucide-react"
 import { Link, useLocation, useNavigate } from "react-router"
 import { Avatar } from "../ui"
 import { useTindy } from "../../store"
 import { navItems } from "./Sidebar"
 import ProfileMediaImage from "../profile/ProfileMediaImage"
+import { INITIAL_NOTIFICATIONS, AppNotification } from "../../data/notifications"
 
 interface HeaderProps {
   title?: string
@@ -82,7 +85,7 @@ function getBreadcrumb(pathname: string): BreadcrumbInfo {
 }
 
 export default function Header({ title, onOpenMobileMenu }: HeaderProps) {
-  const { profile, read, ownerProfile, authUser, logout, loggingOut } = useTindy()
+  const { profile, read, setRead, notify, ownerProfile, authUser, logout, loggingOut } = useTindy()
   const location = useLocation()
   const navigate = useNavigate()
   const breadcrumb = getBreadcrumb(location.pathname)
@@ -90,20 +93,34 @@ export default function Header({ title, onOpenMobileMenu }: HeaderProps) {
   const currentCategory = breadcrumb.category
 
   const [isMenuOpen, setIsMenuOpen] = useState(false)
+  const [isNotifOpen, setIsNotifOpen] = useState(false)
+  const [notifFilter, setNotifFilter] = useState<"all" | "unread">("all")
+
   const menuRef = useRef<HTMLDivElement>(null)
+  const notifRef = useRef<HTMLDivElement>(null)
+
+  const unreadNotifications = INITIAL_NOTIFICATIONS.filter((n) => !read.includes(n.id))
+  const unreadCount = unreadNotifications.length
+  const displayedNotifications =
+    notifFilter === "unread" ? unreadNotifications : INITIAL_NOTIFICATIONS
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+      const target = event.target as Node
+      if (menuRef.current && !menuRef.current.contains(target)) {
         setIsMenuOpen(false)
+      }
+      if (notifRef.current && !notifRef.current.contains(target)) {
+        setIsNotifOpen(false)
       }
     }
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         setIsMenuOpen(false)
+        setIsNotifOpen(false)
       }
     }
-    if (isMenuOpen) {
+    if (isMenuOpen || isNotifOpen) {
       document.addEventListener("mousedown", handleClickOutside)
       document.addEventListener("keydown", handleKeyDown)
     }
@@ -111,16 +128,29 @@ export default function Header({ title, onOpenMobileMenu }: HeaderProps) {
       document.removeEventListener("mousedown", handleClickOutside)
       document.removeEventListener("keydown", handleKeyDown)
     }
-  }, [isMenuOpen])
+  }, [isMenuOpen, isNotifOpen])
 
   useEffect(() => {
     setIsMenuOpen(false)
+    setIsNotifOpen(false)
   }, [location.pathname])
 
   const handleLogout = async () => {
     setIsMenuOpen(false)
     await logout()
     navigate("/login", { replace: true })
+  }
+
+  const handleMarkAllAsRead = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    setRead(INITIAL_NOTIFICATIONS.map((n) => n.id))
+    notify("All notifications marked as read")
+  }
+
+  const handleNotifClick = (notif: AppNotification) => {
+    setRead((prev) => Array.from(new Set([...prev, notif.id])))
+    setIsNotifOpen(false)
+    navigate(notif.path)
   }
 
   return (
@@ -138,29 +168,133 @@ export default function Header({ title, onOpenMobileMenu }: HeaderProps) {
         <strong>{currentTitle}</strong>
       </div>
       <div className="topbar-actions">
-        <Link
-          to="/discover"
-          className="icon-button top-search"
-          aria-label="Search projects"
-        >
-          <Search size={18} />
-        </Link>
-        <Link
-          to="/notifications"
-          className="icon-button bell-link"
-          aria-label="Notifications"
-          title="Notifications — Demo preview"
-        >
-          <Bell size={19} />
-          {read.length < 4 && <i />}
-        </Link>
+        {/* Notification Bell with Dropdown Popover */}
+        <div className="topbar-notif-container" ref={notifRef}>
+          <button
+            type="button"
+            className={`icon-button bell-link topbar-notif-trigger ${isNotifOpen ? "active" : ""}`}
+            onClick={() => {
+              setIsNotifOpen((prev) => !prev)
+              setIsMenuOpen(false)
+            }}
+            aria-label="Notifications"
+            aria-expanded={isNotifOpen}
+            aria-haspopup="true"
+            title="Notifications"
+          >
+            <Bell size={19} />
+            {unreadCount > 0 && <span className="notif-badge-dot" />}
+          </button>
+
+          {isNotifOpen && (
+            <div
+              className="topbar-notification-popover"
+              role="dialog"
+              aria-label="Notifications popover"
+            >
+              <div className="notif-popover-header">
+                <div className="notif-header-title-wrap">
+                  <span className="notif-header-title">Notifications</span>
+                  {unreadCount > 0 && (
+                    <span className="notif-count-badge">{unreadCount} new</span>
+                  )}
+                </div>
+                {unreadCount > 0 ? (
+                  <button
+                    type="button"
+                    className="notif-mark-all-btn"
+                    onClick={handleMarkAllAsRead}
+                    title="Mark all notifications as read"
+                  >
+                    <CheckCheck size={14} />
+                    <span>Mark all read</span>
+                  </button>
+                ) : (
+                  <span className="notif-all-read-badge">
+                    <Check size={13} /> All caught up
+                  </span>
+                )}
+              </div>
+
+              <div className="notif-popover-tabs">
+                <button
+                  type="button"
+                  className={`notif-tab-btn ${notifFilter === "all" ? "active" : ""}`}
+                  onClick={() => setNotifFilter("all")}
+                >
+                  All ({INITIAL_NOTIFICATIONS.length})
+                </button>
+                <button
+                  type="button"
+                  className={`notif-tab-btn ${notifFilter === "unread" ? "active" : ""}`}
+                  onClick={() => setNotifFilter("unread")}
+                >
+                  Unread ({unreadCount})
+                </button>
+              </div>
+
+              <div className="notif-popover-list">
+                {displayedNotifications.length === 0 ? (
+                  <div className="notif-popover-empty">
+                    <Bell size={28} className="notif-popover-empty-icon" />
+                    <strong>No unread notifications</strong>
+                    <p>You're all caught up with your updates.</p>
+                  </div>
+                ) : (
+                  displayedNotifications.map((notif) => {
+                    const isUnread = !read.includes(notif.id)
+                    return (
+                      <div
+                        key={notif.id}
+                        className={`notif-popover-item ${isUnread ? "unread" : ""}`}
+                        onClick={() => handleNotifClick(notif)}
+                        role="button"
+                        tabIndex={0}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            handleNotifClick(notif)
+                          }
+                        }}
+                      >
+                        <span className={`notif-icon-tile ${notif.tone}`}>
+                          <notif.icon size={16} />
+                        </span>
+                        <div className="notif-item-body">
+                          <div className="notif-item-header">
+                            <strong className="notif-item-title">{notif.title}</strong>
+                            {isUnread && <span className="notif-item-dot" title="Unread" />}
+                          </div>
+                          <p className="notif-item-desc">{notif.description}</p>
+                          <small className="notif-item-time">{notif.time}</small>
+                        </div>
+                      </div>
+                    )
+                  })
+                )}
+              </div>
+
+              <div className="notif-popover-footer">
+                <Link
+                  to="/notifications"
+                  className="notif-footer-link"
+                  onClick={() => setIsNotifOpen(false)}
+                >
+                  View all in Notifications <ArrowRight size={13} />
+                </Link>
+              </div>
+            </div>
+          )}
+        </div>
 
         {/* User Info Trigger & Popover Tag */}
         <div className="topbar-user-container" ref={menuRef}>
           <button
             type="button"
             className={`topbar-user topbar-user-trigger ${isMenuOpen ? "active" : ""}`}
-            onClick={() => setIsMenuOpen((prev) => !prev)}
+            onClick={() => {
+              setIsMenuOpen((prev) => !prev)
+              setIsNotifOpen(false)
+            }}
             aria-expanded={isMenuOpen}
             aria-haspopup="true"
             aria-label="User account menu"
