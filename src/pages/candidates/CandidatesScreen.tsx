@@ -208,41 +208,23 @@ export function Candidates() {
                     </div>
 
                     <div className="project-card-bottom">
+                      <div className="team-preview">
+                        <div className="avatar-stack">
+                          <Avatar
+                            name={candidate.name}
+                            color={candidate.color}
+                          />
+                        </div>
+                        <small>
+                          {candidate.role} · {candidate.hours}h/wk
+                        </small>
+                      </div>
                       <Link
-                        className="btn btn-secondary"
-                        to={`/messages?conversation=${encodeURIComponent(candidate.name)}`}
+                        className="view-project"
+                        to={`/candidate/${encodeURIComponent(candidate.name)}`}
                       >
-                        <MessageSquare size={14} />
-                        Message
+                        View candidate <ArrowRight size={14} />
                       </Link>
-
-                      {tab === "Archived" ? (
-                        <Button
-                          variant="secondary"
-                          onClick={() => {
-                            setCandidateArchived((old) =>
-                              old.filter((n) => n !== candidate.name),
-                            )
-                            setCandidateInterested((old) => [
-                              ...new Set([...old, candidate.name]),
-                            ])
-                            notify(`${candidate.name} restored to Interested`)
-                          }}
-                        >
-                          Restore
-                        </Button>
-                      ) : isActive ? (
-                        <Link className="btn btn-secondary" to="/team">
-                          Team workspace
-                        </Link>
-                      ) : (
-                        <Button
-                          disabled={isInvited}
-                          onClick={() => setInviteModal(candidate.name)}
-                        >
-                          {isInvited ? "Invited ✓" : "Invite to team"}
-                        </Button>
-                      )}
                     </div>
 
                     {cardStatus && <CardStatusFooter status={cardStatus} />}

@@ -21,8 +21,6 @@ import { projectErrorMessage } from "../../services/projectEditor.service"
 import { getProjectByIdApi, isGuid, mapProjectDetailToUiProject } from "../../services/projects.service"
 import { useTindy } from "../../store"
 import { useExplanation } from "../../utils/useExplanation"
-import MyApplicationsView from "./MyApplicationsView"
-import SavedProjectsView from "./SavedProjectsView"
 import useMyApplications from "../../hooks/useMyApplications"
 
 function Cards({
@@ -60,6 +58,7 @@ export function MyProjectsScreen() {
     authUser,
     interested,
     saved,
+    savedProjects,
     invited,
     setInvited,
     setActive,
@@ -81,7 +80,18 @@ export function MyProjectsScreen() {
   const resource = useMyProjects()
   const applications = useMyApplications()
 
-  const localIds = [...new Set([...saved, ...interested, ...invited].filter(isGuid))].sort().join(",")
+  const localIds = [
+    ...new Set([
+      ...saved,
+      ...interested,
+      ...invited,
+      ...(applications.data?.map((a) => a.project_id) ?? []),
+      ...(savedProjects.data?.map((p) => p.project_id) ?? []),
+    ].filter(isGuid)),
+  ]
+    .sort()
+    .join(",")
+
   const loadBookmarks = useCallback(async (signal: AbortSignal) => {
     const details = await Promise.all(
       localIds.split(",").filter(Boolean).map(async (id) => {
@@ -103,8 +113,18 @@ export function MyProjectsScreen() {
   const active = resource.data?.joined_projects.filter((project) => project.status !== "archived" && project.status !== "completed").map((project) => project.project_id) ?? []
 
   const statuses: Record<string, string[]> = {
-    Interested: applications.data?.map((a) => a.application_id) ?? [],
-    Saved: saved.filter(isGuid),
+    Interested: [
+      ...new Set([
+        ...(applications.data?.map((a) => a.project_id) ?? []),
+        ...interested.filter(isGuid),
+      ]),
+    ],
+    Saved: [
+      ...new Set([
+        ...(savedProjects.data?.map((p) => p.project_id) ?? []),
+        ...saved.filter(isGuid),
+      ]),
+    ],
     Invited: invited.filter(isGuid),
     Active: active,
     Leading: leadingIds,
@@ -161,22 +181,7 @@ export function MyProjectsScreen() {
       </div>
 
       <div key={tab} className="tab-pane-transition">
-        {tab === "Interested" ? (
-          <MyApplicationsView />
-        ) : tab === "Saved" ? (
-          <SavedProjectsView />
-        ) : tab === "Invited" ? (
-          <section className="panel" aria-label="Invitations demo preview">
-            <Badge tone="blue">DEMO PREVIEW</Badge>
-            <h2>Invited</h2>
-            <p>
-              Leaders can invite you to a specific project position. This preview lets you explore the review, accept and decline flow; it does not create a real invitation or team membership.
-            </p>
-            <Button variant="secondary" onClick={() => setInvitation(initialProjects[0])}>
-              Preview invitation
-            </Button>
-          </section>
-        ) : loading ? (
+        {loading ? (
           <div className="info-banner" role="status">
             Loading projects…
           </div>
@@ -186,6 +191,33 @@ export function MyProjectsScreen() {
           </div>
         ) : selected.length > 0 ? (
           <>
+            {tab === "Interested" && (
+              <div className="info-banner">
+                <Sparkles size={18} />
+                <span>
+                  Applications and interest sent. Awaiting project leaders to review your profile.
+                </span>
+              </div>
+            )}
+
+            {tab === "Saved" && (
+              <div className="info-banner">
+                <Bookmark size={18} />
+                <span>
+                  Bookmarked opportunities. Saved to evaluate requirements or apply when you are ready.
+                </span>
+              </div>
+            )}
+
+            {tab === "Invited" && (
+              <div className="info-banner">
+                <Mail size={18} />
+                <span>
+                  Team invitations sent to you. Review the invitation to see the role and commitment.
+                </span>
+              </div>
+            )}
+
             {tab === "Active" && (
               <div className="info-banner">
                 <Check size={18} />
@@ -227,18 +259,40 @@ export function MyProjectsScreen() {
                   : undefined
               }
             />
+
+            {tab === "Invited" &&
+              selected.map((project) => (
+                <div className="invitation-bar" key={project.id} style={{ marginTop: "16px" }}>
+                  <span>
+                    <strong>{project.leader}</strong> invited you to join <strong>{project.name}</strong>
+                  </span>
+                  <Button onClick={() => setInvitation(project)}>Review invitation</Button>
+                </div>
+              ))}
           </>
         ) : (
           <EmptyState
             title={
-              tab === "Active"
+              tab === "Saved"
+                ? "You haven't saved any projects yet."
+                : tab === "Interested"
+                ? "No applications or interest sent yet."
+                : tab === "Invited"
+                ? "No pending team invitations."
+                : tab === "Active"
                 ? "No active projects yet."
                 : tab === "Leading"
                 ? "No projects led by you yet."
                 : "No completed projects yet."
             }
             description={
-              tab === "Active"
+              tab === "Saved"
+                ? "Save standout projects that catch your eye during discovery. You can always come back to review them."
+                : tab === "Interested"
+                ? "Explore projects matching your skills on the Discovery feed and swipe right to submit interest."
+                : tab === "Invited"
+                ? "When a project leader invites you to their team, the invitation and role commitment will appear here."
+                : tab === "Active"
                 ? "Once your application is approved or you accept an invitation, your active team projects will show here."
                 : tab === "Leading"
                 ? "Ready to launch your own venture? Create a project in Leader Workspace to assemble teammates."
@@ -249,9 +303,13 @@ export function MyProjectsScreen() {
                 <Link to="/leader" className="btn btn-primary">
                   Leader workspace <ArrowRight size={15} />
                 </Link>
-              ) : (
+              ) : tab === "Active" ? (
                 <Link to="/discover" className="btn btn-primary">
                   Find teams to join <ArrowRight size={15} />
+                </Link>
+              ) : (
+                <Link to="/discover" className="btn btn-primary">
+                  Discover projects <ArrowRight size={15} />
                 </Link>
               )
             }
@@ -261,8 +319,7 @@ export function MyProjectsScreen() {
 
       {invitation && (
         <Modal title="Team invitation" onClose={() => setInvitation(null)}>
-          <Badge tone="blue">DEMO INVITATION</Badge>
-          <p>Sample invitation — these actions only close the preview and do not change your team membership.</p>
+          <Badge tone="success">YOU’RE INVITED</Badge>
           <h2>Build with {invitation.name}</h2>
           <p>
             {invitation.leader} invited you to join as a {invitation.role}.
@@ -285,16 +342,20 @@ export function MyProjectsScreen() {
             <Button
               variant="secondary"
               onClick={() => {
+                setInvited((old) => old.filter((item) => item !== invitation.id))
                 setInvitation(null)
-                notify("Demo: invitation declined in this preview.")
+                notify("Invitation declined")
               }}
             >
               Decline
             </Button>
             <Button
               onClick={() => {
+                setActive((old) => [...new Set([...old, invitation.id])])
+                setInvited((old) => old.filter((item) => item !== invitation.id))
                 setInvitation(null)
-                notify("Demo: invitation accepted in this preview. No team membership was created.")
+                notify("Welcome to the team!")
+                setParams({ tab: "Active" })
               }}
             >
               Accept & join team <Check size={15} />
