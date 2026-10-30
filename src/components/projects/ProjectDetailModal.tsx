@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { X, Clock, Bookmark, ArrowLeft, Heart, Star } from 'lucide-react';
+import { Link } from 'react-router';
+import { X, Clock, Bookmark, ArrowLeft, Heart, Star, ArrowUpRight } from 'lucide-react';
 import { DiscoveryProject } from '../../types/discovery';
 import AiMatchBadge from '../common/AiMatchBadge';
 import FunnelStatusTracker from '../common/FunnelStatusTracker';
@@ -40,7 +41,14 @@ export default function ProjectDetailModal({
     }, 200);
   };
 
-  const match = project.match;
+  const match = project.match || {
+    overall: project.ruleMatch?.match_score ?? 60,
+    verdict: 'Rule-based match',
+    factors: [],
+    strongMatches: project.ruleMatch?.matched_skills?.map(s => s.name) || [],
+    skillGaps: project.ruleMatch?.missing_skills?.map(s => ({ skill: s.name, note: '' })) || [],
+    explanationSummary: project.ruleMatch?.explanation || '',
+  };
 
   return (
     <div
@@ -61,6 +69,13 @@ export default function ProjectDetailModal({
             <span>Back to Discovery Deck</span>
           </button>
           <div className="flex items-center gap-2">
+            <Link
+              to={`/project/${project.id}`}
+              className="py-1.5 px-3 rounded-lg border border-slate-200 text-xs font-semibold flex items-center gap-1.5 bg-white text-slate-700 hover:bg-slate-100 transition-colors"
+            >
+              <span>Full page specs</span>
+              <ArrowUpRight size={13} />
+            </Link>
             <StarActionButton
               starred={isSaved}
               onToggle={() => onToggleSave(project.id)}

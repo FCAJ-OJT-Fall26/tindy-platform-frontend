@@ -13,6 +13,7 @@ import DiscoverySegmentedControl from "../../components/discovery/DiscoverySegme
 import RuleMatchPanel from "../../components/discovery/RuleMatchPanel"
 import { Modal } from "../../components/ui"
 import ApplyModal from "../../components/projects/ApplyModal"
+import ProjectDetailModal from "../../components/projects/ProjectDetailModal"
 import "./live-discovery.css"
 
 const categories = ["AI & Machine Learning", "Cloud & DevOps", "Web Application", "Mobile App", "Open Source", "Social Impact"]
@@ -30,6 +31,7 @@ export default function LiveDiscoveryView() {
   const [filtersOpen, setFiltersOpen] = useState(false)
   const [active, setActive] = useState<DiscoveryProject | null>(null)
   const [explanation, setExplanation] = useState<RuleMatch | null>(null)
+  const [previewProject, setPreviewProject] = useState<DiscoveryProject | null>(null)
   const [reset, setReset] = useState(0)
   const [applying, setApplying] = useState<DiscoveryProject | null>(null)
   const [actionError, setActionError] = useState("")
@@ -41,7 +43,7 @@ export default function LiveDiscoveryView() {
   const feed = useDiscoveryFeed({ category: category || undefined, role_id: role || undefined, skill_id: skill || undefined })
   const projects = useMemo(() => feed.items.map(mapDiscoveryCard), [feed.items])
   const activeChanged = useCallback((item: DiscoveryProject | DiscoveryCandidate | null) => setActive(item as DiscoveryProject | null), [])
-  useEffect(() => { setActive(null); setExplanation(null); setApplying(null); setHistory([]); setReviewedApplications(new Set()); setActionError("") }, [feed.key])
+  useEffect(() => { setActive(null); setExplanation(null); setPreviewProject(null); setApplying(null); setHistory([]); setReviewedApplications(new Set()); setActionError("") }, [feed.key])
   useEffect(() => {
     if (!active) return
     const index = active ? projects.findIndex(p => p.id === active.id) : projects.length
@@ -84,7 +86,7 @@ export default function LiveDiscoveryView() {
     <div className="live-discovery__session"><span className="live-discovery__eyebrow">YOUR OVERVIEW</span><dl><div><dt>Loaded</dt><dd>{projects.length}</dd></div><div><dt>Reviewed here</dt><dd aria-label="Reviewed projects in this feed">{history.length + reviewedApplications.size}</dd></div><div><dt>Saved total</dt><dd>{savedProjects.loading ? "…" : savedProjects.error ? "—" : saved.length}</dd></div><div><dt>Skipped here</dt><dd>{history.filter(item => item.direction === "left").length}</dd></div></dl></div>
     <Link to="/projects?tab=Saved" className="live-discovery__saved-link"><Bookmark size={14} />Your saved projects<ArrowUpRight size={14} /></Link>
   </aside>
-  const viewActiveProject = () => { if (active) navigate(`/project/${active.id}`, { state: { match: active.ruleMatch, matchOwner: authUser?.user_id } }) }
+  const viewActiveProject = () => { if (active) setPreviewProject(active) }
   return <div className="live-discovery" data-live-discovery data-loaded-count={projects.length}>
     <header className="live-discovery__header">
       <div><span className="live-discovery__pill"><Sparkles size={12} />INTERACTIVE MATCHING STACK</span><h1>Discover Projects That Fit You</h1><p>Discover your next team. Skip, save, or explore a position before you apply.</p></div>
@@ -98,14 +100,38 @@ export default function LiveDiscoveryView() {
         {Boolean(feed.error) && <div className="panel" role="alert">{projectErrorMessage(feed.error)} <button className="btn btn-secondary" onClick={projects.length && feed.hasMore ? feed.loadMore : refresh}>Retry</button><button className="btn btn-ghost" onClick={refresh}>Refresh feed</button></div>}
         {feed.loading && <p role="status">{projects.length ? "Loading more projects…" : "Loading projects…"}</p>}
         {projects.length > 0 && <SwipeCardStack key={`${feed.key}:${reset}`} items={projects} mode="student" disabled={!!explanation || !!applying} live
-          onSwipe={swipe} onUndo={undo} canUndo={history.length > 0} onCardTap={item => navigate(`/project/${item.id}`, { state: { match: (item as DiscoveryProject).ruleMatch, matchOwner: authUser?.user_id } })}
+          onSwipe={swipe} onUndo={undo} canUndo={history.length > 0} onCardTap={item => setPreviewProject(item as DiscoveryProject)}
           onWhyMatchesClick={item => setExplanation((item as DiscoveryProject).ruleMatch ?? null)} activeItemChanged={activeChanged}
           onResetStack={refresh} />}
         {!feed.loading && !feed.error && projects.length === 0 && <section className="panel text-center"><h2>No eligible projects right now</h2><p>Refresh or adjust the filters to find more projects.</p><button className="btn btn-primary" onClick={refresh}>Refresh feed</button></section>}
-        {feed.hasMore && <button className="btn btn-secondary" disabled={feed.loading} onClick={feed.loadMore}>Load more</button>}
       </section>
       <aside className="live-discovery__inspector">{active?.ruleMatch ? <RuleMatchPanel variant="discovery" match={active.ruleMatch} projectName={active.name} onExplain={() => setExplanation(active.ruleMatch ?? null)} onViewDetails={viewActiveProject} /> : <section className="live-discovery__inspector-empty"><Sparkles size={23} /><h2>A closer look at your fit</h2><p>Select a project to see how its position matches your profile.</p></section>}</aside>
     </div>
+    
+    {previewProject && (
+      <ProjectDetailModal
+        project={previewProject}
+        isOpen={Boolean(previewProject)}
+        isSaved={Boolean(saved.includes(previewProject.id) || feed.items.find(p => p.project_id === previewProject.id)?.is_saved)}
+        isInterested={Boolean(reviewedApplications.has(previewProject.id))}
+        onClose={() => setPreviewProject(null)}
+        onToggleSave={async (projectId) => {
+          const isCurrentlySaved = saved.includes(projectId) || Boolean(feed.items.find(p => p.project_id === projectId)?.is_saved);
+          await setProjectSaved(projectId, !isCurrentlySaved);
+          notify(isCurrentlySaved ? "Project removed from saved." : "Project saved.");
+        }}
+        onMarkInterested={(projectId) => {
+          const proj = projects.find(p => p.id === projectId) || previewProject;
+          setPreviewProject(null);
+          if (proj) setApplying(proj);
+        }}
+        onOpenAiBreakdown={() => {
+          if (previewProject.ruleMatch) {
+            setExplanation(previewProject.ruleMatch);
+          }
+        }}
+      />
+    )}
     {explanation && <Modal title="Why this matches" className="rule-match-dialog" onClose={() => setExplanation(null)}><RuleMatchPanel match={explanation} projectName={active?.name} /></Modal>}
     {applying && <ApplyModal key={applying.id} projectId={applying.id} preferredPositionId={applying.ruleMatch?.best_position.position_id} onClose={() => setApplying(null)} onConfirmed={application => {
       setApplying(null)
