@@ -263,7 +263,7 @@ export default function Header({ title, onOpenMobileMenu }: HeaderProps) {
                         }}
                       >
                         <span className={`notif-icon-tile ${notif.tone}`}>
-                          <notif.icon size={16} />
+                          {notif.icon ? <notif.icon size={16} /> : <Bell size={16} />}
                         </span>
                         <div className="notif-item-body">
                           <div className="notif-item-header">

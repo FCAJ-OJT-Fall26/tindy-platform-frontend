@@ -435,7 +435,7 @@ export function LeaderDashboard() {
                     Applications <ArrowRight size={15} />
                   </Link>
                   <Link to={`/project/${project.id}`} className="btn btn-secondary">
-                    View team
+                    View project
                   </Link>
                   <Link
                     to={`/team/${project.id}`}

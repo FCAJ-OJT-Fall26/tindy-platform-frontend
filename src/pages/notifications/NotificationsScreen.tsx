@@ -1,6 +1,6 @@
 import { useState } from "react"
 import { Link } from "react-router"
-import { CheckCheck, ArrowRight } from "lucide-react"
+import { CheckCheck, ArrowRight, Bell } from "lucide-react"
 import { useTindy } from "../../store"
 import { PageHeader, EmptyState, Button } from "../../components/ui"
 import { INITIAL_NOTIFICATIONS } from "../../data/notifications"
@@ -61,7 +61,7 @@ export function Notifications() {
                 key={update.id}
               >
                 <span className={`icon-tile ${update.tone}`}>
-                  <update.icon size={19} />
+                  {update.icon ? <update.icon size={19} /> : <Bell size={19} />}
                 </span>
                 <div>
                   <h3>

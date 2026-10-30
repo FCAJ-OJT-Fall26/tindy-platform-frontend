@@ -1,7 +1,7 @@
 import type { LucideIcon } from "lucide-react"
 
 export interface AppNotification {
-  id: number | string
+  id: number
   title: string
   description: string
   time: string
