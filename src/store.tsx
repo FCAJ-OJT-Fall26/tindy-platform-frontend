@@ -1,6 +1,5 @@
 import { createContext, useContext, useState, useEffect, useCallback, useRef, type ReactNode } from "react"
 import {
-  initialProfile,
   initialProjects,
   initialCandidates,
   type Profile,
@@ -8,7 +7,6 @@ import {
 } from "./data"
 
 export {
-  initialProfile,
   initialProjects,
   initialCandidates,
   type Profile,
@@ -35,7 +33,8 @@ const emptySessionProfile: Profile = { name: 'Tindy member', university: '', ema
 function useStored<T>(key: string, initial: T) {
   const [value, setValue] = useState<T>(() => {
     try {
-      const stored = localStorage.getItem(`tindy-v2-${key}`)
+      localStorage.removeItem(`tindy-v2-${key}`)
+      const stored = localStorage.getItem(`tindy-v3-${key}`)
       return stored ? JSON.parse(stored) : initial
     } catch {
       return initial
@@ -46,7 +45,7 @@ function useStored<T>(key: string, initial: T) {
       const updater = next as (previous: T) => T
       const result = typeof next === "function" ? updater(old) : next
       try {
-        localStorage.setItem(`tindy-v2-${key}`, JSON.stringify(result))
+        localStorage.setItem(`tindy-v3-${key}`, JSON.stringify(result))
       } catch {}
       return result
     }), [key])
@@ -103,19 +102,19 @@ function useAppState() {
   const [dismissed, setDismissed] = useStored<string[]>("dismissed", [])
   const [candidateInvites, setCandidateInvites] = useStored<string[]>(
     "candidate-invites",
-    ["Minh Nguyen"],
+    [],
   )
   const [candidateShortlisted, setCandidateShortlisted] = useStored<string[]>(
     "candidate-shortlisted",
-    ["Cao Thanh Nhan", "Linh Tran"],
+    [],
   )
   const [candidateInterested, setCandidateInterested] = useStored<string[]>(
     "candidate-interested",
-    ["Cao Thanh Nhan", "David Pham", "An Hoang"],
+    [],
   )
   const [candidateActive, setCandidateActive] = useStored<string[]>(
     "candidate-active",
-    ["Jamie Le"],
+    [],
   )
   const [candidateArchived, setCandidateArchived] = useStored<string[]>(
     "candidate-archived",

@@ -228,6 +228,7 @@ export function DashboardScreen() {
             <h3>Your next steps</h3>
             <Link className="next-step" to="/projects?tab=Interested"><strong>Review your applications</strong><ArrowUpRight size={12} /></Link>
             <Link className="next-step" to="/projects?tab=Saved"><strong>Explore your saved projects</strong><ArrowUpRight size={12} /></Link>
+            <Link className="next-step" to="/messages"><strong>Open your conversations</strong><ArrowUpRight size={12} /></Link>
           </section>
           <div className="community-footnote">
             <span className="fcaj-symbol">

@@ -103,7 +103,7 @@ export default function WorkspaceProjectDetailModal({
                   Your Role & Status
                 </span>
                 <span className="font-bold text-slate-900 text-xs sm:text-sm">
-                  {detail.role} <span className="text-indigo-600 font-semibold">(Alex Le)</span>
+                  {detail.role}
                 </span>
               </div>
               <div className="flex items-center gap-3 text-slate-600 font-medium">
@@ -142,40 +142,22 @@ export default function WorkspaceProjectDetailModal({
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <span className="text-[11px] font-bold uppercase tracking-wider text-slate-900 block">
-                  Team Members ({detail.people.length + 1})
+                  Team Members ({detail.people.length})
                 </span>
                 <span className="text-[11px] text-slate-500">First Cloud AI Journey</span>
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                <div className="p-2 rounded-lg bg-slate-50 border border-slate-200 flex items-center gap-2">
-                  <span className="w-7 h-7 rounded-full bg-indigo-100 text-indigo-700 font-bold text-xs flex items-center justify-center shrink-0">
-                    AL
-                  </span>
-                  <div className="min-w-0">
-                    <p className="font-bold text-slate-800 text-[11px] truncate">Alex Le (You)</p>
-                    <p className="text-[10px] text-slate-500 truncate">{detail.role}</p>
+                {detail.people.map((member) => (
+                  <div className="p-2 rounded-lg bg-slate-50 border border-slate-200 flex items-center gap-2" key={member}>
+                    <span className="w-7 h-7 rounded-full bg-slate-200 text-slate-800 font-bold text-xs flex items-center justify-center shrink-0">
+                      {member}
+                    </span>
+                    <div className="min-w-0">
+                      <p className="font-bold text-slate-800 text-[11px] truncate">{member}</p>
+                      <p className="text-[10px] text-slate-500 truncate">Project member</p>
+                    </div>
                   </div>
-                </div>
-
-                <div className="p-2 rounded-lg bg-slate-50 border border-slate-200 flex items-center gap-2">
-                  <span className="w-7 h-7 rounded-full bg-slate-200 text-slate-800 font-bold text-xs flex items-center justify-center shrink-0">
-                    JL
-                  </span>
-                  <div className="min-w-0">
-                    <p className="font-bold text-slate-800 text-[11px] truncate">Jamie Le</p>
-                    <p className="text-[10px] text-slate-500 truncate">Project Lead</p>
-                  </div>
-                </div>
-
-                <div className="p-2 rounded-lg bg-slate-50 border border-slate-200 flex items-center gap-2">
-                  <span className="w-7 h-7 rounded-full bg-slate-200 text-slate-800 font-bold text-xs flex items-center justify-center shrink-0">
-                    KT
-                  </span>
-                  <div className="min-w-0">
-                    <p className="font-bold text-slate-800 text-[11px] truncate">Kelly Tran</p>
-                    <p className="text-[10px] text-slate-500 truncate">UI/UX Design</p>
-                  </div>
-                </div>
+                ))}
               </div>
             </div>
 

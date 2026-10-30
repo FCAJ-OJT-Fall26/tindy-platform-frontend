@@ -55,9 +55,6 @@ export function ComponentLibrary() {
           <h3>Skills & identity</h3>
           <Chips items={[".NET", "AWS", "PostgreSQL", "RAG"]} />
           <div className="header-buttons spaced">
-            <Avatar name="Alex Le" />
-            <Avatar name="Linh Tran" color="teal" />
-            <Avatar name="An Hoang" color="amber" />
           </div>
         </section>
         <section className="panel">
