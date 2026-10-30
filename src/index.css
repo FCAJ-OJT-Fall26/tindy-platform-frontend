@@ -13426,13 +13426,48 @@ button.text-link {
   cursor: wait;
 }
 
-.project-step-panel {
-  animation: project-step-enter 160ms ease-out;
+/* Multi-step Wizard Slide Viewport & Carousel Track (1 <-> 2 <-> 3) */
+.wizard-slide-viewport {
+  width: 100%;
+  overflow: hidden;
+  position: relative;
+  transition: height 0.42s cubic-bezier(0.25, 1, 0.5, 1);
+  will-change: height;
 }
 
-@keyframes project-step-enter {
-  from { opacity: 0; transform: translateX(6px); }
-  to { opacity: 1; transform: translateX(0); }
+.wizard-slide-track {
+  display: flex;
+  width: 100%;
+  transition: transform 0.45s cubic-bezier(0.25, 1, 0.5, 1);
+  will-change: transform;
+}
+
+.wizard-slide-pane {
+  min-width: 100%;
+  width: 100%;
+  flex-shrink: 0;
+  box-sizing: border-box;
+  align-self: flex-start;
+  transition: opacity 0.35s ease, filter 0.35s ease;
+}
+
+.wizard-slide-pane[aria-hidden="true"] {
+  opacity: 0.15;
+  filter: blur(1.5px);
+  pointer-events: none;
+  user-select: none;
+}
+
+.wizard-slide-pane[aria-hidden="false"] {
+  opacity: 1;
+  filter: none;
+  pointer-events: auto;
+  user-select: auto;
+}
+
+.project-step-panel {
+  width: 100%;
+  box-sizing: border-box;
 }
 
 @media (prefers-reduced-motion: reduce) {
