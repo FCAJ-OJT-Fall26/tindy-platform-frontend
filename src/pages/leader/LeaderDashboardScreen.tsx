@@ -258,10 +258,10 @@ export function LeaderDashboard() {
                     View team
                   </Link>
                   <Link
-                    to={`/project/${project.id}/edit`}
+                    to={`/team/${project.id}`}
                     className="text-link"
                   >
-                    Manage project <ArrowUpRight size={14} />
+                    Open workspace <ArrowUpRight size={14} />
                   </Link>
                 </div>
               </section>
