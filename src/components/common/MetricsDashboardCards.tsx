@@ -228,7 +228,7 @@ export function CategoryBreakdown({
             <div
               className="metric-breakdown-fill"
               style={{
-                width: `${Math.max(8, Math.min(100, item.pct))}%`,
+                width: item.count === 0 || item.pct <= 0 ? "0%" : `${Math.max(8, Math.min(100, item.pct))}%`,
                 backgroundColor: item.color || "#0d9488",
                 animationDelay: `${i * 100 + 150}ms`,
               }}

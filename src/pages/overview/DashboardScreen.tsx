@@ -101,7 +101,7 @@ function UserIcon() {
 }
 
 export function DashboardScreen() {
-  const { profile, saved, ownerProfile } = useTindy()
+  const { profile, saved, ownerProfile, savedProjects } = useTindy()
   const feed = useDiscoveryFeed()
   const membership = useMyProjects()
   const active = membership.data?.joined_projects ?? []
@@ -154,6 +154,7 @@ export function DashboardScreen() {
   const moderateMatches = matchDistribution[2]?.value ?? 0
 
   const matchFooter = useMemo(() => {
+    if (available.length === 0) return "No recommendations yet"
     if (strongMatches > 0) {
       return `${strongMatches} strong match${strongMatches === 1 ? "" : "es"} · 85%+`
     }
@@ -161,9 +162,10 @@ export function DashboardScreen() {
       return `${goodMatches} good match${goodMatches === 1 ? "" : "es"} · 70%+`
     }
     return `${moderateMatches} project${moderateMatches === 1 ? "" : "s"} · <70% match`
-  }, [strongMatches, goodMatches, moderateMatches])
+  }, [available.length, strongMatches, goodMatches, moderateMatches])
 
   const matchTooltipDetail = useMemo(() => {
+    if (available.length === 0) return "No recommended projects loaded yet"
     if (strongMatches > 0 || goodMatches > 0) {
       const parts: string[] = []
       if (strongMatches > 0) parts.push(`${strongMatches} strong match${strongMatches === 1 ? "" : "es"} (≥85%)`)
@@ -172,7 +174,58 @@ export function DashboardScreen() {
       return parts.join(" • ")
     }
     return `0 high matches (≥70%) • ${moderateMatches} project${moderateMatches === 1 ? "" : "s"} with moderate match (<70%)`
-  }, [strongMatches, goodMatches, moderateMatches])
+  }, [available.length, strongMatches, goodMatches, moderateMatches])
+
+  // Real saved projects category breakdown
+  const savedList = savedProjects.data ?? []
+  const savedCount = saved.length
+  const savedCategories = useMemo(() => {
+    if (savedList.length === 0) return []
+    const map = new Map<string, number>()
+    for (const item of savedList) {
+      const cat = item.category?.trim() || "General"
+      map.set(cat, (map.get(cat) || 0) + 1)
+    }
+    const entries = Array.from(map.entries()).sort((a, b) => b[1] - a[1])
+    return entries.slice(0, 3).map(([cat, count], idx) => ({
+      label: cat,
+      count,
+      pct: Math.round((count / savedList.length) * 100),
+      color: idx === 0 ? "#0d9488" : idx === 1 ? "#2563eb" : "#f59e0b",
+    }))
+  }, [savedList])
+
+  // Real active projects membership & capacity calculation
+  const activeJoinedIds = useMemo(
+    () => new Set(active.map((p) => p.project_id)),
+    [active],
+  )
+  const activeJoinedProjects = useMemo(
+    () => (membership.data?.projects ?? []).filter((p) => activeJoinedIds.has(p.id)),
+    [membership.data?.projects, activeJoinedIds],
+  )
+  const activeFilledSeats = useMemo(
+    () => activeJoinedProjects.reduce((sum, p) => sum + (p.team || 0), 0),
+    [activeJoinedProjects],
+  )
+  const activeTotalSeats = useMemo(
+    () => activeJoinedProjects.reduce((sum, p) => sum + (p.capacity || 0), 0),
+    [activeJoinedProjects],
+  )
+
+  // Real profile completeness calculation
+  const profileCompleteness = useMemo(() => {
+    const op = ownerProfile.data
+    if (!op) return 0
+    let sc = 0
+    if (op.display_name?.trim()) sc += 20
+    if (op.bio?.trim()) sc += 20
+    if (op.preferred_role) sc += 20
+    if (Array.isArray(op.skills) && op.skills.length >= 3) sc += 20
+    else if (Array.isArray(op.skills) && op.skills.length > 0) sc += 10
+    if (op.available_hours_per_week && op.available_hours_per_week > 0) sc += 20
+    return Math.min(100, sc)
+  }, [ownerProfile.data])
 
   return (
     <>
@@ -209,20 +262,31 @@ export function DashboardScreen() {
         <MetricCard
           index={1}
           label="Saved projects"
-          value={saved.length || 2}
+          value={savedCount}
           subtitle="ideas in your shortlist"
           tooltipTitle="Shortlist Categories"
-          tooltipDesc="Breakdown of bookmarked projects by category (Open source, Web apps)."
-          tooltipDetail="Open source: 1 • Web apps: 1"
-          visual={
-            <CategoryBreakdown
-              items={[
-                { label: "Open source", count: 1, pct: 100, color: "#0d9488" },
-                { label: "Web apps", count: 1, pct: 100, color: "#0d9488" },
-              ]}
-            />
+          tooltipDesc="Breakdown of bookmarked projects by category."
+          tooltipDetail={
+            savedCount === 0
+              ? "No saved projects in your shortlist"
+              : savedCategories.length > 0
+              ? savedCategories.map((c) => `${c.label}: ${c.count}`).join(" • ")
+              : `${savedCount} saved project${savedCount === 1 ? "" : "s"}`
           }
-          footerLeft="2 project categories"
+          visual={
+            savedCategories.length > 0 ? (
+              <CategoryBreakdown items={savedCategories} />
+            ) : (
+              <CapsuleSlots variant="faint" />
+            )
+          }
+          footerLeft={
+            savedCount === 0
+              ? "No saved projects"
+              : `${savedCategories.length} project ${
+                  savedCategories.length === 1 ? "category" : "categories"
+                }`
+          }
           actionLabel="View saved"
           actionTo="/projects?tab=saved"
         />
@@ -230,13 +294,33 @@ export function DashboardScreen() {
         <MetricCard
           index={2}
           label="Active projects"
-          value={active.length || 1}
-          subtitle="projects you're part of"
+          value={active.length}
+          subtitle={active.length === 1 ? "project you're part of" : "projects you're part of"}
           tooltipTitle="Active Workspace Seats"
           tooltipDesc="Visual representation of active member seats filled in your teams."
-          tooltipDetail="3 of 5 seats filled in team spaces"
-          visual={<CapsuleSlots filled={3} total={5} label="3/5 seats" />}
-          footerLeft="Your team spaces"
+          tooltipDetail={
+            active.length === 0
+              ? "You have not joined any active project team yet"
+              : `${activeFilledSeats} of ${activeTotalSeats} team seats filled across ${active.length} project${
+                  active.length === 1 ? "" : "s"
+                }`
+          }
+          visual={
+            active.length > 0 && activeTotalSeats > 0 ? (
+              <CapsuleSlots
+                filled={activeFilledSeats}
+                total={Math.min(10, activeTotalSeats)}
+                label={`${activeFilledSeats}/${activeTotalSeats} seats`}
+              />
+            ) : (
+              <CapsuleSlots variant="faint" />
+            )
+          }
+          footerLeft={
+            active.length === 0
+              ? "No active teams"
+              : `${active.length} active team space${active.length === 1 ? "" : "s"}`
+          }
           actionLabel="Open projects"
           actionTo="/team"
         />
@@ -244,13 +328,28 @@ export function DashboardScreen() {
         <MetricCard
           index={3}
           label="Profile completeness"
-          value="100%"
-          subtitle="ready to connect"
+          value={`${profileCompleteness}%`}
+          subtitle={profileCompleteness === 100 ? "ready to connect" : "profile completion"}
           tooltipTitle="Profile Readiness Gauge"
-          tooltipDesc="Completeness score based on bio, skills, and verified certificates."
-          tooltipDetail="100% complete • Ready to connect"
-          visual={<DonutProgressRing pct={100} strokeColor="#0d9488" />}
-          footerLeft="Keep it current"
+          tooltipDesc="Completeness score based on display name, bio, preferred role, skills, and weekly availability."
+          tooltipDetail={
+            profileCompleteness === 100
+              ? "100% complete • Profile fully optimized"
+              : `${profileCompleteness}% complete • Add more details to boost match accuracy`
+          }
+          visual={
+            <DonutProgressRing
+              pct={profileCompleteness}
+              strokeColor={
+                profileCompleteness >= 80
+                  ? "#0d9488"
+                  : profileCompleteness >= 50
+                  ? "#3b82f6"
+                  : "#f59e0b"
+              }
+            />
+          }
+          footerLeft={profileCompleteness === 100 ? "Keep it current" : "Needs attention"}
           actionLabel="View profile"
           actionTo="/profile"
         />

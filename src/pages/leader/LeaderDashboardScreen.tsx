@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, useMemo } from "react"
 import { Link, useLocation, useSearchParams } from "react-router"
 import {
   Clock,
@@ -76,6 +76,55 @@ export function LeaderDashboard() {
   const pendingCount = resource.data?.leading_projects.reduce((sum, p) => sum + p.pending_applications_count, 0) ?? 0
   const pendingFor = (id: string) => resource.data?.leading_projects.find(p => p.project_id === id)?.pending_applications_count ?? 0
 
+  const totalOpenings = useMemo(
+    () => managed.reduce((total, project) => total + (project.openings ?? 0), 0),
+    [managed],
+  )
+
+  const openPositionsBreakdown = useMemo(() => {
+    const map = new Map<string, number>()
+    for (const project of managed) {
+      if (project.openPositions && project.openPositions.length > 0) {
+        for (const pos of project.openPositions) {
+          if (pos.count > 0) {
+            map.set(pos.title, (map.get(pos.title) || 0) + pos.count)
+          }
+        }
+      } else if (project.openings && project.openings > 0) {
+        const roleName = project.role || "Developer"
+        map.set(roleName, (map.get(roleName) || 0) + project.openings)
+      }
+    }
+    const total = Array.from(map.values()).reduce((a, b) => a + b, 0)
+    return Array.from(map.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 2)
+      .map(([role, count], idx) => ({
+        label: role.split(" ")[0],
+        count,
+        pct: total > 0 ? Math.round((count / total) * 100) : 0,
+        color: idx === 0 ? "#2563eb" : "#0d9488",
+      }))
+  }, [managed])
+
+  const totalTeamMembers = useMemo(
+    () => managed.reduce((total, project) => total + (project.team || 0), 0),
+    [managed],
+  )
+
+  const totalTeamCapacity = useMemo(
+    () => managed.reduce((total, project) => total + (project.capacity || 0), 0),
+    [managed],
+  )
+
+  const teamFillPct = useMemo(
+    () =>
+      totalTeamCapacity > 0
+        ? Math.min(100, Math.round((totalTeamMembers / totalTeamCapacity) * 100))
+        : 0,
+    [totalTeamMembers, totalTeamCapacity],
+  )
+
   const totalPages = Math.max(1, Math.ceil(managed.length / PROJECTS_PER_PAGE))
 
   useEffect(() => {
@@ -134,31 +183,29 @@ export function LeaderDashboard() {
           label="Open positions"
           tooltipTitle="Recruiting Roles Distribution"
           tooltipDesc="Breakdown of available vacancies across technical roles you are recruiting for."
-          tooltipDetail="Backend: 100% active allocation"
-          value={
-            managed.reduce(
-              (total, project) => total + (project.openings ?? 0),
-              0,
-            ) || 2
+          tooltipDetail={
+            totalOpenings > 0
+              ? openPositionsBreakdown.length > 0
+                ? openPositionsBreakdown.map((b: { label: string; count: number }) => `${b.label}: ${b.count}`).join(" • ")
+                : `${totalOpenings} open position${totalOpenings === 1 ? "" : "s"} actively recruiting`
+              : "All positions currently filled across your projects"
           }
+          value={totalOpenings}
           subtitle="places for new teammates"
           visual={
-            <CategoryBreakdown
-              items={[
-                {
-                  label: "Backend",
-                  count:
-                    managed.reduce(
-                      (total, project) => total + (project.openings ?? 0),
-                      0,
-                    ) || 2,
-                  pct: 100,
-                  color: "#2563eb",
-                },
-              ]}
-            />
+            openPositionsBreakdown.length > 0 ? (
+              <CategoryBreakdown items={openPositionsBreakdown} />
+            ) : (
+              <CapsuleSlots variant="faint" />
+            )
           }
-          footerLeft={`${managed.filter(p => p.status === 'recruiting' || !p.status).length || 1} project recruiting`}
+          footerLeft={
+            totalOpenings > 0
+              ? `${managed.filter((p) => (p.openings ?? 0) > 0).length} project${
+                  managed.filter((p) => (p.openings ?? 0) > 0).length === 1 ? "" : "s"
+                } recruiting`
+              : `${managed.length} workspace${managed.length === 1 ? "" : "s"}`
+          }
           actionLabel="Manage roles"
           actionTo="/my-projects"
         />
@@ -166,20 +213,21 @@ export function LeaderDashboard() {
         <MetricCard
           index={1}
           label="Interested candidates"
-          tooltipTitle="Candidate Pipeline by Field"
-          tooltipDesc="Students expressing interest categorized by technical strengths."
-          tooltipDetail="Backend: 2 • AI: 1 candidate"
-          value={demo ? candidateInterested.length : (pendingCount > 0 ? pendingCount : 4)}
-          subtitle="people to get to know"
-          visual={
-            <CategoryBreakdown
-              items={[
-                { label: "Backend", count: 2, pct: 100, color: "#0d9488" },
-                { label: "AI", count: 1, pct: 50, color: "#0d9488" },
-              ]}
-            />
+          tooltipTitle="Review Queue Pipeline"
+          tooltipDesc="Candidate applications waiting for leader evaluation across your managed projects."
+          tooltipDetail={
+            pendingCount > 0
+              ? `${pendingCount} candidate application${pendingCount === 1 ? "" : "s"} awaiting your decision`
+              : "Review queue is clear • 0 pending applications"
           }
-          footerLeft="+1 more role"
+          value={pendingCount}
+          subtitle={
+            pendingCount === 1
+              ? "application awaiting review"
+              : "applications awaiting review"
+          }
+          visual={<CapsuleSlots variant="faint" />}
+          footerLeft={pendingCount > 0 ? "Requires action" : "All caught up"}
           actionLabel="Review applications"
           actionTo="/applications"
         />
@@ -187,13 +235,23 @@ export function LeaderDashboard() {
         <MetricCard
           index={2}
           label="Pending invitations"
-          tooltipTitle="Direct Invitation Slots"
-          tooltipDesc="Available direct invitation capacity to shortlist candidates."
-          tooltipDetail="0 invitations sent • 4 not yet invited"
+          tooltipTitle="Direct Invitation Pipeline"
+          tooltipDesc="Track candidate invitations sent directly from your workspace."
+          tooltipDetail={
+            demo && candidateInvites.length > 0
+              ? `${candidateInvites.length} candidate invitation${
+                  candidateInvites.length === 1 ? "" : "s"
+                } sent`
+              : "0 direct invitations active"
+          }
           value={demo ? candidateInvites.length : 0}
-          subtitle="no invitations sent yet"
+          subtitle="invitations sent"
           visual={<CapsuleSlots variant="faint" />}
-          footerLeft="4 not yet invited"
+          footerLeft={
+            demo && candidateInvites.length > 0
+              ? `${candidateInvites.length} sent`
+              : "Invite candidates"
+          }
           actionLabel="Invite candidates"
           actionTo="/candidates"
         />
@@ -202,12 +260,20 @@ export function LeaderDashboard() {
           index={3}
           label="Team members"
           tooltipTitle="Overall Team Capacity"
-          tooltipDesc="Circular gauge showing filled vs maximum team seats across projects."
-          tooltipDetail="3 of 5 team seats filled (60%)"
-          value={managed.reduce((total, project) => total + (project.team || 0), 0) || 3}
-          subtitle="of 5 team seats filled"
-          visual={<DonutProgressRing pct={60} strokeColor="#334155" />}
-          footerLeft={`${managed.length || 1} workspace`}
+          tooltipDesc="Circular gauge showing filled vs maximum team seats across your managed projects."
+          tooltipDetail={
+            totalTeamCapacity > 0
+              ? `${totalTeamMembers} of ${totalTeamCapacity} team seats filled (${teamFillPct}% capacity)`
+              : `${totalTeamMembers} confirmed team member${totalTeamMembers === 1 ? "" : "s"}`
+          }
+          value={totalTeamMembers}
+          subtitle={
+            totalTeamCapacity > 0
+              ? `of ${totalTeamCapacity} team seats filled`
+              : "confirmed teammates"
+          }
+          visual={<DonutProgressRing pct={teamFillPct} strokeColor="#334155" />}
+          footerLeft={`${managed.length} workspace${managed.length === 1 ? "" : "s"}`}
           actionLabel="Open workspace"
           actionTo="/team"
         />

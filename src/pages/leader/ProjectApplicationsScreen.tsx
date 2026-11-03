@@ -470,36 +470,42 @@ export default function ProjectApplicationsScreen() {
           subtitle="confirmed teammates"
           tooltipTitle="Team Roster Filling Rate"
           tooltipDesc="Circular gauge showing confirmed team members vs maximum team capacity."
-          tooltipDetail={`${projectDetail?.current_team_size || 0} of ${projectDetail?.max_team_capacity || 5} seats filled (${
-            projectDetail
-              ? Math.min(
+          tooltipDetail={
+            projectDetail && projectDetail.max_team_capacity > 0
+              ? `${projectDetail.current_team_size || 0} of ${projectDetail.max_team_capacity} seats filled (${Math.min(
                   100,
                   Math.round(
                     ((projectDetail.current_team_size || 0) /
-                      (projectDetail.max_team_capacity || 5)) *
+                      projectDetail.max_team_capacity) *
                       100,
                   ),
-                )
-              : 40
-          }% capacity)`}
+                )}% capacity)`
+              : `${projectDetail?.current_team_size || 0} confirmed teammates`
+          }
           visual={
             <DonutProgressRing
               pct={
-                projectDetail
+                projectDetail && projectDetail.max_team_capacity > 0
                   ? Math.min(
                       100,
                       Math.round(
                         ((projectDetail.current_team_size || 0) /
-                          (projectDetail.max_team_capacity || 5)) *
+                          projectDetail.max_team_capacity) *
                           100,
                       ),
                     )
-                  : 40
+                  : projectDetail?.current_team_size
+                  ? 100
+                  : 0
               }
               strokeColor="#0d9488"
             />
           }
-          footerLeft={`${projectDetail?.current_team_size || 0}/${projectDetail?.max_team_capacity || 5} seats filled`}
+          footerLeft={
+            projectDetail && projectDetail.max_team_capacity > 0
+              ? `${projectDetail.current_team_size || 0}/${projectDetail.max_team_capacity} seats filled`
+              : `${projectDetail?.current_team_size || 0} seats filled`
+          }
           actionLabel="Open workspace"
           actionTo={activeProjectId ? `/team/${activeProjectId}` : "/team"}
         />
@@ -520,12 +526,16 @@ export default function ProjectApplicationsScreen() {
             <CategoryBreakdown
               items={(projectDetail?.positions || [])
                 .slice(0, 2)
-                .map((p, idx) => ({
-                  label: p.title.split(" ")[0],
-                  count: Math.max(0, p.required_count - p.filled_count),
-                  pct: 100,
-                  color: idx === 0 ? "#2563eb" : "#0d9488",
-                }))}
+                .map((p, idx) => {
+                  const remaining = Math.max(0, p.required_count - p.filled_count)
+                  const pct = p.required_count > 0 ? Math.round((remaining / p.required_count) * 100) : 0
+                  return {
+                    label: p.title.split(" ")[0],
+                    count: remaining,
+                    pct,
+                    color: idx === 0 ? "#2563eb" : "#0d9488",
+                  }
+                })}
             />
           }
           footerLeft={`${projectDetail?.positions?.length || 0} active roles`}

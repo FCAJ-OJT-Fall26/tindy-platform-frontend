@@ -127,6 +127,18 @@ export function mapProjectDetailToUiProject(dto: ProjectDetailDto, existing?: Pr
     team: dto.current_team_size,
     capacity: dto.max_team_capacity,
     openings: dto.positions.filter(position => position.status === "open").reduce((sum, position) => sum + Math.max(0, position.required_count - position.filled_count), 0),
+    openPositions: (dto.positions || [])
+      .filter((position) => position.status === "open")
+      .map((p) => ({
+        positionId: p.position_id,
+        role: p.title,
+        title: p.title,
+        count: Math.max(0, p.required_count - p.filled_count),
+        level: p.experience_level,
+        description: p.description ?? undefined,
+        requiredSkills: (p.skills || []).filter((s) => s.is_required).map((s) => s.name),
+        niceSkills: (p.skills || []).filter((s) => !s.is_required).map((s) => s.name),
+      })),
     leader: dto.leader.display_name,
     leaderId: dto.leader.user_id,
     matchAvailable: true, serverMatch: existing?.serverMatch,
