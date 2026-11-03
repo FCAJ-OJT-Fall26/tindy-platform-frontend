@@ -8,9 +8,9 @@ import {
   Settings,
   Users,
 } from "lucide-react"
-import { useTindy, Project } from "../../store"
+import { useTindy } from "../../store"
 import useMyProjects from "../../hooks/useMyProjects"
-import { EmptyState, Chips } from "../../components/ui"
+import { EmptyState, Chips, Badge } from "../../components/ui"
 import { ProjectWorkspaceView } from "./ProjectWorkspaceView"
 import "./team-screen.css"
 
@@ -175,46 +175,44 @@ export function TeamScreen() {
             const initials = proj.name ? proj.name.slice(0, 2).toUpperCase() : "PR"
             return (
               <article className="team-workspace-card" key={proj.project_id}>
+                {/* Card Top: Mark + Badge + Category + Title */}
                 <div className="team-workspace-card-top">
                   <span className={`project-mark ${proj.isLeader ? "indigo" : "teal"}`}>
                     {initials}
                   </span>
-                  <div className="team-workspace-card-category">
-                    <span>{proj.category}</span>
-                    <span className="team-workspace-role-pill">
-                      <i />
-                      {proj.isLeader ? "Project Leader" : "Team Member"}
-                    </span>
+                  <div className="team-workspace-card-info">
+                    <div className="team-workspace-card-badge-row">
+                      <Badge tone="success">
+                        {(proj.status ?? "recruiting").replace(/_/g, " ").toUpperCase()}
+                      </Badge>
+                      <span className="team-workspace-category-label">{proj.category}</span>
+                    </div>
+                    <Link className="team-workspace-card-title" to={`/team/${proj.project_id}`}>
+                      {proj.name}
+                    </Link>
                   </div>
                 </div>
 
-                <Link className="team-workspace-card-title" to={`/team/${proj.project_id}`}>
-                  {proj.name}
-                </Link>
                 <p className="team-workspace-card-desc">
-                  {proj.tagline || (proj.leader_name ? `Led by ${proj.leader_name}. Active team space.` : "Active collaborative team workspace.")}
+                  {proj.tagline || (proj.leader_name ? `Led by ${proj.leader_name}. Active collaborative team space.` : "Active collaborative team workspace.")}
                 </p>
 
                 <Chips items={proj.skills && proj.skills.length > 0 ? proj.skills : ["PostgreSQL", ".NET", "C#"]} />
 
-                <div className="team-workspace-attributes">
+                {/* Stats row pinned to bottom via margin-top: auto (Leader Workspace style) */}
+                <div className="team-workspace-card-stats">
+                  <span>
+                    <Users size={14} />
+                    <strong>{proj.current_team_size} / {proj.max_team_capacity}</strong> members
+                  </span>
                   <span>
                     <Code2 size={14} />
-                    {proj.isLeader ? "Project Leader" : proj.my_role}
-                  </span>
-                  <span className="flex items-center gap-1.5 text-slate-500">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />
-                    {proj.status === "active" ? "In progress" : "Recruiting"}
+                    <span>{proj.isLeader ? "Project Leader" : (proj.my_role || "Team Member")}</span>
                   </span>
                 </div>
 
+                {/* Card Footer Actions: Dedicated full-width row */}
                 <div className="team-workspace-card-footer">
-                  <div className="team-workspace-members-preview">
-                    <Users size={14} />
-                    <span>
-                      {proj.current_team_size}/{proj.max_team_capacity} members
-                    </span>
-                  </div>
                   <div className={`team-workspace-card-actions ${!proj.isLeader ? "is-single" : ""}`}>
                     {proj.isLeader && (
                       <Link
