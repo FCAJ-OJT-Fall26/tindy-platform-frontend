@@ -198,21 +198,25 @@
 /* GitHub-Style Per-Bar Popover Tooltip */
 .metric-bar-popover {
   position: absolute;
-  bottom: calc(100% + 7px);
-  left: 50%;
-  transform: translateX(-50%) translateY(4px);
+  bottom: calc(100% + 8px);
+  right: -8px;
+  left: auto;
+  transform: translateY(4px);
   background: #0f172a;
   color: #ffffff;
-  padding: 6px 10px;
+  padding: 6px 11px;
   border-radius: 6px;
   font-size: 11px;
   font-weight: 500;
+  line-height: 1.35;
   white-space: nowrap;
+  width: max-content !important;
+  max-width: 250px;
   pointer-events: none;
   opacity: 0;
   visibility: hidden;
-  z-index: 250;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.35);
+  z-index: 300;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4);
   border: 1px solid rgba(255, 255, 255, 0.16);
   transition: opacity 0.15s cubic-bezier(0.16, 1, 0.3, 1),
               transform 0.15s cubic-bezier(0.16, 1, 0.3, 1);
@@ -223,8 +227,8 @@
   content: "";
   position: absolute;
   top: 100%;
-  left: 50%;
-  transform: translateX(-50%);
+  right: 12px;
+  left: auto;
   border-width: 5px;
   border-style: solid;
   border-color: #0f172a transparent transparent transparent;
@@ -234,41 +238,18 @@
 .metric-sparkline-col:focus-visible .metric-bar-popover {
   opacity: 1;
   visibility: visible;
-  transform: translateX(-50%) translateY(0);
-}
-
-/* For columns near the right edge (last 3 columns), align popover inwards so it never gets clipped or spills outside */
-.metric-sparkline-col:nth-last-child(-n+3) .metric-bar-popover {
-  left: auto;
-  right: -6px;
-  transform: translateY(4px);
-}
-
-.metric-sparkline-col:nth-last-child(-n+3):hover .metric-bar-popover,
-.metric-sparkline-col:nth-last-child(-n+3):focus-visible .metric-bar-popover {
   transform: translateY(0);
 }
 
-.metric-sparkline-col:nth-last-child(-n+3) .metric-bar-popover::after {
-  left: auto;
-  right: 8px;
-  transform: none;
+/* For multi-column charts (>= 5 columns like 7-day trend), allow early columns (1st and 2nd) to expand rightwards */
+.metric-sparkline-track:has(.metric-sparkline-col:nth-child(5)) .metric-sparkline-col:nth-child(-n+2) .metric-bar-popover {
+  left: -8px;
+  right: auto;
 }
 
-/* For the leftmost column, align popover towards the right */
-.metric-sparkline-col:first-child .metric-bar-popover {
-  left: -4px;
-  transform: translateY(4px);
-}
-
-.metric-sparkline-col:first-child:hover .metric-bar-popover,
-.metric-sparkline-col:first-child:focus-visible .metric-bar-popover {
-  transform: translateY(0);
-}
-
-.metric-sparkline-col:first-child .metric-bar-popover::after {
-  left: 8px;
-  transform: none;
+.metric-sparkline-track:has(.metric-sparkline-col:nth-child(5)) .metric-sparkline-col:nth-child(-n+2) .metric-bar-popover::after {
+  left: 12px;
+  right: auto;
 }
 
 .metric-sparkline-caption {
