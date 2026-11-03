@@ -12,6 +12,7 @@ import { useTindy, Project } from "../../store"
 import useMyProjects from "../../hooks/useMyProjects"
 import { PageHeader, EmptyState, Chips } from "../../components/ui"
 import { ProjectWorkspaceView } from "./ProjectWorkspaceView"
+import "./team-screen.css"
 
 interface TeamProjectItem {
   project_id: string
@@ -115,20 +116,22 @@ export function TeamScreen() {
   }, [filterTab, leadingList, joinedList])
 
   return (
-    <>
+    <div className="team-workspace-page">
       <PageHeader
         title="Team workspace"
         description="All active project teams you are collaborating with and leading."
         action={
-          <Link to="/create-project" className="btn btn-secondary">
-            <Plus size={15} /> Create project
+          <Link to="/create-project" className="btn btn-secondary team-workspace-btn">
+            <Plus size={15} /> <span>Create project</span>
           </Link>
         }
       />
 
-      <div className="status-tabs">
+      <div className="status-tabs" role="tablist" aria-label="Team workspace filters">
         <button
           type="button"
+          role="tab"
+          aria-selected={filterTab === "all"}
           onClick={() => setFilterTab("all")}
           className={filterTab === "all" ? "active" : ""}
         >
@@ -136,6 +139,8 @@ export function TeamScreen() {
         </button>
         <button
           type="button"
+          role="tab"
+          aria-selected={filterTab === "leading"}
           onClick={() => setFilterTab("leading")}
           className={filterTab === "leading" ? "active" : ""}
         >
@@ -143,6 +148,8 @@ export function TeamScreen() {
         </button>
         <button
           type="button"
+          role="tab"
+          aria-selected={filterTab === "member"}
           onClick={() => setFilterTab("member")}
           className={filterTab === "member" ? "active" : ""}
         >
@@ -155,40 +162,40 @@ export function TeamScreen() {
           title="No active team projects yet."
           description="Explore projects matching your skills on the Discovery feed or create your own project to start collaborating."
           action={
-            <Link to="/discover" className="btn btn-primary">
-              Discover projects <ArrowRight size={14} />
+            <Link to="/discover" className="btn btn-primary team-workspace-btn">
+              <span>Discover projects</span> <ArrowRight size={14} />
             </Link>
           }
         />
       ) : (
-        <div className="project-grid">
+        <div className="team-workspace-grid">
           {displayProjects.map((proj) => {
             const initials = proj.name ? proj.name.slice(0, 2).toUpperCase() : "PR"
             return (
-              <article className="project-card" key={proj.project_id}>
-                <div className="project-card-top">
+              <article className="team-workspace-card" key={proj.project_id}>
+                <div className="team-workspace-card-top">
                   <span className={`project-mark ${proj.isLeader ? "indigo" : "teal"}`}>
                     {initials}
                   </span>
-                  <div className="card-category">
-                    {proj.category}
-                    <span className="recruiting">
+                  <div className="team-workspace-card-category">
+                    <span>{proj.category}</span>
+                    <span className="team-workspace-role-pill">
                       <i />
                       {proj.isLeader ? "Project Leader" : "Team Member"}
                     </span>
                   </div>
                 </div>
 
-                <Link className="project-title" to={`/team/${proj.project_id}`}>
+                <Link className="team-workspace-card-title" to={`/team/${proj.project_id}`}>
                   {proj.name}
                 </Link>
-                <p className="project-description">
+                <p className="team-workspace-card-desc">
                   {proj.tagline || (proj.leader_name ? `Led by ${proj.leader_name}. Active team space.` : "Active collaborative team workspace.")}
                 </p>
 
                 <Chips items={proj.skills && proj.skills.length > 0 ? proj.skills : ["PostgreSQL", ".NET", "C#"]} />
 
-                <div className="project-attributes">
+                <div className="team-workspace-attributes">
                   <span>
                     <Code2 size={14} />
                     {proj.isLeader ? "Project Leader" : proj.my_role}
@@ -199,18 +206,19 @@ export function TeamScreen() {
                   </span>
                 </div>
 
-                <div className="project-card-bottom" style={{ borderTop: "1px solid #f1f5f9", paddingTop: "12px", marginTop: "12px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                  <div className="team-preview">
-                    <small>
+                <div className="team-workspace-card-footer">
+                  <div className="team-workspace-members-preview">
+                    <Users size={13} />
+                    <span>
                       {proj.current_team_size}/{proj.max_team_capacity} members
-                    </small>
+                    </span>
                   </div>
-                  <div style={{ display: "flex", gap: "8px", marginLeft: "auto" }}>
+                  <div className={`team-workspace-card-actions ${!proj.isLeader ? "is-single" : ""}`}>
                     {proj.isLeader && (
                       <Link
                         to={`/project/${proj.project_id}/edit`}
-                        className="btn btn-secondary"
-                        style={{ padding: "5px 11px", fontSize: "11.5px", gap: "5px" }}
+                        className="btn btn-secondary team-workspace-btn"
+                        title="Manage project settings and recruitment"
                       >
                         <Settings size={13} />
                         <span>Manage</span>
@@ -219,8 +227,8 @@ export function TeamScreen() {
                     )}
                     <Link
                       to={`/team/${proj.project_id}`}
-                      className="btn btn-primary"
-                      style={{ padding: "5px 13px", fontSize: "11.5px", gap: "5px" }}
+                      className="btn btn-primary team-workspace-btn"
+                      title="Open team workspace and goals"
                     >
                       <span>Open workspace</span>
                       <ArrowRight size={13} />
@@ -232,7 +240,7 @@ export function TeamScreen() {
           })}
         </div>
       )}
-    </>
+    </div>
   )
 }
 

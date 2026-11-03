@@ -495,11 +495,11 @@ export function ProjectWorkspaceView({ projectId: propProjectId }: ProjectWorksp
         <div className="lg:col-span-7 space-y-6">
           <div className="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden">
             {/* Project Header Bar */}
-            <div className="px-5 py-3.5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+            <div className="px-4 sm:px-5 py-3.5 border-b border-slate-100 flex flex-wrap items-center justify-between gap-2.5 bg-slate-50/50">
               <span className="text-xs font-semibold text-slate-700">
                 {activeProject.name} — Workspace
               </span>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
                   {isCompleted ? "Completed" : "Active"}
                 </span>
