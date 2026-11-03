@@ -47,6 +47,7 @@ export default function ProjectApplicationsScreen() {
   // Project details & applications
   const [projectDetail, setProjectDetail] = useState<ProjectDetailDto | null>(null)
   const [applications, setApplications] = useState<ApplicationReviewDto[]>([])
+  const [allApplications, setAllApplications] = useState<ApplicationReviewDto[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
 
@@ -173,6 +174,7 @@ export default function ProjectApplicationsScreen() {
         rejected: rCount,
       })
 
+      setAllApplications(allItems)
       setApplications(currentRes.items || [])
       setPaginationMeta({
         page: currentRes.pagination.current_page,
@@ -264,8 +266,8 @@ export default function ProjectApplicationsScreen() {
       })
     }
 
-    if (applications && applications.length > 0) {
-      applications.forEach((app) => {
+    if (allApplications && allApplications.length > 0) {
+      allApplications.forEach((app) => {
         if (!app.application?.created_at) return
         const createdDate = new Date(app.application.created_at)
         const yyyy = createdDate.getFullYear()
@@ -296,7 +298,7 @@ export default function ProjectApplicationsScreen() {
         b.count === 1 ? "" : "s"
       }`,
     }))
-  }, [applications, counts.total])
+  }, [allApplications, counts.total])
 
   if (loadingProjects && !activeProjectId) {
     return (
