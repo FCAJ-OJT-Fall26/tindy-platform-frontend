@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { Link, useNavigate, useParams } from "react-router"
 import {
   ArrowLeft,
@@ -28,7 +28,7 @@ import {
   decideApplication,
   getProjectApplications,
 } from "../../services/applications.service"
-import type { ApplicationReviewDto, ApplicationStatus } from "../../types/application"
+import type { ApplicationReviewDto, ApplicationReviewPage, ApplicationStatus } from "../../types/application"
 import type { MyLeadingProjectDto, ProjectDetailDto } from "../../types/project"
 import "./project-applications.css"
 
@@ -48,9 +48,17 @@ export default function ProjectApplicationsScreen() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
 
-  // Filters
+  // Global counts across all statuses (independent of current tab filter)
+  const [counts, setCounts] = useState({
+    total: 0,
+    pending: 0,
+    accepted: 0,
+    rejected: 0,
+  })
+
+  // Filters - default to "all" so applicants are immediately visible on page load
   const [selectedPosition, setSelectedPosition] = useState("")
-  const [selectedStatus, setSelectedStatus] = useState<ApplicationStatus | "all">("pending")
+  const [selectedStatus, setSelectedStatus] = useState<ApplicationStatus | "all">("all")
   const [selectedSort, setSelectedSort] = useState<"match" | "newest">("match")
   const [currentPage, setCurrentPage] = useState(1)
   const [paginationMeta, setPaginationMeta] = useState<{
@@ -109,24 +117,67 @@ export default function ProjectApplicationsScreen() {
     setLoading(true)
     setError("")
     try {
-      const [detail, appRes] = await Promise.all([
-        getProjectByIdApi(activeProjectId),
-        getProjectApplications(activeProjectId, {
-          position_id: selectedPosition || undefined,
-          status: selectedStatus,
-          sort_by: selectedSort,
-          page: currentPage,
-          page_size: 20,
-        }),
-      ])
-      setProjectDetail(detail)
-      setApplications(appRes.items || [])
+      let allRes: ApplicationReviewPage
+      let currentRes: ApplicationReviewPage
+
+      // If viewing "all", optimize by fetching once; otherwise fetch overall breakdown in parallel
+      if (selectedStatus === "all") {
+        const [detail, res] = await Promise.all([
+          getProjectByIdApi(activeProjectId),
+          getProjectApplications(activeProjectId, {
+            position_id: selectedPosition || undefined,
+            status: "all",
+            sort_by: selectedSort,
+            page: currentPage,
+            page_size: 20,
+          }),
+        ])
+        setProjectDetail(detail)
+        allRes = res
+        currentRes = res
+      } else {
+        const [detail, all, curr] = await Promise.all([
+          getProjectByIdApi(activeProjectId),
+          getProjectApplications(activeProjectId, {
+            position_id: selectedPosition || undefined,
+            status: "all",
+            page: 1,
+            page_size: 100,
+          }),
+          getProjectApplications(activeProjectId, {
+            position_id: selectedPosition || undefined,
+            status: selectedStatus,
+            sort_by: selectedSort,
+            page: currentPage,
+            page_size: 20,
+          }),
+        ])
+        setProjectDetail(detail)
+        allRes = all
+        currentRes = curr
+      }
+
+      // Calculate global project-wide stats across all statuses
+      const allItems = allRes.items || []
+      const pCount = allItems.filter((a) => a.application.status === "pending").length
+      const aCount = allItems.filter((a) => a.application.status === "accepted").length
+      const rCount = allItems.filter((a) => a.application.status === "rejected").length
+      const tCount = allRes.pagination?.total_items ?? allItems.length
+
+      setCounts({
+        total: tCount,
+        pending: pCount,
+        accepted: aCount,
+        rejected: rCount,
+      })
+
+      setApplications(currentRes.items || [])
       setPaginationMeta({
-        page: appRes.pagination.current_page,
-        pageSize: appRes.pagination.page_size,
-        total: appRes.pagination.total_items,
-        hasNext: appRes.pagination.has_next,
-        hasPrev: appRes.pagination.has_previous,
+        page: currentRes.pagination.current_page,
+        pageSize: currentRes.pagination.page_size,
+        total: currentRes.pagination.total_items,
+        hasNext: currentRes.pagination.has_next,
+        hasPrev: currentRes.pagination.has_previous,
       })
     } catch (err) {
       setError(applicationErrorMessage(err))
@@ -138,19 +189,6 @@ export default function ProjectApplicationsScreen() {
   useEffect(() => {
     void loadData()
   }, [loadData])
-
-  // Stats calculation
-  const pendingCount = useMemo(() => {
-    return applications.filter((a) => a.application.status === "pending").length
-  }, [applications])
-
-  const acceptedCount = useMemo(() => {
-    return applications.filter((a) => a.application.status === "accepted").length
-  }, [applications])
-
-  const rejectedCount = useMemo(() => {
-    return applications.filter((a) => a.application.status === "rejected").length
-  }, [applications])
 
   // Confirm decision
   const confirmDecision = async () => {
@@ -304,7 +342,7 @@ export default function ProjectApplicationsScreen() {
         <MetricCard
           index={0}
           label="Total applications"
-          value={paginationMeta.total}
+          value={counts.total}
           subtitle="submitted by candidates"
           visual={
             <SparklineBars
@@ -329,10 +367,10 @@ export default function ProjectApplicationsScreen() {
         <MetricCard
           index={1}
           label="Pending review"
-          value={pendingCount}
+          value={counts.pending}
           subtitle="awaiting your decision"
           visual={<CapsuleSlots variant="faint" />}
-          footerLeft={pendingCount > 0 ? "Requires action" : "All caught up"}
+          footerLeft={counts.pending > 0 ? "Requires action" : "All caught up"}
           actionLabel="Review pending"
           actionOnClick={() => {
             setSelectedStatus("pending")
@@ -343,7 +381,7 @@ export default function ProjectApplicationsScreen() {
         <MetricCard
           index={2}
           label="Accepted"
-          value={acceptedCount}
+          value={counts.accepted}
           subtitle="confirmed teammates"
           visual={
             <DonutProgressRing
@@ -406,7 +444,7 @@ export default function ProjectApplicationsScreen() {
               border: "1px solid #dce6f6",
             }}
           >
-            {paginationMeta.total} {paginationMeta.total === 1 ? "applicant" : "applicants"}
+            {counts.total} {counts.total === 1 ? "applicant" : "applicants"}
           </span>
         }
       />
@@ -417,10 +455,10 @@ export default function ProjectApplicationsScreen() {
         <div className="applications-status-tabs" role="tablist">
           {(
             [
-              { id: "pending", label: "Pending review", count: pendingCount },
-              { id: "accepted", label: "Accepted", count: acceptedCount },
-              { id: "rejected", label: "Rejected", count: rejectedCount },
-              { id: "all", label: "All applications", count: paginationMeta.total },
+              { id: "pending", label: "Pending review", count: counts.pending },
+              { id: "accepted", label: "Accepted", count: counts.accepted },
+              { id: "rejected", label: "Rejected", count: counts.rejected },
+              { id: "all", label: "All applications", count: counts.total },
             ] as const
           ).map((tab) => {
             const isActive = selectedStatus === tab.id
@@ -439,7 +477,7 @@ export default function ProjectApplicationsScreen() {
                 <span>{tab.label}</span>
                 <span
                   className={`applications-tab-count ${
-                    tab.id === "pending" && pendingCount > 0 ? "pending-alert" : ""
+                    tab.id === "pending" && counts.pending > 0 ? "pending-alert" : ""
                   }`}
                 >
                   {tab.count}
