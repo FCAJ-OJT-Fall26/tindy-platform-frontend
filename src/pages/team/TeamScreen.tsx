@@ -10,7 +10,7 @@ import {
 } from "lucide-react"
 import { useTindy, Project } from "../../store"
 import useMyProjects from "../../hooks/useMyProjects"
-import { PageHeader, EmptyState, Chips } from "../../components/ui"
+import { EmptyState, Chips } from "../../components/ui"
 import { ProjectWorkspaceView } from "./ProjectWorkspaceView"
 import "./team-screen.css"
 
@@ -117,16 +117,18 @@ export function TeamScreen() {
 
   return (
     <div className="team-workspace-page">
-      <PageHeader
-        title="Team workspace"
-        description="All active project teams you are collaborating with and leading."
-        action={
-          <Link to="/create-project" className="btn btn-secondary team-workspace-btn">
-            <Plus size={15} /> <span>Create project</span>
-          </Link>
-        }
-      />
+      {/* Responsive Page Header */}
+      <div className="team-workspace-header">
+        <div className="team-workspace-header-text">
+          <h1>Team workspace</h1>
+          <p>All active project teams you are collaborating with and leading.</p>
+        </div>
+        <Link to="/create-project" className="btn btn-secondary team-workspace-create-btn">
+          <Plus size={15} /> <span>Create project</span>
+        </Link>
+      </div>
 
+      {/* Responsive Filter Tabs */}
       <div className="status-tabs" role="tablist" aria-label="Team workspace filters">
         <button
           type="button"
@@ -135,7 +137,7 @@ export function TeamScreen() {
           onClick={() => setFilterTab("all")}
           className={filterTab === "all" ? "active" : ""}
         >
-          All teams <span>{totalTeamsCount}</span>
+          <span>All teams</span> <span className="tab-count">{totalTeamsCount}</span>
         </button>
         <button
           type="button"
@@ -144,7 +146,7 @@ export function TeamScreen() {
           onClick={() => setFilterTab("leading")}
           className={filterTab === "leading" ? "active" : ""}
         >
-          Teams you lead <span>{leadingList.length}</span>
+          <span>Teams you lead</span> <span className="tab-count">{leadingList.length}</span>
         </button>
         <button
           type="button"
@@ -153,7 +155,7 @@ export function TeamScreen() {
           onClick={() => setFilterTab("member")}
           className={filterTab === "member" ? "active" : ""}
         >
-          Teams you joined <span>{joinedList.length}</span>
+          <span>Teams you joined</span> <span className="tab-count">{joinedList.length}</span>
         </button>
       </div>
 
@@ -208,7 +210,7 @@ export function TeamScreen() {
 
                 <div className="team-workspace-card-footer">
                   <div className="team-workspace-members-preview">
-                    <Users size={13} />
+                    <Users size={14} />
                     <span>
                       {proj.current_team_size}/{proj.max_team_capacity} members
                     </span>

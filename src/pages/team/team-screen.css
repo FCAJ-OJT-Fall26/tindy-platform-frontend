@@ -1,4 +1,6 @@
-/* Team Workspace Page - Responsive & Clean Design */
+/* ==========================================================================
+   Team Workspace - Purpose-built Responsive Styles for Mobile & Desktop
+   ========================================================================== */
 
 .team-workspace-page {
   display: flex;
@@ -7,7 +9,116 @@
   width: 100%;
 }
 
-/* 2-Column Grid on Desktop / Tablet (matching Tindy standard), 1-Column on Mobile */
+/* --------------------------------------------------------------------------
+   1. Page Header (Responsive Layout)
+   -------------------------------------------------------------------------- */
+.team-workspace-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 22px;
+  min-width: 0;
+}
+
+.team-workspace-header-text {
+  min-width: 0;
+}
+
+.team-workspace-header-text h1 {
+  font-family: Manrope, sans-serif;
+  font-size: 26px;
+  font-weight: 750;
+  color: #0f172a;
+  letter-spacing: -0.02em;
+  margin: 0 0 6px;
+  line-height: 1.25;
+}
+
+.team-workspace-header-text p {
+  font-size: 13.5px;
+  color: #64748b;
+  margin: 0;
+  line-height: 1.5;
+}
+
+.team-workspace-create-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-size: 12.5px;
+  font-weight: 600;
+  white-space: nowrap;
+  padding: 8px 14px;
+  border-radius: 8px;
+  flex-shrink: 0;
+  transition: all 0.15s ease;
+}
+
+/* --------------------------------------------------------------------------
+   2. Status Tabs (Touch-friendly & Responsive)
+   -------------------------------------------------------------------------- */
+.team-workspace-page .status-tabs {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  white-space: nowrap;
+  padding-bottom: 2px;
+  margin: 0 0 22px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.team-workspace-page .status-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.team-workspace-page .status-tabs button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  padding: 6px 4px 12px;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: #64748b;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.team-workspace-page .status-tabs button:hover {
+  color: #1e293b;
+}
+
+.team-workspace-page .status-tabs button.active {
+  color: #0f172a;
+  border-bottom-color: #2563eb;
+  font-weight: 650;
+}
+
+.team-workspace-page .status-tabs button .tab-count {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: #f1f5f9;
+  color: #475569;
+}
+
+.team-workspace-page .status-tabs button.active .tab-count {
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+/* --------------------------------------------------------------------------
+   3. Project Grid (1-Col on Mobile <768px, 2-Col on Desktop >=768px)
+   -------------------------------------------------------------------------- */
 .team-workspace-grid {
   display: grid;
   grid-template-columns: 1fr;
@@ -23,17 +134,21 @@
   }
 }
 
-/* Card Styling */
+/* --------------------------------------------------------------------------
+   4. Project Card Architecture
+   -------------------------------------------------------------------------- */
 .team-workspace-card {
   display: flex;
   flex-direction: column;
   background: #ffffff;
-  border: 1px solid #e3e9f1;
+  border: 1px solid #e2e8f0;
   border-radius: 12px;
   padding: 20px 22px 0;
   min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
   overflow: hidden;
-  transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease;
   box-shadow: 0 1px 3px rgba(15, 23, 42, 0.03);
 }
 
@@ -42,7 +157,7 @@
   box-shadow: 0 6px 18px rgba(15, 23, 42, 0.06);
 }
 
-/* Card Top / Header */
+/* Card Top */
 .team-workspace-card-top {
   display: flex;
   align-items: center;
@@ -133,13 +248,21 @@
   overflow: hidden;
 }
 
+/* Tech Chips within Card */
+.team-workspace-card .chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
 /* Card Attributes */
 .team-workspace-attributes {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
   gap: 16px;
-  margin: 14px 0 0;
+  margin: 10px 0 0;
   font-size: 12px;
   color: #64748b;
 }
@@ -150,7 +273,9 @@
   gap: 5px;
 }
 
-/* Card Footer */
+/* --------------------------------------------------------------------------
+   5. Card Footer Actions (Desktop & Mobile Specific Layouts)
+   -------------------------------------------------------------------------- */
 .team-workspace-card-footer {
   display: flex;
   align-items: center;
@@ -186,7 +311,7 @@
   align-items: center;
   justify-content: center;
   gap: 6px;
-  padding: 6px 13px;
+  padding: 6.5px 13px;
   border-radius: 7px;
   font-size: 12px;
   font-weight: 600;
@@ -200,17 +325,54 @@
   flex-shrink: 0;
 }
 
-/* Mobile Responsiveness */
-@media (max-width: 560px) {
-  .team-workspace-card {
-    padding: 16px 16px 0;
+/* --------------------------------------------------------------------------
+   6. Mobile Breakpoints (<576px, <480px, <360px)
+   -------------------------------------------------------------------------- */
+@media (max-width: 575px) {
+  /* Header stacks neatly on mobile */
+  .team-workspace-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+    margin-bottom: 18px;
   }
 
+  .team-workspace-header-text h1 {
+    font-size: 22px;
+  }
+
+  .team-workspace-header-text p {
+    font-size: 12.5px;
+  }
+
+  .team-workspace-create-btn {
+    width: 100%;
+    justify-content: center;
+    padding: 9.5px 12px;
+    font-size: 13px;
+  }
+
+  /* Card padding adapted */
+  .team-workspace-card {
+    padding: 16px 16px 0;
+    border-radius: 10px;
+  }
+
+  .team-workspace-card-title {
+    font-size: 16.5px;
+  }
+
+  .team-workspace-card-desc {
+    font-size: 12.5px;
+  }
+
+  /* Card footer switches to full-width mobile friendly action bar */
   .team-workspace-card-footer {
     flex-direction: column;
     align-items: stretch;
     gap: 12px;
     padding: 12px 0 14px;
+    margin-top: 14px;
   }
 
   .team-workspace-members-preview {
@@ -231,34 +393,77 @@
 
   .team-workspace-btn {
     width: 100%;
-    padding: 8px 10px;
+    padding: 8.5px 10px;
     font-size: 12px;
+    justify-content: center;
   }
 }
 
-@media (max-width: 360px) {
+@media (max-width: 480px) {
+  /* Page padding optimization for narrow viewports */
+  main {
+    padding: 18px 14px 0 !important;
+  }
+
+  .team-workspace-page .status-tabs {
+    gap: 12px;
+    margin-bottom: 18px;
+  }
+
+  .team-workspace-page .status-tabs button {
+    font-size: 11.5px;
+    padding: 6px 2px 10px;
+  }
+
+  .team-workspace-page .status-tabs button .tab-count {
+    font-size: 10px;
+    padding: 1px 5px;
+  }
+}
+
+@media (max-width: 350px) {
+  /* Ultra-narrow devices (iPhone SE, narrow foldables): stack action buttons */
+  main {
+    padding: 14px 10px 0 !important;
+  }
+
+  .team-workspace-card {
+    padding: 14px 12px 0;
+  }
+
   .team-workspace-card-actions {
     grid-template-columns: 1fr;
   }
 }
 
-/* Status tabs horizontal scroll for mobile */
-.team-workspace-page .status-tabs {
-  display: flex;
-  align-items: center;
-  gap: 20px;
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: none;
-  white-space: nowrap;
-  padding-bottom: 2px;
-  margin-bottom: 22px;
-}
+/* --------------------------------------------------------------------------
+   7. Global Topbar Mobile Simplification
+   -------------------------------------------------------------------------- */
+@media (max-width: 600px) {
+  .breadcrumb-category,
+  .breadcrumb-separator {
+    display: none !important;
+  }
 
-.team-workspace-page .status-tabs::-webkit-scrollbar {
-  display: none;
-}
+  .breadcrumb-title {
+    max-width: 170px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 12px;
+  }
 
-.team-workspace-page .status-tabs button {
-  flex-shrink: 0;
+  .topbar {
+    padding: 0 14px !important;
+    height: 52px !important;
+  }
+
+  .topbar-user-info,
+  .topbar-user-chevron {
+    display: none !important;
+  }
+
+  .topbar-actions {
+    gap: 8px !important;
+  }
 }
