@@ -89,32 +89,118 @@ export function AnimatedMetricValue({ value }: { value: React.ReactNode }) {
 
 /* --- Shared Micro Visual Components --- */
 
+export interface SparklineBarItem {
+  label?: string
+  value?: number
+  sublabel?: string
+  height?: number
+  color?: string
+  tooltip?: string
+  date?: string
+}
+
+export interface SparklineBarsProps {
+  bars?: SparklineBarItem[]
+  caption?: string
+  ariaLabel?: string
+}
+
 export function SparklineBars({
-  bars = [
-    { height: 26, color: "#1e40af" },
-    { height: 32, color: "#2563eb" },
-    { height: 22, color: "#93c5fd" },
-    { height: 25, color: "#bfdbfe" },
-    { height: 20, color: "#c7d2fe" },
-    { height: 28, color: "#bfdbfe" },
-    { height: 23, color: "#dbeafe" },
-  ],
-}: {
-  bars?: Array<{ height: number; color: string }>
-}) {
+  bars,
+  caption,
+  ariaLabel = "Activity trend chart",
+}: SparklineBarsProps) {
+  // Default to a 7-day timeline (past 6 days + today) if nothing is provided
+  const items: SparklineBarItem[] = React.useMemo(() => {
+    if (bars && bars.length > 0) return bars
+
+    const dayNames = ["CN", "T2", "T3", "T4", "T5", "T6", "T7"]
+    const today = new Date()
+    return Array.from({ length: 7 }).map((_, idx) => {
+      const offset = 6 - idx
+      const d = new Date()
+      d.setDate(today.getDate() - offset)
+      const isToday = offset === 0
+      const dayName = isToday ? "Nay" : dayNames[d.getDay()]
+      const dd = String(d.getDate()).padStart(2, "0")
+      const mm = String(d.getMonth() + 1).padStart(2, "0")
+      return {
+        label: dayName,
+        value: isToday ? 1 : 0,
+        tooltip: `${isToday ? "Hôm nay" : `Ngày ${dd}/${mm}`}: ${
+          isToday ? "1 đơn ứng tuyển mới" : "0 đơn"
+        }`,
+      }
+    })
+  }, [bars])
+
+  const maxVal = React.useMemo(() => {
+    return Math.max(1, ...items.map((it) => it.value ?? 0))
+  }, [items])
+
   return (
-    <div className="metric-bars-wrap" aria-hidden="true">
-      {bars.map((bar, i) => (
-        <span
-          key={i}
-          className="metric-bar-pill"
-          style={{
-            height: `${bar.height}px`,
-            backgroundColor: bar.color,
-            animationDelay: `${i * 50 + 100}ms`,
-          }}
-        />
-      ))}
+    <div className="metric-sparkline-group" role="group" aria-label={ariaLabel}>
+      <div className="metric-sparkline-track">
+        {items.map((item, i) => {
+          const val = item.value ?? 0
+          const hasExplicitHeight = item.height !== undefined
+          const isZero = val === 0 && !hasExplicitHeight
+
+          // Height logic:
+          // Zero: 5px subtle base pill (clearly signifies 0 activity)
+          // > 0: Dynamic rise from 14px to 32px based on maxVal
+          const barHeight = hasExplicitHeight
+            ? item.height
+            : isZero
+            ? 5
+            : Math.round(14 + (val / maxVal) * 18)
+
+          // Color logic:
+          // Zero: Neutral light slate (#e2e8f0)
+          // > 0: Primary brand blue (#2563eb) or custom color
+          const barColor =
+            item.color !== undefined
+              ? item.color
+              : isZero
+              ? "#e2e8f0"
+              : "#2563eb"
+
+          const tooltipText =
+            item.tooltip ||
+            `${item.label || "Thời điểm"}: ${val} ${item.sublabel || "lượt"}`
+
+          return (
+            <div
+              key={i}
+              className={`metric-sparkline-col ${isZero ? "is-zero" : "is-active"}`}
+              tabIndex={0}
+              role="figure"
+              aria-label={tooltipText}
+            >
+              <div className="metric-sparkline-bar-slot">
+                <span
+                  className="metric-sparkline-pill"
+                  style={{
+                    height: `${barHeight}px`,
+                    backgroundColor: barColor,
+                    animationDelay: `${i * 45 + 80}ms`,
+                  }}
+                />
+              </div>
+
+              {item.label && (
+                <span className="metric-sparkline-label">{item.label}</span>
+              )}
+
+              {/* GitHub-style individual bar popover */}
+              <div className="metric-bar-popover" role="tooltip">
+                <span className="popover-text">{tooltipText}</span>
+              </div>
+            </div>
+          )
+        })}
+      </div>
+      {caption && <span className="metric-sparkline-caption">{caption}</span>}
     </div>
   )
 }

@@ -99,7 +99,7 @@
   justify-content: flex-end;
 }
 
-/* 1. Sparkline Vertical Bars with Rise Animation */
+/* 1. Sparkline Vertical Bars with Labels & Interactive Per-Bar Popovers */
 .metric-bars-wrap {
   display: flex;
   align-items: flex-end;
@@ -113,6 +113,134 @@
   border-radius: 3px;
   transform-origin: bottom;
   animation: barRise 0.65s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.metric-sparkline-group {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: flex-end;
+  gap: 3px;
+  position: relative;
+}
+
+.metric-sparkline-track {
+  display: flex;
+  align-items: flex-end;
+  gap: 5px;
+  height: 48px;
+  padding-bottom: 2px;
+}
+
+.metric-sparkline-col {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+  cursor: pointer;
+  padding: 0 1px;
+  outline: none;
+}
+
+.metric-sparkline-bar-slot {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  height: 34px;
+  width: 9px;
+}
+
+.metric-sparkline-pill {
+  width: 7px;
+  border-radius: 3.5px;
+  transform-origin: bottom;
+  animation: barRise 0.55s cubic-bezier(0.16, 1, 0.3, 1) both;
+  transition: transform 0.16s ease, filter 0.16s ease, background-color 0.2s ease;
+}
+
+.metric-sparkline-col.is-zero .metric-sparkline-pill {
+  background-color: #e2e8f0;
+  border: 1px solid #cbd5e1;
+}
+
+.metric-sparkline-col.is-active .metric-sparkline-pill {
+  box-shadow: 0 1px 3px rgba(37, 99, 235, 0.25);
+}
+
+.metric-sparkline-col:hover .metric-sparkline-pill,
+.metric-sparkline-col:focus-visible .metric-sparkline-pill {
+  transform: scaleY(1.08) scaleX(1.15);
+  filter: brightness(1.15);
+}
+
+.metric-sparkline-label {
+  font-size: 9px;
+  font-weight: 600;
+  color: #94a3b8;
+  letter-spacing: -0.2px;
+  line-height: 1;
+  text-transform: uppercase;
+  transition: color 0.15s ease;
+  user-select: none;
+}
+
+.metric-sparkline-col:hover .metric-sparkline-label,
+.metric-sparkline-col:focus-visible .metric-sparkline-label {
+  color: #0f172a;
+}
+
+/* GitHub-Style Per-Bar Popover Tooltip */
+.metric-bar-popover {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%) translateY(4px);
+  background: #0f172a;
+  color: #ffffff;
+  padding: 5px 8px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 500;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+  z-index: 150;
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.28);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  transition: opacity 0.15s cubic-bezier(0.16, 1, 0.3, 1),
+              transform 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+  text-align: center;
+}
+
+.metric-bar-popover::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border-width: 4px;
+  border-style: solid;
+  border-color: #0f172a transparent transparent transparent;
+}
+
+.metric-sparkline-col:hover .metric-bar-popover,
+.metric-sparkline-col:focus-visible .metric-bar-popover {
+  opacity: 1;
+  visibility: visible;
+  transform: translateX(-50%) translateY(0);
+}
+
+.metric-sparkline-caption {
+  font-size: 9.5px;
+  color: #94a3b8;
+  font-weight: 500;
+  line-height: 1;
+  margin-top: 1px;
+  text-align: right;
+  letter-spacing: -0.1px;
 }
 
 @keyframes barRise {
@@ -393,6 +521,13 @@
   opacity: 1;
   visibility: visible;
   transform: translateY(0);
+}
+
+/* Suppress container tooltip when hovering directly on an individual bar column so the per-bar popover takes precedence */
+.metric-visual-container:has(.metric-sparkline-col:hover) > .metric-chart-tooltip {
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
 }
 
 .metric-tooltip-title {
