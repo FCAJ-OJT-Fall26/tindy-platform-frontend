@@ -9,12 +9,22 @@
 .rule-match-ring[data-tone="high"] { color: #10b981; }
 .rule-match-ring[data-tone="high"] .rule-match-ring__track { stroke: #d1fae5; }
 .rule-match-ring__value { stroke: currentColor; stroke-linecap: round; }
-.rule-match-ring__text { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 1px; }
-.rule-match-ring__text strong { font-size: 15px; line-height: 1.1; font-weight: 750; font-variant-numeric: tabular-nums; }
-.rule-match-ring__text small { font-size: 7px; font-weight: 700; letter-spacing: .5px; }
+.rule-match-ring__text { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 0px; text-align: center; }
+.rule-match-ring__text strong { font-size: 13.5px; line-height: 1; font-weight: 750; font-variant-numeric: tabular-nums; display: inline-flex; align-items: baseline; justify-content: center; letter-spacing: -0.2px; }
+.rule-match-ring__pct { font-size: 10px; margin-left: 0.5px; font-weight: 700; }
+.rule-match-ring__text small { font-size: 7px; font-weight: 700; letter-spacing: .5px; margin-top: 2px; }
+
+.rule-match-ring--hundred .rule-match-ring__text strong { font-size: 11.5px; letter-spacing: -0.4px; }
+.rule-match-ring--hundred .rule-match-ring__pct { font-size: 8.5px; }
+
 .rule-match-ring--compact { flex-basis: 46px; width: 46px; height: 46px; }
-.rule-match-ring--compact strong { font-size: 12px; }
-.rule-match-ring--compact small { font-size: 6px; }
+.rule-match-ring--compact .rule-match-ring__text strong { font-size: 11px; }
+.rule-match-ring--compact .rule-match-ring__pct { font-size: 8px; }
+.rule-match-ring--compact .rule-match-ring__text small { font-size: 6px; margin-top: 1px; }
+
+.rule-match-ring--compact.rule-match-ring--hundred .rule-match-ring__text strong { font-size: 9px; letter-spacing: -0.4px; }
+.rule-match-ring--compact.rule-match-ring--hundred .rule-match-ring__pct { font-size: 7px; }
+.rule-match-ring--compact.rule-match-ring--hundred .rule-match-ring__text small { font-size: 5.5px; }
 
 .live-match-inspector { --discovery-border: #dfe7f1; padding: 20px; background: #fff; border: 1px solid var(--discovery-border); border-radius: 13px; color: #17243b; }
 .live-match-inspector .live-discovery__eyebrow { display: block; color: #77869e; font-size: 10px; font-weight: 750; line-height: 1.5; letter-spacing: .5px; }
@@ -30,7 +40,8 @@
 .live-match-inspector__score > div:last-child span { color: #8190a5; margin-top: 4px; font-size: 10px; }
 .live-match-inspector__factors { border-top: 1px solid #edf1f6; padding-top: 17px; }
 .live-match-inspector__factor { margin-top: 12px; }
-.live-match-inspector__factor > div:first-child { display: flex; justify-content: space-between; gap: 8px; font-size: 11px; color: #667893; }
+.live-match-inspector__factor > div:first-child { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; font-size: 11px; color: #667893; }
+.live-match-inspector__factor > div:first-child > span:last-child { flex-shrink: 0; white-space: nowrap; }
 .live-match-inspector__factor strong { font-weight: 650; font-variant-numeric: tabular-nums; }
 .live-match-inspector__factor small { font-size: 9px; color: #95a2b7; white-space: nowrap; }
 .live-match-inspector__factor em { color: #8a96a8; font-style: normal; font-size: 10px; }
@@ -55,8 +66,11 @@
 .rule-match-panel *, .live-match-inspector * { min-width: 0; }
 .rule-match__hero { display: flex; align-items: center; gap: 20px; padding: 21px; border: 1px solid #e2eaf3; border-radius: 13px; background: linear-gradient(120deg, #f0faf6 0%, #f8fafc 70%); }
 .rule-match-ring--large { flex-basis: 86px; width: 86px; height: 86px; }
-.rule-match-ring--large .rule-match-ring__text strong { font-size: 23px; }
-.rule-match-ring--large .rule-match-ring__text small { font-size: 9px; }
+.rule-match-ring--large .rule-match-ring__text strong { font-size: 21px; }
+.rule-match-ring--large .rule-match-ring__pct { font-size: 15px; }
+.rule-match-ring--large .rule-match-ring__text small { font-size: 9px; margin-top: 3px; }
+.rule-match-ring--large.rule-match-ring--hundred .rule-match-ring__text strong { font-size: 18px; letter-spacing: -0.5px; }
+.rule-match-ring--large.rule-match-ring--hundred .rule-match-ring__pct { font-size: 13px; }
 .rule-match__eyebrow { display: flex; align-items: center; gap: 5px; color: #64748b; font-size: 10px; font-weight: 700; line-height: 1.5; letter-spacing: .5px; }
 .rule-match-panel .rule-match__hero h2 { margin: 7px 0 5px; color: #1b3048; font-size: 24px; font-weight: 750; line-height: 1.25; letter-spacing: -.65px; }
 .rule-match__hero p { margin: 0; color: #72829a; font-size: 12px; line-height: 1.6; }

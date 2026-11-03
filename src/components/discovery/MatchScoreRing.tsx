@@ -52,10 +52,11 @@ export default function MatchScoreRing({
 
   const displayScore = Math.round(animatedScore)
   const tier = getMatchTier(displayScore)
+  const isHundred = displayScore >= 100
 
   return (
     <div
-      className={`rule-match-ring${compact ? " rule-match-ring--compact" : large ? " rule-match-ring--large" : ""}`}
+      className={`rule-match-ring${compact ? " rule-match-ring--compact" : large ? " rule-match-ring--large" : ""}${isHundred ? " rule-match-ring--hundred" : ""}`}
       data-tone={tier.tier}
       style={{ color: tier.stroke }}
       role="img"
@@ -81,7 +82,8 @@ export default function MatchScoreRing({
       </svg>
       <span className="rule-match-ring__text">
         <strong data-server-match-score={serverValue ? "" : undefined}>
-          {displayScore}%
+          <span>{displayScore}</span>
+          <span className="rule-match-ring__pct">%</span>
         </strong>
         <small>MATCH</small>
       </span>
