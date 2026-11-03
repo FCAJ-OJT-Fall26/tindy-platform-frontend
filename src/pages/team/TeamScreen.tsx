@@ -28,7 +28,8 @@ interface TeamProjectItem {
 }
 
 export function TeamScreen() {
-  const { projectId } = useParams<{ projectId?: string }>()
+  const { projectId, id } = useParams<{ projectId?: string; id?: string }>()
+  const effectiveProjectId = projectId || id
   const { authUser, profile, projects } = useTindy()
   const myProjectsResource = useMyProjects()
 
@@ -36,8 +37,8 @@ export function TeamScreen() {
   const [filterTab, setFilterTab] = useState<"all" | "leading" | "member">("all")
 
   // If a specific projectId is requested in route, render the Project Workspace directly
-  if (projectId) {
-    return <ProjectWorkspaceView projectId={projectId} />
+  if (effectiveProjectId) {
+    return <ProjectWorkspaceView projectId={effectiveProjectId} />
   }
 
   // Projects where user is leader
