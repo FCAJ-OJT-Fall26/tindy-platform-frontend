@@ -261,6 +261,9 @@ export interface MetricCardProps {
   actionTo?: string
   actionOnClick?: () => void
   index?: number
+  tooltipTitle?: string
+  tooltipDesc?: string
+  tooltipDetail?: string
 }
 
 export function MetricCard({
@@ -273,7 +276,69 @@ export function MetricCard({
   actionTo = "#",
   actionOnClick,
   index = 0,
+  tooltipTitle,
+  tooltipDesc,
+  tooltipDetail,
 }: MetricCardProps) {
+  // Smart default tooltips based on card label if custom ones aren't provided
+  const title =
+    tooltipTitle ||
+    (label.toLowerCase().includes("total")
+      ? "Application Activity Trend"
+      : label.toLowerCase().includes("pending review")
+      ? "Review Queue Status"
+      : label.toLowerCase().includes("pending invitation")
+      ? "Direct Invitation Slots"
+      : label.toLowerCase().includes("accepted")
+      ? "Team Roster Filling Rate"
+      : label.toLowerCase().includes("team")
+      ? "Team Capacity Progress"
+      : label.toLowerCase().includes("open position")
+      ? "Vacancies by Role"
+      : label.toLowerCase().includes("interested")
+      ? "Applicant Pipeline"
+      : label.toLowerCase().includes("recommended")
+      ? "Project Match Distribution"
+      : label.toLowerCase().includes("saved")
+      ? "Shortlist Categories"
+      : label.toLowerCase().includes("active project")
+      ? "Active Team Workspaces"
+      : label.toLowerCase().includes("completeness")
+      ? "Profile Readiness Gauge"
+      : `${label} Overview`)
+
+  const desc =
+    tooltipDesc ||
+    (label.toLowerCase().includes("total")
+      ? "Shows submission volume trend across all open project positions."
+      : label.toLowerCase().includes("pending review")
+      ? "Candidate applications waiting for review before recruitment deadline."
+      : label.toLowerCase().includes("pending invitation")
+      ? "Direct invitations sent to prospective student candidates."
+      : label.toLowerCase().includes("accepted")
+      ? "Percentage of total project seats filled by accepted candidates."
+      : label.toLowerCase().includes("team")
+      ? "Filled seats vs total capacity across your collaborative teams."
+      : label.toLowerCase().includes("open position")
+      ? "Available slots and remaining capacity per position role."
+      : label.toLowerCase().includes("interested")
+      ? "Candidate profile interest categorized by technical domain."
+      : label.toLowerCase().includes("recommended")
+      ? "Projects tailored to your skills, availability, and preferences."
+      : label.toLowerCase().includes("saved")
+      ? "Saved projects grouped by development category."
+      : label.toLowerCase().includes("active project")
+      ? "Active member seat utilization in your workspaces."
+      : label.toLowerCase().includes("completeness")
+      ? "Readiness score based on bio, skills, and verified certificates."
+      : `Visual representation of ${label.toLowerCase()}.`)
+
+  const detail =
+    tooltipDetail ||
+    (typeof value === "number" || typeof value === "string"
+      ? `Current metric value: ${value}`
+      : undefined)
+
   return (
     <article
       className="metric-card"
@@ -287,7 +352,21 @@ export function MetricCard({
           </div>
           <div className="metric-card-subtitle">{subtitle}</div>
         </div>
-        <div className="metric-card-visual">{visual}</div>
+        <div className="metric-card-visual">
+          <div
+            className="metric-visual-container"
+            tabIndex={0}
+            role="region"
+            aria-label={title}
+          >
+            {visual}
+            <div className="metric-chart-tooltip" role="tooltip">
+              <div className="metric-tooltip-title">{title}</div>
+              <p className="metric-tooltip-desc">{desc}</p>
+              {detail && <div className="metric-tooltip-detail">{detail}</div>}
+            </div>
+          </div>
+        </div>
       </div>
       <div className="metric-card-footer">
         <span className="metric-footer-text">{footerLeft}</span>

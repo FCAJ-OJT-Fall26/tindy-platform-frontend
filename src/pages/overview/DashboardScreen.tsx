@@ -128,6 +128,9 @@ export function DashboardScreen() {
           label="Recommended projects"
           value={available.length || 6}
           subtitle="matched to your profile"
+          tooltipTitle="Project Match Distribution"
+          tooltipDesc="Relative match distribution of recommended projects tailored to your skills."
+          tooltipDetail="2 strong matches • 85%+ compatibility"
           visual={
             <SparklineBars
               bars={[
@@ -151,6 +154,9 @@ export function DashboardScreen() {
           label="Saved projects"
           value={saved.length || 2}
           subtitle="ideas in your shortlist"
+          tooltipTitle="Shortlist Categories"
+          tooltipDesc="Breakdown of bookmarked projects by category (Open source, Web apps)."
+          tooltipDetail="Open source: 1 • Web apps: 1"
           visual={
             <CategoryBreakdown
               items={[
@@ -169,6 +175,9 @@ export function DashboardScreen() {
           label="Active projects"
           value={active.length || 1}
           subtitle="projects you're part of"
+          tooltipTitle="Active Workspace Seats"
+          tooltipDesc="Visual representation of active member seats filled in your teams."
+          tooltipDetail="3 of 5 seats filled in team spaces"
           visual={<CapsuleSlots filled={3} total={5} label="3/5 seats" />}
           footerLeft="Your team spaces"
           actionLabel="Open projects"
@@ -180,6 +189,9 @@ export function DashboardScreen() {
           label="Profile completeness"
           value="100%"
           subtitle="ready to connect"
+          tooltipTitle="Profile Readiness Gauge"
+          tooltipDesc="Completeness score based on bio, skills, and verified certificates."
+          tooltipDetail="100% complete • Ready to connect"
           visual={<DonutProgressRing pct={100} strokeColor="#0d9488" />}
           footerLeft="Keep it current"
           actionLabel="View profile"

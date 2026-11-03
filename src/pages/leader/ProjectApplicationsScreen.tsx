@@ -344,6 +344,9 @@ export default function ProjectApplicationsScreen() {
           label="Total applications"
           value={counts.total}
           subtitle="submitted by candidates"
+          tooltipTitle="Application Activity Trend"
+          tooltipDesc="Visualizes candidate submission volume across your project positions over time."
+          tooltipDetail={`${counts.total} application${counts.total === 1 ? "" : "s"} submitted in total`}
           visual={
             <SparklineBars
               bars={[
@@ -369,6 +372,13 @@ export default function ProjectApplicationsScreen() {
           label="Pending review"
           value={counts.pending}
           subtitle="awaiting your decision"
+          tooltipTitle="Review Queue Status"
+          tooltipDesc="Candidate applications waiting for leader evaluation before recruitment expires."
+          tooltipDetail={
+            counts.pending > 0
+              ? `${counts.pending} candidate(s) awaiting your decision`
+              : "Review queue is clear • 0 pending applications"
+          }
           visual={<CapsuleSlots variant="faint" />}
           footerLeft={counts.pending > 0 ? "Requires action" : "All caught up"}
           actionLabel="Review pending"
@@ -383,6 +393,20 @@ export default function ProjectApplicationsScreen() {
           label="Accepted"
           value={counts.accepted}
           subtitle="confirmed teammates"
+          tooltipTitle="Team Roster Filling Rate"
+          tooltipDesc="Circular gauge showing confirmed team members vs maximum team capacity."
+          tooltipDetail={`${projectDetail?.current_team_size || 0} of ${projectDetail?.max_team_capacity || 5} seats filled (${
+            projectDetail
+              ? Math.min(
+                  100,
+                  Math.round(
+                    ((projectDetail.current_team_size || 0) /
+                      (projectDetail.max_team_capacity || 5)) *
+                      100,
+                  ),
+                )
+              : 40
+          }% capacity)`}
           visual={
             <DonutProgressRing
               pct={
@@ -410,6 +434,13 @@ export default function ProjectApplicationsScreen() {
           label="Open positions"
           value={openPositionsCount}
           subtitle="places for new teammates"
+          tooltipTitle="Recruitment Vacancies by Role"
+          tooltipDesc="Breakdown of remaining openings and filled status per project role."
+          tooltipDetail={
+            openPositionsCount > 0
+              ? `${openPositionsCount} opening${openPositionsCount === 1 ? "" : "s"} actively recruiting`
+              : "All positions currently filled"
+          }
           visual={
             <CategoryBreakdown
               items={(projectDetail?.positions || [])

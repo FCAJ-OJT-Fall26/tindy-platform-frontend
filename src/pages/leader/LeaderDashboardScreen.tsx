@@ -132,6 +132,9 @@ export function LeaderDashboard() {
         <MetricCard
           index={0}
           label="Open positions"
+          tooltipTitle="Recruiting Roles Distribution"
+          tooltipDesc="Breakdown of available vacancies across technical roles you are recruiting for."
+          tooltipDetail="Backend: 100% active allocation"
           value={
             managed.reduce(
               (total, project) => total + (project.openings ?? 0),
@@ -163,6 +166,9 @@ export function LeaderDashboard() {
         <MetricCard
           index={1}
           label="Interested candidates"
+          tooltipTitle="Candidate Pipeline by Field"
+          tooltipDesc="Students expressing interest categorized by technical strengths."
+          tooltipDetail="Backend: 2 • AI: 1 candidate"
           value={demo ? candidateInterested.length : (pendingCount > 0 ? pendingCount : 4)}
           subtitle="people to get to know"
           visual={
@@ -181,6 +187,9 @@ export function LeaderDashboard() {
         <MetricCard
           index={2}
           label="Pending invitations"
+          tooltipTitle="Direct Invitation Slots"
+          tooltipDesc="Available direct invitation capacity to shortlist candidates."
+          tooltipDetail="0 invitations sent • 4 not yet invited"
           value={demo ? candidateInvites.length : 0}
           subtitle="no invitations sent yet"
           visual={<CapsuleSlots variant="faint" />}
@@ -192,6 +201,9 @@ export function LeaderDashboard() {
         <MetricCard
           index={3}
           label="Team members"
+          tooltipTitle="Overall Team Capacity"
+          tooltipDesc="Circular gauge showing filled vs maximum team seats across projects."
+          tooltipDetail="3 of 5 team seats filled (60%)"
           value={managed.reduce((total, project) => total + (project.team || 0), 0) || 3}
           subtitle="of 5 team seats filled"
           visual={<DonutProgressRing pct={60} strokeColor="#334155" />}
