@@ -258,7 +258,8 @@ export interface MetricCardProps {
   visual: React.ReactNode
   footerLeft: string
   actionLabel: string
-  actionTo: string
+  actionTo?: string
+  actionOnClick?: () => void
   index?: number
 }
 
@@ -269,7 +270,8 @@ export function MetricCard({
   visual,
   footerLeft,
   actionLabel,
-  actionTo,
+  actionTo = "#",
+  actionOnClick,
   index = 0,
 }: MetricCardProps) {
   return (
@@ -289,9 +291,26 @@ export function MetricCard({
       </div>
       <div className="metric-card-footer">
         <span className="metric-footer-text">{footerLeft}</span>
-        <Link to={actionTo} className="metric-footer-action">
-          {actionLabel}
-        </Link>
+        {actionOnClick ? (
+          <button
+            type="button"
+            onClick={actionOnClick}
+            className="metric-footer-action"
+            style={{
+              background: "none",
+              border: "none",
+              padding: 0,
+              font: "inherit",
+              cursor: "pointer",
+            }}
+          >
+            {actionLabel}
+          </button>
+        ) : (
+          <Link to={actionTo} className="metric-footer-action">
+            {actionLabel}
+          </Link>
+        )}
       </div>
     </article>
   )

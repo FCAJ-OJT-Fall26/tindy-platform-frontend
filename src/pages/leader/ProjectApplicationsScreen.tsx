@@ -1,23 +1,24 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { Link, useNavigate, useParams, useSearchParams } from "react-router"
+import { useCallback, useEffect, useMemo, useState } from "react"
+import { Link, useNavigate, useParams } from "react-router"
 import {
   ArrowLeft,
   ArrowUpRight,
   Briefcase,
-  Check,
   CheckCircle2,
   ChevronDown,
-  Clock,
-  ExternalLink,
-  Layers,
-  Sparkles,
-  UserCheck,
+  ChevronLeft,
   Users,
-  UserX,
-  X,
+  UserCheck,
   XCircle,
 } from "lucide-react"
-import { Avatar, Button, Chips, Modal, PageHeader } from "../../components/ui"
+import { Button, Modal, SectionHeading } from "../../components/ui"
+import {
+  MetricCard,
+  CategoryBreakdown,
+  CapsuleSlots,
+  DonutProgressRing,
+  SparklineBars,
+} from "../../components/common/MetricsDashboardCards"
 import RuleMatchPanel from "../../components/discovery/RuleMatchPanel"
 import MatchScoreRing from "../../components/discovery/MatchScoreRing"
 import { useTindy } from "../../store"
@@ -29,12 +30,12 @@ import {
 } from "../../services/applications.service"
 import type { ApplicationReviewDto, ApplicationStatus } from "../../types/application"
 import type { MyLeadingProjectDto, ProjectDetailDto } from "../../types/project"
+import "./project-applications.css"
 
 export default function ProjectApplicationsScreen() {
   const { id: routeId } = useParams<{ id?: string }>()
-  const [searchParams, setSearchParams] = useSearchParams()
   const navigate = useNavigate()
-  const { authUser, notify } = useTindy()
+  const { notify } = useTindy()
 
   // Leading projects for project switcher
   const [leadingProjects, setLeadingProjects] = useState<MyLeadingProjectDto[]>([])
@@ -185,104 +186,107 @@ export default function ProjectApplicationsScreen() {
 
   if (loadingProjects && !activeProjectId) {
     return (
-      <div className="p-8 text-center text-slate-500 font-medium">
-        Loading applications center...
+      <div className="applications-page-container">
+        <div className="py-16 text-center text-slate-500 font-medium text-sm">
+          Loading applications center...
+        </div>
       </div>
     )
   }
 
   if (!loadingProjects && leadingProjects.length === 0 && !activeProjectId) {
     return (
-      <div className="space-y-6 max-w-2xl mx-auto py-12 text-center">
-        <div className="w-16 h-16 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center mx-auto">
-          <Briefcase size={32} />
-        </div>
-        <div className="space-y-2">
-          <h2 className="text-xl font-bold text-slate-900">No recruitment projects found</h2>
-          <p className="text-sm text-slate-500 max-w-md mx-auto">
-            You are not leading any active projects currently. Create a project and publish open
-            positions to start receiving candidate applications.
-          </p>
-        </div>
-        <div className="pt-2 flex items-center justify-center gap-3">
-          <Link to="/leader" className="btn btn-secondary">
-            Leader workspace
-          </Link>
-          <Link to="/create-project" className="btn btn-primary">
-            Create new project
-          </Link>
+      <div className="applications-page-container">
+        <div className="space-y-6 max-w-xl mx-auto py-16 text-center">
+          <div className="w-14 h-14 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center mx-auto border border-blue-100">
+            <Briefcase size={28} />
+          </div>
+          <div className="space-y-2">
+            <h2 className="text-xl font-bold text-slate-900">No recruitment projects found</h2>
+            <p className="text-sm text-slate-500 max-w-md mx-auto">
+              You are not leading any active projects currently. Create a project and publish open
+              positions to start receiving candidate applications.
+            </p>
+          </div>
+          <div className="pt-2 flex items-center justify-center gap-3">
+            <Link to="/leader" className="btn btn-secondary">
+              Leader workspace
+            </Link>
+            <Link to="/create-project" className="btn btn-primary">
+              Create new project
+            </Link>
+          </div>
         </div>
       </div>
     )
   }
 
+  const openPositionsCount =
+    projectDetail?.positions?.filter((p) => p.status === "open").length ?? 0
+
   return (
-    <div className="space-y-6" data-leader-applications>
-      {/* Top Breadcrumb & Nav Links */}
-      <div className="flex flex-wrap items-center justify-between gap-3 text-xs">
-        <Link
-          to="/leader"
-          className="inline-flex items-center gap-1.5 text-slate-500 hover:text-slate-800 font-medium transition-colors cursor-pointer"
-        >
-          <ArrowLeft size={14} />
+    <div className="applications-page-container" data-leader-applications>
+      {/* 1. Top Navigation Links */}
+      <nav className="applications-top-nav" aria-label="Page navigation">
+        <Link to="/leader" className="applications-back-link">
+          <ChevronLeft size={16} />
           <span>Back to Leader Workspace</span>
         </Link>
 
         {activeProjectId && (
-          <div className="flex items-center gap-2">
+          <div className="applications-nav-actions">
             <Link
               to={`/team/${activeProjectId}`}
-              className="text-slate-500 hover:text-blue-600 font-medium inline-flex items-center gap-1"
+              className="applications-nav-action-link"
             >
               <span>Project workspace</span>
               <ArrowUpRight size={13} />
             </Link>
-            <span>•</span>
+            <span className="applications-nav-separator">•</span>
             <Link
               to={`/project/${activeProjectId}`}
-              className="text-slate-500 hover:text-blue-600 font-medium inline-flex items-center gap-1"
+              className="applications-nav-action-link"
             >
-              <span>Public project brief</span>
+              <span>Public brief</span>
               <ArrowUpRight size={13} />
             </Link>
           </div>
         )}
-      </div>
+      </nav>
 
-      {/* Main Header with Project Switcher */}
-      <div className="bg-white rounded-2xl border border-slate-200/80 p-5 sm:p-6 shadow-xs space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="space-y-1">
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200">
-                Leader Applications Center
+      {/* 2. Project Header Panel */}
+      <header className="applications-header-panel">
+        <div className="applications-header-top">
+          <div className="applications-header-titles">
+            <div className="applications-eyebrow-row">
+              <span className="applications-eyebrow">
+                LEADER WORKSPACE • APPLICATIONS
               </span>
               {projectDetail && (
-                <span className="text-xs text-slate-500 font-medium">
-                  {projectDetail.current_team_size}/{projectDetail.max_team_capacity} members filled
+                <span className="applications-team-capacity">
+                  {projectDetail.current_team_size}/{projectDetail.max_team_capacity} seats filled
                 </span>
               )}
             </div>
-            <h1 className="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight">
+            <h1 className="applications-title">
               {projectDetail ? `${projectDetail.name} — Applications` : "Candidate Applications"}
             </h1>
-            <p className="text-xs sm:text-sm text-slate-500 max-w-2xl">
-              Review and decide student applications for open roles. Match scores summarize rule
-              compatibility; the final team decision is yours.
+            <p className="applications-description">
+              Review and decide candidate applications for your open roles. Match scores summarize rule compatibility; the final team decision is yours.
             </p>
           </div>
 
           {/* Project Switcher Dropdown */}
-          {leadingProjects.length > 1 && (
-            <div className="shrink-0 flex items-center gap-2">
-              <label htmlFor="project-select" className="text-xs font-semibold text-slate-600">
+          {leadingProjects.length > 0 && (
+            <div className="applications-project-switcher">
+              <label htmlFor="project-select" className="applications-project-switcher-label">
                 Switch project:
               </label>
               <select
                 id="project-select"
                 value={activeProjectId}
                 onChange={(e) => handleProjectSwitch(e.target.value)}
-                className="text-xs font-medium border border-slate-200 rounded-lg px-3 py-2 bg-slate-50 hover:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all cursor-pointer"
+                className="applications-project-select"
               >
                 {leadingProjects.map((proj) => (
                   <option key={proj.project_id} value={proj.project_id}>
@@ -293,115 +297,202 @@ export default function ProjectApplicationsScreen() {
             </div>
           )}
         </div>
+      </header>
 
-        {/* 4 Mini Stat Badges */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-3 border-t border-slate-100">
-          <div className="p-3 rounded-xl bg-slate-50/80 border border-slate-100">
-            <span className="text-[11px] font-medium text-slate-500 block">Total Applications</span>
-            <span className="text-lg font-bold text-slate-900">{paginationMeta.total}</span>
-          </div>
-          <div className="p-3 rounded-xl bg-amber-50/60 border border-amber-100">
-            <span className="text-[11px] font-medium text-amber-700 block">Pending Review</span>
-            <span className="text-lg font-bold text-amber-800">{pendingCount}</span>
-          </div>
-          <div className="p-3 rounded-xl bg-emerald-50/60 border border-emerald-100">
-            <span className="text-[11px] font-medium text-emerald-700 block">Team Roster</span>
-            <span className="text-lg font-bold text-emerald-800">
-              {projectDetail
-                ? `${projectDetail.current_team_size} / ${projectDetail.max_team_capacity}`
-                : "1 / 5"}
-            </span>
-          </div>
-          <div className="p-3 rounded-xl bg-blue-50/60 border border-blue-100">
-            <span className="text-[11px] font-medium text-blue-700 block">Open Positions</span>
-            <span className="text-lg font-bold text-blue-800">
-              {projectDetail?.positions?.filter((p) => p.status === "open").length || 0} roles
-            </span>
-          </div>
-        </div>
-      </div>
+      {/* 3. Metrics Grid (4 Summary Cards matching Leader Workspace) */}
+      <section className="metrics-grid">
+        <MetricCard
+          index={0}
+          label="Total applications"
+          value={paginationMeta.total}
+          subtitle="submitted by candidates"
+          visual={
+            <SparklineBars
+              bars={[
+                { height: 18, color: "#3b82f6" },
+                { height: 26, color: "#2563eb" },
+                { height: 32, color: "#1d4ed8" },
+                { height: 22, color: "#60a5fa" },
+                { height: 28, color: "#2563eb" },
+              ]}
+            />
+          }
+          footerLeft="Across open positions"
+          actionLabel="View all"
+          actionOnClick={() => {
+            setSelectedStatus("all")
+            setSelectedPosition("")
+            setCurrentPage(1)
+          }}
+        />
 
-      {/* Filter Toolbar (Status Tabs + Position + Sort) */}
-      <div className="bg-white rounded-xl border border-slate-200 p-3 sm:p-4 shadow-2xs space-y-3">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
-          {/* Status Tabs */}
-          <div className="flex items-center gap-1 overflow-x-auto bg-slate-100/80 p-1 rounded-lg">
-            {(
-              [
-                { id: "pending", label: "Pending review", count: pendingCount },
-                { id: "accepted", label: "Accepted", count: acceptedCount },
-                { id: "rejected", label: "Rejected", count: rejectedCount },
-                { id: "all", label: "All applications", count: paginationMeta.total },
-              ] as const
-            ).map((tab) => (
+        <MetricCard
+          index={1}
+          label="Pending review"
+          value={pendingCount}
+          subtitle="awaiting your decision"
+          visual={<CapsuleSlots variant="faint" />}
+          footerLeft={pendingCount > 0 ? "Requires action" : "All caught up"}
+          actionLabel="Review pending"
+          actionOnClick={() => {
+            setSelectedStatus("pending")
+            setCurrentPage(1)
+          }}
+        />
+
+        <MetricCard
+          index={2}
+          label="Accepted"
+          value={acceptedCount}
+          subtitle="confirmed teammates"
+          visual={
+            <DonutProgressRing
+              pct={
+                projectDetail
+                  ? Math.min(
+                      100,
+                      Math.round(
+                        ((projectDetail.current_team_size || 0) /
+                          (projectDetail.max_team_capacity || 5)) *
+                          100,
+                      ),
+                    )
+                  : 40
+              }
+              strokeColor="#0d9488"
+            />
+          }
+          footerLeft={`${projectDetail?.current_team_size || 0}/${projectDetail?.max_team_capacity || 5} seats filled`}
+          actionLabel="Open workspace"
+          actionTo={activeProjectId ? `/team/${activeProjectId}` : "/team"}
+        />
+
+        <MetricCard
+          index={3}
+          label="Open positions"
+          value={openPositionsCount}
+          subtitle="places for new teammates"
+          visual={
+            <CategoryBreakdown
+              items={(projectDetail?.positions || [])
+                .slice(0, 2)
+                .map((p, idx) => ({
+                  label: p.title.split(" ")[0],
+                  count: Math.max(0, p.required_count - p.filled_count),
+                  pct: 100,
+                  color: idx === 0 ? "#2563eb" : "#0d9488",
+                }))}
+            />
+          }
+          footerLeft={`${projectDetail?.positions?.length || 0} active roles`}
+          actionLabel="Manage roles"
+          actionTo={activeProjectId ? `/project/${activeProjectId}` : "/my-projects"}
+        />
+      </section>
+
+      {/* 4. Section Heading */}
+      <SectionHeading
+        title="Candidate applications"
+        description="Filter by application status and position to review credentials."
+        action={
+          <span
+            style={{
+              fontSize: "12px",
+              background: "#f0f4fa",
+              color: "#3553b5",
+              fontWeight: 600,
+              padding: "4px 10px",
+              borderRadius: "6px",
+              border: "1px solid #dce6f6",
+            }}
+          >
+            {paginationMeta.total} {paginationMeta.total === 1 ? "applicant" : "applicants"}
+          </span>
+        }
+      />
+
+      {/* 5. Filter Toolbar (Status Tabs + Position + Sort) */}
+      <section className="applications-toolbar" aria-label="Application filters">
+        {/* Status Tabs Segmented Control */}
+        <div className="applications-status-tabs" role="tablist">
+          {(
+            [
+              { id: "pending", label: "Pending review", count: pendingCount },
+              { id: "accepted", label: "Accepted", count: acceptedCount },
+              { id: "rejected", label: "Rejected", count: rejectedCount },
+              { id: "all", label: "All applications", count: paginationMeta.total },
+            ] as const
+          ).map((tab) => {
+            const isActive = selectedStatus === tab.id
+            return (
               <button
                 key={tab.id}
                 type="button"
+                role="tab"
+                aria-selected={isActive}
                 onClick={() => {
                   setSelectedStatus(tab.id)
                   setCurrentPage(1)
                 }}
-                className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all whitespace-nowrap cursor-pointer flex items-center gap-1.5 ${
-                  selectedStatus === tab.id
-                    ? "bg-white text-slate-900 shadow-2xs"
-                    : "text-slate-600 hover:text-slate-900"
-                }`}
+                className={`applications-status-tab ${isActive ? "active" : ""}`}
               >
                 <span>{tab.label}</span>
-                {tab.id === "pending" && pendingCount > 0 && (
-                  <span className="text-[10px] px-1.5 py-0.2 rounded-full font-bold bg-amber-500 text-white">
-                    {pendingCount}
-                  </span>
-                )}
+                <span
+                  className={`applications-tab-count ${
+                    tab.id === "pending" && pendingCount > 0 ? "pending-alert" : ""
+                  }`}
+                >
+                  {tab.count}
+                </span>
               </button>
-            ))}
-          </div>
-
-          {/* Secondary Controls (Position & Sort) */}
-          <div className="flex items-center gap-2">
-            <select
-              aria-label="Filter applications by position"
-              value={selectedPosition}
-              disabled={busy}
-              onChange={(e) => {
-                setSelectedPosition(e.target.value)
-                setCurrentPage(1)
-              }}
-              className="text-xs font-medium border border-slate-200 rounded-lg px-2.5 py-1.5 bg-white hover:border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500/20 text-slate-700 cursor-pointer"
-            >
-              <option value="">All positions</option>
-              {projectDetail?.positions?.map((p) => (
-                <option key={p.position_id} value={p.position_id}>
-                  {p.title}
-                </option>
-              ))}
-            </select>
-
-            <select
-              aria-label="Sort applications"
-              value={selectedSort}
-              disabled={busy}
-              onChange={(e) => {
-                setSelectedSort(e.target.value as "match" | "newest")
-                setCurrentPage(1)
-              }}
-              className="text-xs font-medium border border-slate-200 rounded-lg px-2.5 py-1.5 bg-white hover:border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500/20 text-slate-700 cursor-pointer"
-            >
-              <option value="match">Highest match %</option>
-              <option value="newest">Newest first</option>
-            </select>
-          </div>
+            )
+          })}
         </div>
-      </div>
+
+        {/* Right side: Position & Sort Filters */}
+        <div className="applications-toolbar-right">
+          <select
+            aria-label="Filter applications by position"
+            value={selectedPosition}
+            disabled={busy}
+            onChange={(e) => {
+              setSelectedPosition(e.target.value)
+              setCurrentPage(1)
+            }}
+            className="applications-select"
+          >
+            <option value="">All positions</option>
+            {projectDetail?.positions?.map((p) => (
+              <option key={p.position_id} value={p.position_id}>
+                {p.title}
+              </option>
+            ))}
+          </select>
+
+          <select
+            aria-label="Sort applications"
+            value={selectedSort}
+            disabled={busy}
+            onChange={(e) => {
+              setSelectedSort(e.target.value as "match" | "newest")
+              setCurrentPage(1)
+            }}
+            className="applications-select"
+          >
+            <option value="match">Highest match %</option>
+            <option value="newest">Newest first</option>
+          </select>
+        </div>
+      </section>
 
       {/* Error Banner */}
       {error && (
-        <div className="p-4 rounded-xl border border-rose-200 bg-rose-50/70 text-xs text-rose-700 flex items-center justify-between">
+        <div className="p-4 rounded-xl border border-rose-200 bg-rose-50 text-xs text-rose-700 flex items-center justify-between">
           <span>{error}</span>
           <button
             type="button"
             onClick={() => void loadData()}
-            className="font-bold underline hover:no-underline"
+            className="font-bold underline hover:no-underline cursor-pointer"
           >
             Retry
           </button>
@@ -415,21 +506,27 @@ export default function ProjectApplicationsScreen() {
         </div>
       )}
 
-      {/* Empty State */}
+      {/* 6. Empty State */}
       {!loading && applications.length === 0 && (
-        <div className="bg-white rounded-2xl border border-dashed border-slate-200 p-10 text-center space-y-3">
-          <div className="w-12 h-12 rounded-full bg-slate-50 border border-slate-200 flex items-center justify-center mx-auto text-slate-400">
+        <div className="applications-empty-card">
+          <div className="applications-empty-icon-wrap">
             <Users size={22} />
           </div>
           <div className="space-y-1">
-            <h3 className="text-sm font-bold text-slate-900">No applications match these filters</h3>
-            <p className="text-xs text-slate-500 max-w-sm mx-auto">
+            <h3 className="applications-empty-title">No applications to review</h3>
+            <p className="applications-empty-text">
               {selectedStatus !== "all"
-                ? `There are no applications with status "${selectedStatus}". Try switching to "All applications" or reset position filters.`
+                ? `There are currently no applications with status "${
+                    selectedStatus === "pending"
+                      ? "Pending review"
+                      : selectedStatus === "accepted"
+                      ? "Accepted"
+                      : "Rejected"
+                  }".`
                 : "No candidates have applied to this project yet. Share your project link or review open positions."}
             </p>
           </div>
-          <div className="pt-2 flex items-center justify-center gap-2">
+          <div className="applications-empty-actions">
             {selectedStatus !== "all" && (
               <button
                 type="button"
@@ -437,14 +534,14 @@ export default function ProjectApplicationsScreen() {
                   setSelectedStatus("all")
                   setSelectedPosition("")
                 }}
-                className="px-3.5 py-1.5 rounded-lg border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                className="btn btn-secondary text-xs"
               >
                 Clear filters
               </button>
             )}
             <Link
               to={`/project/${activeProjectId}`}
-              className="px-3.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold"
+              className="btn btn-primary text-xs"
             >
               View open positions
             </Link>
@@ -452,9 +549,9 @@ export default function ProjectApplicationsScreen() {
         </div>
       )}
 
-      {/* Applications List */}
+      {/* 7. Application List / Candidate Cards */}
       {!loading && applications.length > 0 && (
-        <div className="space-y-4">
+        <div className="applications-list">
           {applications.map((row) => {
             const status = row.application.status
             const initials =
@@ -474,28 +571,28 @@ export default function ProjectApplicationsScreen() {
               <article
                 key={row.application.application_id}
                 data-review-application={row.application.application_id}
-                className="bg-white rounded-2xl border border-slate-200/90 hover:border-slate-300 p-5 sm:p-6 shadow-xs transition-all space-y-4"
+                className="application-candidate-card"
               >
-                {/* Top Row: Applicant Profile & Match Ring */}
-                <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
-                  <div className="flex items-start gap-3.5 min-w-0">
-                    <div className="w-12 h-12 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center font-bold text-sm text-slate-700 shrink-0">
+                {/* Header: Candidate Profile Info & Match Ring */}
+                <div className="candidate-card-header">
+                  <div className="candidate-profile-summary">
+                    <div className="candidate-avatar">
                       {initials}
                     </div>
 
-                    <div className="min-w-0 space-y-1">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <h2 className="text-base font-extrabold text-slate-900 truncate">
+                    <div className="candidate-info-block">
+                      <div className="candidate-name-row">
+                        <span className="candidate-name">
                           {row.applicant.display_name}
-                        </h2>
+                        </span>
 
                         <span
-                          className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                          className={`candidate-status-badge ${
                             status === "accepted"
-                              ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                              ? "accepted"
                               : status === "rejected"
-                              ? "bg-rose-50 text-rose-700 border border-rose-200"
-                              : "bg-amber-50 text-amber-700 border border-amber-200"
+                              ? "rejected"
+                              : "pending"
                           }`}
                         >
                           {status === "pending"
@@ -508,36 +605,39 @@ export default function ProjectApplicationsScreen() {
                         </span>
                       </div>
 
-                      <p className="text-xs text-slate-500">
-                        {row.applicant.preferred_role_name || "Role unknown"} &nbsp;•&nbsp;{" "}
-                        {row.applicant.available_hours_per_week !== null
-                          ? `${row.applicant.available_hours_per_week} hrs/week committed`
-                          : "Availability flexible"}
-                      </p>
+                      <div className="candidate-meta-line">
+                        <span>{row.applicant.preferred_role_name || "Role unspecified"}</span>
+                        <span>•</span>
+                        <span>
+                          {row.applicant.available_hours_per_week !== null
+                            ? `${row.applicant.available_hours_per_week} hrs/week committed`
+                            : "Availability flexible"}
+                        </span>
+                      </div>
 
-                      <div className="pt-1 flex items-center gap-1.5 text-xs text-slate-700 font-semibold">
-                        <span className="text-slate-500 font-normal">Applied position:</span>
-                        <span className="px-2 py-0.5 rounded bg-slate-100 text-slate-800 text-[11px]">
+                      <div className="candidate-applied-position">
+                        <span className="text-slate-500 font-normal">Applied for:</span>
+                        <span className="candidate-position-pill">
                           {row.applied_position.title}
                         </span>
-                        <span className="text-slate-400 font-normal text-[11px]">
+                        <span className="candidate-slots-remaining">
                           ({openSlots} {openSlots === 1 ? "slot" : "slots"} left)
                         </span>
                       </div>
                     </div>
                   </div>
 
-                  {/* Match Score Ring Badge */}
-                  <div className="flex items-center gap-3 shrink-0 self-start">
+                  {/* Match Score Ring & Why this match trigger */}
+                  <div className="candidate-match-score-card">
                     <MatchScoreRing score={row.matching.match_score} compact />
-                    <div className="text-left">
-                      <span className="text-xs font-bold text-slate-900 block">
+                    <div className="candidate-match-score-text">
+                      <span className="candidate-match-pct">
                         {row.matching.match_score}% Rule Match
                       </span>
                       <button
                         type="button"
                         onClick={() => setMatchModalData(row)}
-                        className="text-[11px] text-blue-600 hover:text-blue-700 font-semibold flex items-center gap-0.5 cursor-pointer"
+                        className="candidate-why-match-btn"
                       >
                         <span>Why this match</span>
                         <ChevronDown size={12} />
@@ -546,37 +646,31 @@ export default function ProjectApplicationsScreen() {
                   </div>
                 </div>
 
-                {/* Cover Note / Application Message */}
+                {/* Candidate Cover Note */}
                 {row.application.message ? (
-                  <div className="p-3.5 rounded-xl bg-slate-50/70 border border-slate-100 text-xs text-slate-700 space-y-1">
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
-                      Applicant Message
-                    </span>
-                    <p className="italic leading-relaxed">&ldquo;{row.application.message}&rdquo;</p>
+                  <div className="candidate-cover-message">
+                    &ldquo;{row.application.message}&rdquo;
                   </div>
                 ) : (
-                  <p className="text-xs text-slate-400 italic">
-                    Applicant expressed interest without an additional note.
+                  <p className="candidate-no-message">
+                    Candidate expressed interest without an additional note.
                   </p>
                 )}
 
                 {/* Candidate Skills & Experience Badges */}
-                <div className="space-y-1.5">
-                  <div className="flex items-center justify-between text-[11px] text-slate-500">
-                    <span className="font-semibold">Candidate Skills:</span>
+                <div className="candidate-skills-section">
+                  <div className="candidate-skills-header">
+                    <span className="candidate-skills-title">Technical Skills</span>
                     <span>
                       {row.applicant.experiences_count} experiences &nbsp;•&nbsp;{" "}
                       {row.applicant.certificates_count} verified certificates
                     </span>
                   </div>
 
-                  <div className="flex flex-wrap gap-1.5">
+                  <div className="candidate-skills-list">
                     {row.applicant.skills?.length > 0 ? (
                       row.applicant.skills.map((s) => (
-                        <span
-                          key={s.skill_id}
-                          className="text-[11px] px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 font-medium"
-                        >
+                        <span key={s.skill_id} className="candidate-skill-tag">
                           {s.name}
                         </span>
                       ))
@@ -586,23 +680,23 @@ export default function ProjectApplicationsScreen() {
                   </div>
                 </div>
 
-                {/* Action Footer */}
-                <div className="pt-3 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+                {/* Footer Action Bar */}
+                <div className="candidate-card-footer">
                   <Link
                     to={`/users/${row.applicant.user_id}`}
-                    className="text-slate-600 hover:text-blue-600 font-semibold inline-flex items-center gap-1.5"
+                    className="candidate-profile-link"
                   >
                     <span>View full student profile & experiences</span>
                     <ArrowUpRight size={13} />
                   </Link>
 
                   {status === "pending" && (
-                    <div className="flex items-center gap-2 self-end sm:self-auto">
+                    <div className="candidate-action-buttons">
                       <button
                         type="button"
                         disabled={busy}
                         onClick={() => setDecision({ row, action: "reject" })}
-                        className="px-3.5 py-1.5 rounded-lg border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer"
+                        className="candidate-btn-reject"
                       >
                         Reject
                       </button>
@@ -611,7 +705,7 @@ export default function ProjectApplicationsScreen() {
                         type="button"
                         disabled={busy}
                         onClick={() => setDecision({ row, action: "accept" })}
-                        className="px-4 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold transition-colors cursor-pointer flex items-center gap-1.5 shadow-2xs"
+                        className="candidate-btn-accept"
                       >
                         <UserCheck size={14} />
                         <span>Accept to team</span>
@@ -620,14 +714,14 @@ export default function ProjectApplicationsScreen() {
                   )}
 
                   {status === "accepted" && (
-                    <span className="text-emerald-700 font-semibold flex items-center gap-1">
+                    <span className="candidate-status-resolved accepted">
                       <CheckCircle2 size={14} />
                       <span>Joined active team</span>
                     </span>
                   )}
 
                   {status === "rejected" && (
-                    <span className="text-slate-400 font-medium flex items-center gap-1">
+                    <span className="candidate-status-resolved rejected">
                       <XCircle size={14} />
                       <span>Application closed</span>
                     </span>
@@ -666,7 +760,7 @@ export default function ProjectApplicationsScreen() {
         </nav>
       )}
 
-      {/* Modal: Why this matches */}
+      {/* Modal: Why this matches breakdown */}
       {matchModalData && (
         <Modal
           title="Applied Position Match Breakdown"
