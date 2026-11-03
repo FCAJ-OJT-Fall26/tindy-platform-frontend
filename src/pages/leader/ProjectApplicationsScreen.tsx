@@ -224,13 +224,18 @@ export default function ProjectApplicationsScreen() {
 
   // 7-day application submission trend calculation for SparklineBars
   const applicationTrendBars = useMemo(() => {
-    const dayNames = ["CN", "T2", "T3", "T4", "T5", "T6", "T7"]
+    const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
+    const monthNames = [
+      "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+      "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+    ]
     const today = new Date()
     today.setHours(23, 59, 59, 999)
 
     const buckets: Array<{
       dateKey: string
       dayLabel: string
+      dayName: string
       dateStr: string
       isToday: boolean
       count: number
@@ -243,11 +248,15 @@ export default function ProjectApplicationsScreen() {
       const mm = String(d.getMonth() + 1).padStart(2, "0")
       const dd = String(d.getDate()).padStart(2, "0")
       const isToday = i === 0
+      const dayName = dayNames[d.getDay()]
+      const monthStr = monthNames[d.getMonth()]
+      const dateNum = d.getDate()
 
       buckets.push({
         dateKey: `${yyyy}-${mm}-${dd}`,
-        dayLabel: isToday ? "Nay" : dayNames[d.getDay()],
-        dateStr: `${dd}/${mm}`,
+        dayLabel: isToday ? "Now" : dayName,
+        dayName,
+        dateStr: `${monthStr} ${dateNum}`,
         isToday,
         count: 0,
       })
@@ -280,8 +289,10 @@ export default function ProjectApplicationsScreen() {
     return buckets.map((b) => ({
       label: b.dayLabel,
       value: b.count,
-      sublabel: "đơn",
-      tooltip: `${b.isToday ? "Hôm nay" : b.dayLabel} (${b.dateStr}): ${b.count} đơn ứng tuyển`,
+      sublabel: b.count === 1 ? "application" : "applications",
+      tooltip: `${b.isToday ? "Today" : `${b.dayName} (${b.dateStr})`}: ${b.count} application${
+        b.count === 1 ? "" : "s"
+      }`,
     }))
   }, [applications, counts.total])
 
@@ -408,14 +419,14 @@ export default function ProjectApplicationsScreen() {
           value={counts.total}
           subtitle="submitted by candidates"
           tooltipTitle="Application Activity Trend"
-          tooltipDesc="Số lượng hồ sơ ứng tuyển nộp vào dự án trong 7 ngày gần nhất."
-          tooltipDetail={`${counts.total} đơn ứng tuyển tổng cộng · ${
+          tooltipDesc="Candidate application submission volume across open positions over the last 7 days."
+          tooltipDetail={`${counts.total} application${counts.total === 1 ? "" : "s"} in total • ${
             applicationTrendBars[applicationTrendBars.length - 1]?.value || 0
-          } đơn hôm nay`}
+          } new today`}
           visual={
             <SparklineBars
               bars={applicationTrendBars}
-              caption="7 ngày qua"
+              caption="Last 7 days"
             />
           }
           footerLeft="Across open positions"

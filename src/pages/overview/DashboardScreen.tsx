@@ -134,23 +134,23 @@ export function DashboardScreen() {
       {
         label: "≥85%",
         value: strong,
-        sublabel: "dự án",
+        sublabel: "projects",
         color: "#1d4ed8",
-        tooltip: `Tương thích ≥85%: ${strong} dự án rất phù hợp`,
+        tooltip: `Match ≥85%: ${strong} strong match projects`,
       },
       {
         label: "70-84%",
         value: good,
-        sublabel: "dự án",
+        sublabel: "projects",
         color: "#3b82f6",
-        tooltip: `Tương thích 70–84%: ${good} dự án khá phù hợp`,
+        tooltip: `Match 70–84%: ${good} good match projects`,
       },
       {
         label: "<70%",
         value: moderate,
-        sublabel: "dự án",
+        sublabel: "projects",
         color: "#94a3b8",
-        tooltip: `Tương thích <70%: ${moderate} dự án tiềm năng`,
+        tooltip: `Match <70%: ${moderate} moderate match projects`,
       },
     ]
   }, [available])
@@ -173,12 +173,12 @@ export function DashboardScreen() {
           value={available.length || 20}
           subtitle="matched to your profile"
           tooltipTitle="Project Match Distribution"
-          tooltipDesc="Phân bổ mức độ phù hợp của các dự án gợi ý theo kỹ năng và hồ sơ của bạn."
-          tooltipDetail={`${matchDistribution[0]?.value || 2} dự án tương thích rất cao (≥85%) · ${matchDistribution[1]?.value || 6} dự án phù hợp (70–84%)`}
+          tooltipDesc="Relative match distribution of recommended projects tailored to your skills and preferences."
+          tooltipDetail={`${matchDistribution[0]?.value || 2} strong matches (≥85%) • ${matchDistribution[1]?.value || 6} good matches (70–84%)`}
           visual={
             <SparklineBars
               bars={matchDistribution}
-              caption="3 mức tương thích"
+              caption="3 match tiers"
             />
           }
           footerLeft={`${matchDistribution[0]?.value || 2} strong matches · 85%+`}

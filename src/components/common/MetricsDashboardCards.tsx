@@ -114,21 +114,25 @@ export function SparklineBars({
   const items: SparklineBarItem[] = React.useMemo(() => {
     if (bars && bars.length > 0) return bars
 
-    const dayNames = ["CN", "T2", "T3", "T4", "T5", "T6", "T7"]
+    const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
+    const monthNames = [
+      "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+      "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+    ]
     const today = new Date()
     return Array.from({ length: 7 }).map((_, idx) => {
       const offset = 6 - idx
       const d = new Date()
       d.setDate(today.getDate() - offset)
       const isToday = offset === 0
-      const dayName = isToday ? "Nay" : dayNames[d.getDay()]
-      const dd = String(d.getDate()).padStart(2, "0")
-      const mm = String(d.getMonth() + 1).padStart(2, "0")
+      const dayName = isToday ? "Today" : dayNames[d.getDay()]
+      const monthStr = monthNames[d.getMonth()]
+      const dateNum = d.getDate()
       return {
-        label: dayName,
+        label: isToday ? "Now" : dayNames[d.getDay()],
         value: isToday ? 1 : 0,
-        tooltip: `${isToday ? "Hôm nay" : `Ngày ${dd}/${mm}`}: ${
-          isToday ? "1 đơn ứng tuyển mới" : "0 đơn"
+        tooltip: `${isToday ? "Today" : `${dayName} (${monthStr} ${dateNum})`}: ${
+          isToday ? "1 new application" : "0 applications"
         }`,
       }
     })
@@ -167,7 +171,7 @@ export function SparklineBars({
 
           const tooltipText =
             item.tooltip ||
-            `${item.label || "Thời điểm"}: ${val} ${item.sublabel || "lượt"}`
+            `${item.label || "Period"}: ${val} ${item.sublabel || "items"}`
 
           return (
             <div
