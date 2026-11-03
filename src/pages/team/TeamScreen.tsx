@@ -200,9 +200,9 @@ export function TeamScreen() {
                     <Code2 size={14} />
                     {proj.isLeader ? "Project Leader" : proj.my_role}
                   </span>
-                  <span>
-                    <Users size={14} />
-                    {proj.current_team_size}/{proj.max_team_capacity} members
+                  <span className="flex items-center gap-1.5 text-slate-500">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />
+                    {proj.status === "active" ? "In progress" : "Recruiting"}
                   </span>
                 </div>
 

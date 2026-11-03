@@ -1,4 +1,4 @@
-/* Team Workspace Page - Responsive styles */
+/* Team Workspace Page - Responsive & Clean Design */
 
 .team-workspace-page {
   display: flex;
@@ -7,7 +7,7 @@
   width: 100%;
 }
 
-/* Responsive Grid: 1 col on mobile, auto-fill min 320px on tablet/desktop */
+/* 2-Column Grid on Desktop / Tablet (matching Tindy standard), 1-Column on Mobile */
 .team-workspace-grid {
   display: grid;
   grid-template-columns: 1fr;
@@ -16,33 +16,33 @@
   min-width: 0;
 }
 
-@media (min-width: 640px) {
+@media (min-width: 768px) {
   .team-workspace-grid {
-    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 20px;
   }
 }
 
-/* Card Enhancements */
+/* Card Styling */
 .team-workspace-card {
   display: flex;
   flex-direction: column;
   background: #ffffff;
-  border: 1px solid #e2e8f0;
+  border: 1px solid #e3e9f1;
   border-radius: 12px;
-  padding: 20px 20px 0;
+  padding: 20px 22px 0;
   min-width: 0;
   overflow: hidden;
   transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
-  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.03);
 }
 
 .team-workspace-card:hover {
   border-color: #cbd5e1;
-  box-shadow: 0 6px 20px rgba(15, 23, 42, 0.07);
+  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.06);
 }
 
-/* Card Header */
+/* Card Top / Header */
 .team-workspace-card-top {
   display: flex;
   align-items: center;
@@ -52,8 +52,8 @@
 }
 
 .team-workspace-card-top .project-mark {
-  width: 40px;
-  height: 40px;
+  width: 42px;
+  height: 42px;
   border-radius: 8px;
   display: inline-grid;
   place-items: center;
@@ -133,12 +133,12 @@
   overflow: hidden;
 }
 
-/* Card Meta attributes */
+/* Card Attributes */
 .team-workspace-attributes {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 14px;
+  gap: 16px;
   margin: 14px 0 0;
   font-size: 12px;
   color: #64748b;
@@ -155,7 +155,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
+  gap: 12px;
   border-top: 1px solid #f1f5f9;
   padding: 14px 0;
   margin-top: 16px;
@@ -178,6 +178,7 @@
   gap: 8px;
   margin-left: auto;
   min-width: 0;
+  flex-shrink: 0;
 }
 
 .team-workspace-btn {
@@ -191,6 +192,7 @@
   font-weight: 600;
   text-decoration: none;
   white-space: nowrap;
+  flex-shrink: 0;
   transition: all 0.15s ease;
 }
 
@@ -198,8 +200,8 @@
   flex-shrink: 0;
 }
 
-/* Responsive Breakpoints for Footer & Controls */
-@media (max-width: 520px) {
+/* Mobile Responsiveness */
+@media (max-width: 560px) {
   .team-workspace-card {
     padding: 16px 16px 0;
   }
@@ -240,7 +242,7 @@
   }
 }
 
-/* Status tabs mobile scrollbar */
+/* Status tabs horizontal scroll for mobile */
 .team-workspace-page .status-tabs {
   display: flex;
   align-items: center;
