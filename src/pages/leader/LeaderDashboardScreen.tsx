@@ -174,8 +174,8 @@ export function LeaderDashboard() {
             />
           }
           footerLeft="+1 more role"
-          actionLabel="Review people"
-          actionTo="/candidates"
+          actionLabel="Review applications"
+          actionTo="/applications"
         />
 
         <MetricCard
@@ -506,8 +506,8 @@ export function LeaderDashboard() {
             <SectionHeading
               title="Candidate shortlist"
               action={
-                <Link className="text-link" to="/candidates">
-                  View pipeline <ArrowRight size={13} />
+                <Link className="text-link" to="/applications">
+                  View all applications <ArrowRight size={13} />
                 </Link>
               }
             />

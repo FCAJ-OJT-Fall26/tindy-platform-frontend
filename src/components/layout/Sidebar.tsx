@@ -22,7 +22,7 @@ export const navItems = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard, preview: false },
   { to: "/discover", label: "Discover Projects", icon: Compass, preview: false },
   { to: "/projects", label: "My Projects", icon: FolderKanban, preview: false },
-  { to: "/candidates", label: "Candidates", icon: Users, preview: true },
+  { to: "/applications", label: "Applications", icon: UserCheck, preview: false },
   { to: "/messages", label: "Messages", icon: MessageSquare, preview: true },
   { to: "/notifications", label: "Notifications", icon: Bell, preview: true },
   { to: "/team", label: "Team Workspace", icon: Users, preview: true },

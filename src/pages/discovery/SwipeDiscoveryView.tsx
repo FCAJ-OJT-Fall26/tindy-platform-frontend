@@ -494,9 +494,8 @@ function DemoSwipeDiscoveryView({
           </span>
           <ChevronDown
             size={14}
-            className={`text-slate-400 shrink-0 transition-transform duration-200 ${
-              mobileFilterOpen ? 'rotate-180' : ''
-            }`}
+            className={`text-slate-400 shrink-0 transition-transform duration-200 ${mobileFilterOpen ? 'rotate-180' : ''
+              }`}
           />
         </button>
 
@@ -586,9 +585,8 @@ function DemoSwipeDiscoveryView({
             </span>
             <ChevronDown
               size={14}
-              className={`text-slate-400 shrink-0 transition-transform duration-200 ${
-                mobileInspectorOpen ? 'rotate-180' : ''
-              }`}
+              className={`text-slate-400 shrink-0 transition-transform duration-200 ${mobileInspectorOpen ? 'rotate-180' : ''
+                }`}
             />
           </button>
 
