@@ -7,6 +7,7 @@ import {
   CheckCircle2,
   ChevronDown,
   ChevronLeft,
+  MessageSquareQuote,
   Users,
   UserCheck,
   XCircle,
@@ -19,6 +20,7 @@ import {
   DonutProgressRing,
   SparklineBars,
 } from "../../components/common/MetricsDashboardCards"
+import SkillIcon from "../../components/onboarding/SkillIcon"
 import RuleMatchPanel from "../../components/discovery/RuleMatchPanel"
 import MatchScoreRing from "../../components/discovery/MatchScoreRing"
 import { useTindy } from "../../store"
@@ -743,6 +745,10 @@ export default function ProjectApplicationsScreen() {
                             ? "Rejected"
                             : status}
                         </span>
+
+                        <span className="candidate-position-pill">
+                          Applied: <strong>{row.applied_position.title}</strong>
+                        </span>
                       </div>
 
                       <div className="candidate-meta-line">
@@ -753,15 +759,13 @@ export default function ProjectApplicationsScreen() {
                             ? `${row.applicant.available_hours_per_week} hrs/week committed`
                             : "Availability flexible"}
                         </span>
-                      </div>
-
-                      <div className="candidate-applied-position">
-                        <span className="text-slate-500 font-normal">Applied for:</span>
-                        <span className="candidate-position-pill">
-                          {row.applied_position.title}
-                        </span>
+                        <span>•</span>
                         <span className="candidate-slots-remaining">
-                          ({openSlots} {openSlots === 1 ? "slot" : "slots"} left)
+                          {openSlots} {openSlots === 1 ? "slot" : "slots"} left
+                        </span>
+                        <span>•</span>
+                        <span>
+                          {row.applicant.experiences_count} exp, {row.applicant.certificates_count} certs
                         </span>
                       </div>
                     </div>
@@ -788,30 +792,20 @@ export default function ProjectApplicationsScreen() {
 
                 {/* Candidate Cover Note */}
                 {row.application.message ? (
-                  <div className="candidate-cover-message">
-                    &ldquo;{row.application.message}&rdquo;
+                  <div className="candidate-cover-message compact">
+                    <MessageSquareQuote size={13} className="candidate-quote-icon" />
+                    <span>&ldquo;{row.application.message}&rdquo;</span>
                   </div>
-                ) : (
-                  <p className="candidate-no-message">
-                    Candidate expressed interest without an additional note.
-                  </p>
-                )}
+                ) : null}
 
-                {/* Candidate Skills & Experience Badges */}
+                {/* Candidate Skills List with Icons */}
                 <div className="candidate-skills-section">
-                  <div className="candidate-skills-header">
-                    <span className="candidate-skills-title">Technical Skills</span>
-                    <span>
-                      {row.applicant.experiences_count} experiences &nbsp;•&nbsp;{" "}
-                      {row.applicant.certificates_count} verified certificates
-                    </span>
-                  </div>
-
                   <div className="candidate-skills-list">
                     {row.applicant.skills?.length > 0 ? (
                       row.applicant.skills.map((s) => (
                         <span key={s.skill_id} className="candidate-skill-tag">
-                          {s.name}
+                          <SkillIcon name={s.name} size={13} className="candidate-skill-icon" />
+                          <span>{s.name}</span>
                         </span>
                       ))
                     ) : (
