@@ -111,7 +111,7 @@ export function DashboardScreen() {
   const [tab, setTab] = useState("For you")
   const available = feed.items.filter(card => tab !== "New arrivals" || card.feed_bucket === "new_projects").map(mapDiscoveryToProject)
 
-  // Calculate project match distribution across 3 intuitive compatibility tiers
+  // Calculate real project match distribution across 3 intuitive compatibility tiers
   const matchDistribution = useMemo(() => {
     let strong = 0
     let good = 0
@@ -124,36 +124,56 @@ export function DashboardScreen() {
       else moderate++
     })
 
-    if (strong === 0 && good === 0 && moderate === 0) {
-      strong = 2
-      good = 6
-      moderate = 12
-    }
-
     return [
       {
         label: "≥85%",
         value: strong,
         sublabel: "projects",
         color: "#1d4ed8",
-        tooltip: `Match ≥85%: ${strong} strong match projects`,
+        tooltip: `Match ≥85%: ${strong} strong match project${strong === 1 ? "" : "s"}`,
       },
       {
         label: "70-84%",
         value: good,
         sublabel: "projects",
         color: "#3b82f6",
-        tooltip: `Match 70–84%: ${good} good match projects`,
+        tooltip: `Match 70–84%: ${good} good match project${good === 1 ? "" : "s"}`,
       },
       {
         label: "<70%",
         value: moderate,
         sublabel: "projects",
         color: "#94a3b8",
-        tooltip: `Match <70%: ${moderate} moderate match projects`,
+        tooltip: `Match <70%: ${moderate} moderate match project${moderate === 1 ? "" : "s"}`,
       },
     ]
   }, [available])
+
+  const strongMatches = matchDistribution[0]?.value ?? 0
+  const goodMatches = matchDistribution[1]?.value ?? 0
+  const moderateMatches = matchDistribution[2]?.value ?? 0
+
+  const matchFooter = useMemo(() => {
+    if (strongMatches > 0) {
+      return `${strongMatches} strong match${strongMatches === 1 ? "" : "es"} · 85%+`
+    }
+    if (goodMatches > 0) {
+      return `${goodMatches} good match${goodMatches === 1 ? "" : "es"} · 70%+`
+    }
+    return `${moderateMatches} project${moderateMatches === 1 ? "" : "s"} · <70% match`
+  }, [strongMatches, goodMatches, moderateMatches])
+
+  const matchTooltipDetail = useMemo(() => {
+    if (strongMatches > 0 || goodMatches > 0) {
+      const parts: string[] = []
+      if (strongMatches > 0) parts.push(`${strongMatches} strong match${strongMatches === 1 ? "" : "es"} (≥85%)`)
+      if (goodMatches > 0) parts.push(`${goodMatches} good match${goodMatches === 1 ? "" : "es"} (70–84%)`)
+      if (moderateMatches > 0) parts.push(`${moderateMatches} moderate (<70%)`)
+      return parts.join(" • ")
+    }
+    return `0 high matches (≥70%) • ${moderateMatches} project${moderateMatches === 1 ? "" : "s"} with moderate match (<70%)`
+  }, [strongMatches, goodMatches, moderateMatches])
+
   return (
     <>
       <PageHeader
@@ -170,18 +190,18 @@ export function DashboardScreen() {
         <MetricCard
           index={0}
           label="Recommended projects"
-          value={available.length || 20}
+          value={available.length}
           subtitle="matched to your profile"
           tooltipTitle="Project Match Distribution"
           tooltipDesc="Relative match distribution of recommended projects tailored to your skills and preferences."
-          tooltipDetail={`${matchDistribution[0]?.value || 2} strong matches (≥85%) • ${matchDistribution[1]?.value || 6} good matches (70–84%)`}
+          tooltipDetail={matchTooltipDetail}
           visual={
             <SparklineBars
               bars={matchDistribution}
               caption="3 match tiers"
             />
           }
-          footerLeft={`${matchDistribution[0]?.value || 2} strong matches · 85%+`}
+          footerLeft={matchFooter}
           actionLabel="Explore"
           actionTo="/discover"
         />
