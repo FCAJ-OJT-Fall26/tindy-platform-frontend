@@ -1,165 +1,198 @@
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect, useRef } from "react"
 import { Link, useParams } from "react-router"
 import {
   ArrowRight,
   ArrowUpRight,
+  ChevronLeft,
+  ChevronRight,
+  Clock,
   Code2,
+  MoreHorizontal,
   Plus,
   Settings,
+  Trash2,
   Users,
 } from "lucide-react"
-import { useTindy } from "../../store"
+import { useTindy, Project } from "../../store"
 import useMyProjects from "../../hooks/useMyProjects"
-import { EmptyState, Chips, Badge } from "../../components/ui"
+import { EmptyState, Badge } from "../../components/ui"
 import { ProjectWorkspaceView } from "./ProjectWorkspaceView"
+import { deleteProjectApi } from "../../services/projects.service"
+import { projectErrorMessage } from "../../services/projectEditor.service"
 import "./team-screen.css"
-
-interface TeamProjectItem {
-  project_id: string
-  name: string
-  category: string
-  status: string
-  current_team_size: number
-  max_team_capacity: number
-  tagline?: string
-  skills?: string[]
-  isLeader: boolean
-  my_role?: string
-  leader_name?: string
-}
 
 export function TeamScreen() {
   const { projectId, id } = useParams<{ projectId?: string; id?: string }>()
   const effectiveProjectId = projectId || id
-  const { authUser, profile, projects } = useTindy()
-  const myProjectsResource = useMyProjects()
+  const { authUser, setProjects, notify } = useTindy()
+  const resource = useMyProjects()
 
   // Tab filter: all | leading | member
   const [filterTab, setFilterTab] = useState<"all" | "leading" | "member">("all")
+  const [currentPage, setCurrentPage] = useState(1)
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null)
+  const [archivingId, setArchivingId] = useState<string | null>(null)
+  const [archiveError, setArchiveError] = useState("")
+  const archiveBusy = useRef(false)
+  const PROJECTS_PER_PAGE = 6
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    const handleOutsideClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement
+      if (!target.closest(".leader-project-menu-container")) {
+        setOpenMenuId(null)
+      }
+    }
+    if (openMenuId) {
+      document.addEventListener("click", handleOutsideClick)
+    }
+    return () => {
+      document.removeEventListener("click", handleOutsideClick)
+    }
+  }, [openMenuId])
 
   // If a specific projectId is requested in route, render the Project Workspace directly
   if (effectiveProjectId) {
     return <ProjectWorkspaceView projectId={effectiveProjectId} />
   }
 
-  // Projects where user is leader
-  const leadingList = useMemo<TeamProjectItem[]>(() => {
-    const fromApi = myProjectsResource.data?.leading_projects ?? []
-    const apiIds = new Set(fromApi.map((p) => p.project_id))
+  // Derive leading and joined projects using exact same logic as Leader Workspace
+  const leadingIds = new Set(
+    resource.data?.leading_projects
+      .filter((p) => p.status !== "archived")
+      .map((p) => p.project_id) ?? [],
+  )
+  const joinedIds = new Set(
+    resource.data?.joined_projects?.map((p) => p.project_id) ?? [],
+  )
 
-    const fromStore = projects
-      .filter(
-        (p) =>
-          (p.leaderId === authUser?.user_id ||
-            (profile.name && p.leader?.trim().toLowerCase() === profile.name.trim().toLowerCase())) &&
-          !apiIds.has(p.id),
+  const managedProjects =
+    resource.data?.projects.filter((p) => leadingIds.has(p.id)) ?? []
+  const joinedProjects =
+    resource.data?.projects.filter((p) => joinedIds.has(p.id)) ?? []
+  const allProjects =
+    resource.data?.projects.filter(
+      (p) => leadingIds.has(p.id) || joinedIds.has(p.id),
+    ) ?? []
+
+  const pendingFor = (projId: string) =>
+    resource.data?.leading_projects.find((p) => p.project_id === projId)
+      ?.pending_applications_count ?? 0
+
+  const filteredProjects = useMemo(() => {
+    if (filterTab === "leading") return managedProjects
+    if (filterTab === "member") return joinedProjects
+    return allProjects
+  }, [filterTab, managedProjects, joinedProjects, allProjects])
+
+  const totalPages = Math.max(1, Math.ceil(filteredProjects.length / PROJECTS_PER_PAGE))
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages)
+    }
+  }, [totalPages, currentPage])
+
+  // Sliced projects for current page
+  const startIndex = (currentPage - 1) * PROJECTS_PER_PAGE
+  const currentProjects = filteredProjects.slice(
+    startIndex,
+    startIndex + PROJECTS_PER_PAGE,
+  )
+  const pageItemsCount = currentProjects.length
+
+  const handleDeleteProject = async (projId: string, projectName: string) => {
+    if (
+      archiveBusy.current ||
+      !window.confirm(
+        'Archive project "' + projectName + '"? Its recruitment positions will close.',
       )
-      .map((p) => ({
-        project_id: p.id,
-        name: p.name,
-        category: p.type || "Software Engineering",
-        status: p.status || "recruiting",
-        current_team_size: p.team || 1,
-        max_team_capacity: p.capacity || 5,
-        tagline: p.tagline,
-        skills: p.skills || [],
-        isLeader: true,
-        my_role: "Project Leader",
+    )
+      return
+    archiveBusy.current = true
+    setArchivingId(projId)
+    setArchiveError("")
+    try {
+      await deleteProjectApi(projId)
+      setProjects((previous) => previous.filter((p) => p.id !== projId))
+      resource.replace((previous) => ({
+        ...previous!,
+        leading_projects: previous!.leading_projects.filter(
+          (p) => p.project_id !== projId,
+        ),
+        projects: previous!.projects.filter((p) => p.id !== projId),
       }))
-
-    const mappedApi = fromApi.map((p) => {
-      const full = projects.find((fp) => fp.id === p.project_id)
-      return {
-        project_id: p.project_id,
-        name: p.name,
-        category: full?.type || "Software Engineering",
-        status: p.status || "recruiting",
-        current_team_size: p.current_team_size || 1,
-        max_team_capacity: p.max_team_capacity || 5,
-        tagline: full?.tagline,
-        skills: full?.skills || [],
-        isLeader: true,
-        my_role: "Project Leader",
-      }
-    })
-
-    return [...mappedApi, ...fromStore]
-  }, [myProjectsResource.data?.leading_projects, projects, authUser, profile.name])
-
-  // Projects where user joined as member
-  const joinedList = useMemo<TeamProjectItem[]>(() => {
-    const fromApi = myProjectsResource.data?.joined_projects ?? []
-    return fromApi.map((p) => {
-      const full = projects.find((fp) => fp.id === p.project_id)
-      return {
-        project_id: p.project_id,
-        name: p.name,
-        category: full?.type || "Web Application",
-        status: p.status || "active",
-        current_team_size: full?.team || 3,
-        max_team_capacity: full?.capacity || 5,
-        tagline: full?.tagline,
-        skills: full?.skills || [],
-        isLeader: false,
-        my_role: p.my_role || "Team Member",
-        leader_name: p.leader_name,
-      }
-    })
-  }, [myProjectsResource.data?.joined_projects, projects])
-
-  const totalTeamsCount = leadingList.length + joinedList.length
-
-  const displayProjects = useMemo(() => {
-    if (filterTab === "leading") return leadingList
-    if (filterTab === "member") return joinedList
-    return [...leadingList, ...joinedList]
-  }, [filterTab, leadingList, joinedList])
+      notify('Project "' + projectName + '" archived.')
+      resource.reload()
+    } catch (err: unknown) {
+      setArchiveError(projectErrorMessage(err))
+    } finally {
+      archiveBusy.current = false
+      setArchivingId(null)
+    }
+  }
 
   return (
     <div className="team-workspace-page">
-      {/* Responsive Page Header */}
+      {/* Page Header */}
       <div className="team-workspace-header">
         <div className="team-workspace-header-text">
           <h1>Team workspace</h1>
           <p>All active project teams you are collaborating with and leading.</p>
         </div>
-        <Link to="/create-project" className="btn btn-secondary team-workspace-create-btn">
+        <Link to="/create-project" className="btn btn-primary team-workspace-create-btn">
           <Plus size={15} /> <span>Create project</span>
         </Link>
       </div>
 
-      {/* Responsive Filter Tabs */}
+      {archiveError && (
+        <div className="info-banner" role="alert">
+          {archiveError}
+        </div>
+      )}
+
+      {/* Filter Tabs */}
       <div className="status-tabs" role="tablist" aria-label="Team workspace filters">
         <button
           type="button"
           role="tab"
           aria-selected={filterTab === "all"}
-          onClick={() => setFilterTab("all")}
+          onClick={() => {
+            setFilterTab("all")
+            setCurrentPage(1)
+          }}
           className={filterTab === "all" ? "active" : ""}
         >
-          <span>All teams</span> <span className="tab-count">{totalTeamsCount}</span>
+          <span>All teams</span> <span className="tab-count">{allProjects.length}</span>
         </button>
         <button
           type="button"
           role="tab"
           aria-selected={filterTab === "leading"}
-          onClick={() => setFilterTab("leading")}
+          onClick={() => {
+            setFilterTab("leading")
+            setCurrentPage(1)
+          }}
           className={filterTab === "leading" ? "active" : ""}
         >
-          <span>Teams you lead</span> <span className="tab-count">{leadingList.length}</span>
+          <span>Teams you lead</span> <span className="tab-count">{managedProjects.length}</span>
         </button>
         <button
           type="button"
           role="tab"
           aria-selected={filterTab === "member"}
-          onClick={() => setFilterTab("member")}
+          onClick={() => {
+            setFilterTab("member")
+            setCurrentPage(1)
+          }}
           className={filterTab === "member" ? "active" : ""}
         >
-          <span>Teams you joined</span> <span className="tab-count">{joinedList.length}</span>
+          <span>Teams you joined</span> <span className="tab-count">{joinedProjects.length}</span>
         </button>
       </div>
 
-      {displayProjects.length === 0 ? (
+      {filteredProjects.length === 0 ? (
         <EmptyState
           title="No active team projects yet."
           description="Explore projects matching your skills on the Discovery feed or create your own project to start collaborating."
@@ -170,75 +203,259 @@ export function TeamScreen() {
           }
         />
       ) : (
-        <div className="team-workspace-grid">
-          {displayProjects.map((proj) => {
-            const initials = proj.name ? proj.name.slice(0, 2).toUpperCase() : "PR"
-            return (
-              <article className="team-workspace-card" key={proj.project_id}>
-                {/* Card Top: Mark + Badge + Category + Title */}
-                <div className="team-workspace-card-top">
-                  <span className={`project-mark ${proj.isLeader ? "indigo" : "teal"}`}>
-                    {initials}
-                  </span>
-                  <div className="team-workspace-card-info">
-                    <div className="team-workspace-card-badge-row">
-                      <Badge tone="success">
-                        {(proj.status ?? "recruiting").replace(/_/g, " ").toUpperCase()}
-                      </Badge>
-                      <span className="team-workspace-category-label">{proj.category}</span>
+        <>
+          {/* Projects Grid: Exactly reusing Leader Workspace's Auto-Grid Architecture */}
+          <div
+            className={`leader-projects-grid grid-cols-${pageItemsCount}`}
+            data-count={pageItemsCount}
+          >
+            {currentProjects.map((project) => {
+              const isLeader = leadingIds.has(project.id)
+              return (
+                <section className="leader-project panel" key={project.id}>
+                  {/* Card Top: Mark + Title + Badge + Actions Menu */}
+                  <div className="leader-project-top">
+                    <span
+                      className={`project-mark ${project.color || (isLeader ? "indigo" : "teal")}`}
+                    >
+                      {project.initials}
+                    </span>
+                    <div className="leader-project-info">
+                      <div className="leader-project-badge-row">
+                        <Badge tone="success">
+                          {(project.status ?? "recruiting").replace(/_/g, " ").toUpperCase()}
+                        </Badge>
+                      </div>
+                      <h2>{project.name}</h2>
+                      <p title={project.description}>{project.description}</p>
                     </div>
-                    <Link className="team-workspace-card-title" to={`/team/${proj.project_id}`}>
-                      {proj.name}
-                    </Link>
-                  </div>
-                </div>
 
-                <p className="team-workspace-card-desc">
-                  {proj.tagline || (proj.leader_name ? `Led by ${proj.leader_name}. Active collaborative team space.` : "Active collaborative team workspace.")}
-                </p>
+                    <div className="leader-project-top-actions leader-project-menu-container">
+                      {isLeader && (
+                        <button
+                          className="icon-button"
+                          onClick={() => handleDeleteProject(project.id, project.name)}
+                          title="Archive Project"
+                          aria-label="Archive Project"
+                          disabled={archivingId !== null}
+                          style={{ color: "#d9534f" }}
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      )}
 
-                <Chips items={proj.skills && proj.skills.length > 0 ? proj.skills : ["PostgreSQL", ".NET", "C#"]} />
-
-                {/* Stats row pinned to bottom via margin-top: auto (Leader Workspace style) */}
-                <div className="team-workspace-card-stats">
-                  <span>
-                    <Users size={14} />
-                    <strong>{proj.current_team_size} / {proj.max_team_capacity}</strong> members
-                  </span>
-                  <span>
-                    <Code2 size={14} />
-                    <span>{proj.isLeader ? "Project Leader" : (proj.my_role || "Team Member")}</span>
-                  </span>
-                </div>
-
-                {/* Card Footer Actions: Dedicated full-width row */}
-                <div className="team-workspace-card-footer">
-                  <div className={`team-workspace-card-actions ${!proj.isLeader ? "is-single" : ""}`}>
-                    {proj.isLeader && (
-                      <Link
-                        to={`/project/${proj.project_id}/edit`}
-                        className="btn btn-secondary team-workspace-btn"
-                        title="Manage project settings and recruitment"
+                      <button
+                        type="button"
+                        className="icon-button"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setOpenMenuId(openMenuId === project.id ? null : project.id)
+                        }}
+                        aria-label="Project settings"
+                        title="Project settings"
+                        style={{
+                          background: openMenuId === project.id ? "#f1f5f9" : undefined,
+                          color: openMenuId === project.id ? "#0f172a" : undefined,
+                        }}
                       >
-                        <Settings size={13} />
-                        <span>Manage</span>
-                        <ArrowUpRight size={13} />
+                        <MoreHorizontal size={20} />
+                      </button>
+
+                      {openMenuId === project.id && (
+                        <div
+                          className="project-actions-dropdown"
+                          style={{
+                            position: "absolute",
+                            top: "calc(100% + 6px)",
+                            right: 0,
+                            width: "190px",
+                            background: "#ffffff",
+                            border: "1px solid #e2e8f0",
+                            borderRadius: "10px",
+                            boxShadow:
+                              "0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.05)",
+                            padding: "6px",
+                            zIndex: 50,
+                            display: "flex",
+                            flexDirection: "column",
+                            gap: "2px",
+                          }}
+                        >
+                          {isLeader && (
+                            <Link
+                              to={`/project/${project.id}/edit`}
+                              onClick={() => setOpenMenuId(null)}
+                              style={{
+                                display: "flex",
+                                alignItems: "center",
+                                gap: "8px",
+                                padding: "8px 10px",
+                                borderRadius: "6px",
+                                fontSize: "12px",
+                                fontWeight: 500,
+                                color: "#1e293b",
+                                textDecoration: "none",
+                              }}
+                              className="dropdown-item-hover"
+                            >
+                              <Settings size={14} style={{ color: "#64748b" }} />
+                              <span>Manage project</span>
+                            </Link>
+                          )}
+
+                          <Link
+                            to={`/project/${project.id}`}
+                            onClick={() => setOpenMenuId(null)}
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: "8px",
+                              padding: "8px 10px",
+                              borderRadius: "6px",
+                              fontSize: "12px",
+                              fontWeight: 500,
+                              color: "#1e293b",
+                              textDecoration: "none",
+                            }}
+                            className="dropdown-item-hover"
+                          >
+                            <ArrowUpRight size={14} style={{ color: "#64748b" }} />
+                            <span>View public specs</span>
+                          </Link>
+
+                          {isLeader && (
+                            <Link
+                              to={`/project/${project.id}/applications`}
+                              onClick={() => setOpenMenuId(null)}
+                              style={{
+                                display: "flex",
+                                alignItems: "center",
+                                gap: "8px",
+                                padding: "8px 10px",
+                                borderRadius: "6px",
+                                fontSize: "12px",
+                                fontWeight: 500,
+                                color: "#1e293b",
+                                textDecoration: "none",
+                              }}
+                              className="dropdown-item-hover"
+                            >
+                              <Users size={14} style={{ color: "#64748b" }} />
+                              <span>Review applicants</span>
+                            </Link>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Card Stats: Exact Leader Workspace layout with auto-margin-top */}
+                  <div className="leader-project-stats">
+                    <span>
+                      <Users size={16} />
+                      <strong>
+                        {project.team} / {project.capacity}
+                      </strong>{" "}
+                      members
+                    </span>
+                    <span>
+                      <Code2 size={16} />
+                      <strong>{project.openings ?? 0}</strong> open positions
+                    </span>
+                    {isLeader ? (
+                      <Link
+                        to={`/project/${project.id}/applications`}
+                        style={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: "5px",
+                          color: "inherit",
+                          textDecoration: "none",
+                        }}
+                      >
+                        <Clock size={16} />
+                        <strong>{pendingFor(project.id)}</strong> pending applications
+                      </Link>
+                    ) : (
+                      <span>
+                        <Code2 size={16} />
+                        <strong>Team Member</strong>
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Card Actions: Clean Leader Workspace Button Hierarchy */}
+                  <div className="leader-project-actions">
+                    <Link to={`/team/${project.id}`} className="btn btn-primary">
+                      Open workspace <ArrowRight size={15} />
+                    </Link>
+                    {isLeader ? (
+                      <Link to={`/project/${project.id}/applications`} className="btn btn-secondary">
+                        Applications
+                      </Link>
+                    ) : (
+                      <Link to={`/project/${project.id}`} className="btn btn-secondary">
+                        View project
                       </Link>
                     )}
-                    <Link
-                      to={`/team/${proj.project_id}`}
-                      className="btn btn-primary team-workspace-btn"
-                      title="Open team workspace and goals"
-                    >
-                      <span>Open workspace</span>
-                      <ArrowRight size={13} />
+                    <Link to={`/project/${project.id}`} className="text-link">
+                      View specs <ArrowUpRight size={14} />
                     </Link>
                   </div>
+                </section>
+              )
+            })}
+          </div>
+
+          {/* Pagination: Exact Leader Workspace Pagination Component */}
+          {totalPages > 1 && (
+            <div className="leader-pagination">
+              <div className="leader-pagination-info">
+                Showing{" "}
+                <strong>
+                  {startIndex + 1}–
+                  {Math.min(startIndex + PROJECTS_PER_PAGE, filteredProjects.length)}
+                </strong>{" "}
+                of <strong>{filteredProjects.length}</strong> projects (Page{" "}
+                {currentPage} of {totalPages})
+              </div>
+              <div className="leader-pagination-controls">
+                <button
+                  className="btn btn-secondary pagination-btn"
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                  aria-label="Previous page"
+                >
+                  <ChevronLeft size={15} />
+                  <span>Previous</span>
+                </button>
+                <div className="pagination-pages">
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => (
+                    <button
+                      key={pageNum}
+                      className={`pagination-page-number ${
+                        pageNum === currentPage ? "active" : ""
+                      }`}
+                      onClick={() => setCurrentPage(pageNum)}
+                      aria-label={`Go to page ${pageNum}`}
+                    >
+                      {pageNum}
+                    </button>
+                  ))}
                 </div>
-              </article>
-            )
-          })}
-        </div>
+                <button
+                  className="btn btn-secondary pagination-btn"
+                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={currentPage === totalPages}
+                  aria-label="Next page"
+                >
+                  <span>Next</span>
+                  <ChevronRight size={15} />
+                </button>
+              </div>
+            </div>
+          )}
+        </>
       )}
     </div>
   )
