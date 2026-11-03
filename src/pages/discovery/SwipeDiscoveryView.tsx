@@ -10,10 +10,11 @@ import ProjectDetailModal from '../../components/projects/ProjectDetailModal';
 import CandidateDetailModal from '../../components/candidates/CandidateDetailModal';
 import CandidateShortlistModal from '../../components/candidates/CandidateShortlistModal';
 import AiExplanationModal from '../../components/common/AiExplanationModal';
-import { SlidersHorizontal, ChevronDown } from 'lucide-react';
+import { SlidersHorizontal, ChevronDown, RefreshCw } from 'lucide-react';
 import { useTindy } from '../../store';
 import { projectErrorMessage } from '../../services/projectEditor.service';
 import LiveDiscoveryView from './LiveDiscoveryView';
+import './live-discovery.css';
 
 interface SwipeDiscoveryViewProps {
   initialMode?: DiscoveryMode;
@@ -423,113 +424,66 @@ function DemoSwipeDiscoveryView({
   };
 
   return (
-    <div className="w-full min-w-0 flex flex-col space-y-6 pb-16">
-      {/* Page Title & Two-Sided Switcher Header */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 bg-white p-4 sm:p-6 rounded-2xl border border-slate-200/90 shadow-2xs min-w-0">
-        <div className={`min-w-0 discovery-header-fade ${transitionState === 'exiting' ? 'opacity-40' : 'opacity-100'}`}>
-          <div className="flex items-center gap-2">
-            <span className="text-[10px] uppercase font-bold tracking-wider text-slate-900 bg-slate-100 px-2.5 py-1 rounded-md border border-slate-200">
-              Interactive Matching Stack
-            </span>
-          </div>
-          <h1 className="font-manrope font-extrabold text-xl sm:text-2xl lg:text-3xl text-slate-900 tracking-tight mt-1.5 transition-colors break-words">
-            {displayMode === 'student' ? 'Discover Projects That Fit You' : 'Discover Candidates for Your Team'}
-          </h1>
-          <p className="text-xs text-slate-500 mt-1 max-w-xl leading-relaxed">
-            {displayMode === 'student'
-              ? 'Swipe right on projects you want to contribute to, left to pass, or up to save for later.'
-              : 'Review verified candidate profiles tailored to your project requirements with explainable AI fit scores.'}
-          </p>
+    <div className="live-discovery" data-live-discovery data-loaded-count={candidates.length}>
+      {/* Page Header */}
+      <header className="live-discovery__header">
+        <div>
+          <span className="live-discovery__pill">INTERACTIVE MATCHING STACK</span>
+          <h1>Discover Candidates for Your Team</h1>
+          <p>Review verified candidate profiles tailored to your project requirements with explainable AI fit scores.</p>
         </div>
-
-        {/* Coordinated Mode Switcher Segmented Control */}
-        <DiscoverySegmentedControl
-          value={mode}
-          onChange={handleModeSwitch}
-          size="default"
-          options={[
-            { value: 'student', label: 'Find Projects' },
-            { value: 'leader', label: 'Find Teammates' },
-          ]}
-          ariaLabel="Discovery Mode Switcher"
-          className="self-start md:self-auto shrink-0 max-w-full"
-        />
-      </div>
-
-      {/* Mobile Collapsible Matching Perspective & Filters Panel (< 1024px) */}
-      <div className="lg:hidden w-full min-w-0">
-        <button
-          type="button"
-          onClick={() => setMobileFilterOpen((prev) => !prev)}
-          aria-expanded={mobileFilterOpen}
-          aria-controls="mobile-matching-perspective-panel"
-          className="w-full flex items-center justify-between gap-2 px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 shadow-2xs cursor-pointer transition-colors hover:bg-slate-50"
-        >
-          <span className="flex items-center gap-2 min-w-0 flex-1 overflow-hidden">
-            <SlidersHorizontal size={14} className="text-slate-500 shrink-0" />
-            <span className="truncate font-bold text-slate-900">Matching Perspective & Filters</span>
-            <span className="px-2 py-0.5 rounded-md text-[10px] bg-slate-100 text-slate-800 border border-slate-200 font-bold shrink-0">
-              {mode === 'student' ? 'Projects' : 'Teammates'}
-            </span>
-            {selectedRole !== 'All' && (
-              <span className="hidden sm:inline-block px-2 py-0.5 rounded-md text-[10px] bg-slate-100 text-slate-700 border border-slate-200 font-medium truncate max-w-[120px]">
-                {selectedRole}
-              </span>
-            )}
-            {selectedSkill !== 'All' && (
-              <span className="hidden sm:inline-block px-2 py-0.5 rounded-md text-[10px] bg-slate-100 text-slate-700 border border-slate-200 font-medium truncate max-w-[110px]">
-                {selectedSkill}
-              </span>
-            )}
-            {minScore > 0 && (
-              <span className="px-2 py-0.5 rounded-full text-[10px] bg-indigo-50 text-indigo-700 border border-indigo-200 font-mono font-bold shrink-0">
-                ≥{minScore}%
-              </span>
-            )}
-            {(selectedRole !== 'All' || selectedSkill !== 'All') && (
-              <span className="sm:hidden px-1.5 py-0.5 rounded-full text-[10px] bg-slate-900 text-white font-mono font-bold shrink-0">
-                {(selectedRole !== 'All' ? 1 : 0) + (selectedSkill !== 'All' ? 1 : 0)}
-              </span>
-            )}
-          </span>
-          <ChevronDown
-            size={14}
-            className={`text-slate-400 shrink-0 transition-transform duration-200 ${mobileFilterOpen ? 'rotate-180' : ''
-              }`}
+        <div className="live-discovery__header-actions">
+          <DiscoverySegmentedControl
+            value="leader"
+            onChange={(val) => {
+              if (val === 'student') navigate('/discover');
+            }}
+            options={[
+              { value: 'student', label: 'Find Projects' },
+              { value: 'leader', label: 'Find Teammates' },
+            ]}
+            ariaLabel="Discovery Mode Switcher"
           />
-        </button>
-
-        <div
-          id="mobile-matching-perspective-panel"
-          aria-hidden={!mobileFilterOpen}
-          className={`discovery-collapsible-grid ${mobileFilterOpen ? 'is-open' : ''}`}
-        >
-          <div className="discovery-collapsible-inner" inert={!mobileFilterOpen ? true : undefined}>
-            <DiscoveryFilters
-              mode={mode}
-              onModeChange={handleModeSwitch}
-              selectedRole={selectedRole}
-              onRoleChange={handleRoleChange}
-              selectedSkill={selectedSkill}
-              onSkillChange={handleSkillChange}
-              minScore={minScore}
-              onMinScoreChange={setMinScore}
-              sessionStats={sessionStats}
-              onResetFilters={handleResetFilters}
-              availableRoles={availableRoles}
-              availableSkills={availableSkills}
-            />
-          </div>
+          <button className="live-discovery__refresh" onClick={handleResetStack}>
+            <RefreshCw size={14} />Refresh
+          </button>
         </div>
+      </header>
+
+      {/* Mobile Tools */}
+      <div className="live-discovery__mobile-tools">
+        <button
+          aria-expanded={mobileFilterOpen}
+          aria-controls="live-discovery-filters"
+          onClick={() => setMobileFilterOpen((v) => !v)}
+        >
+          <SlidersHorizontal size={15} />
+          Filters
+          {([selectedRole !== 'All', selectedSkill !== 'All', minScore > 0].filter(Boolean).length) > 0 && (
+            <span>{[selectedRole !== 'All', selectedSkill !== 'All', minScore > 0].filter(Boolean).length}</span>
+          )}
+          <ChevronDown size={14} />
+        </button>
+        <button
+          disabled={!activeItem && filteredItems.length === 0}
+          onClick={() => {
+            const current = activeItem || filteredItems[0];
+            if (current) handleWhyMatches(current);
+          }}
+        >
+          Match insights
+        </button>
       </div>
 
-      {/* Main Responsive Discovery Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start min-w-0">
-        {/* Left Column: Stable Filters Panel */}
-        <div className="hidden lg:block lg:col-span-4 xl:col-span-3 min-w-0">
+      {/* Main 3-Column Discovery Layout */}
+      <div className="live-discovery__layout">
+        {/* Left Column: Filters */}
+        <div
+          id="live-discovery-filters"
+          className={`live-discovery__filter-column${mobileFilterOpen ? ' is-open' : ''}`}
+        >
           <DiscoveryFilters
-            mode={mode}
-            onModeChange={handleModeSwitch}
+            mode={displayMode}
             selectedRole={selectedRole}
             onRoleChange={handleRoleChange}
             selectedSkill={selectedSkill}
@@ -540,84 +494,32 @@ function DemoSwipeDiscoveryView({
             onResetFilters={handleResetFilters}
             availableRoles={availableRoles}
             availableSkills={availableSkills}
+            totalLoaded={candidates.length}
           />
         </div>
 
-        {/* Center Column: Interactive Discovery Card Stack */}
-        <div className="lg:col-span-8 xl:col-span-6 flex flex-col items-center min-w-0 w-full">
-          <div className={`w-full flex flex-col items-center min-w-0 ${getTransitionClass()}`}>
-            <SwipeCardStack
-              key={`${displayMode}-${stackResetKey}`}
-              items={filteredItems}
-              mode={displayMode}
-              onSwipe={handleSwipe}
-              onCardTap={handleCardTap}
-              onWhyMatchesClick={handleWhyMatches}
-              onUndo={handleUndo}
-              canUndo={history.length > 0}
-              onResetStack={handleResetStack}
-              activeItemChanged={handleActiveItemChanged}
-              onCandidateChatClick={(candidate) => {
-                setShortlistModalCandidate(candidate);
-              }}
-            />
-          </div>
-        </div>
+        {/* Center Column: Feed Stack */}
+        <section className="live-discovery__feed" aria-label="Candidate discovery feed">
+          <SwipeCardStack
+            key={`${displayMode}-${stackResetKey}`}
+            items={filteredItems}
+            mode={displayMode}
+            onSwipe={handleSwipe}
+            onCardTap={handleCardTap}
+            onWhyMatchesClick={handleWhyMatches}
+            onUndo={handleUndo}
+            canUndo={history.length > 0}
+            onResetStack={handleResetStack}
+            activeItemChanged={handleActiveItemChanged}
+            onCandidateChatClick={(candidate) => {
+              setShortlistModalCandidate(candidate);
+            }}
+          />
+        </section>
 
-        {/* Mobile / Tablet Portrait Collapsible Match Inspector (< 1024px) */}
-        <div className="lg:hidden w-full min-w-0">
-          <button
-            type="button"
-            onClick={() => setMobileInspectorOpen((prev) => !prev)}
-            aria-expanded={mobileInspectorOpen}
-            aria-controls="mobile-match-inspector-panel"
-            className="w-full flex items-center justify-between px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 shadow-2xs cursor-pointer transition-colors hover:bg-slate-50"
-          >
-            <span className="flex items-center gap-2 min-w-0">
-              <span className="px-2 py-0.5 rounded bg-slate-900 text-white text-[10px] font-bold uppercase tracking-wider shrink-0">
-                Match Inspector
-              </span>
-              <span className="truncate text-slate-600">
-                {(activeItem || filteredItems[0])
-                  ? `${(activeItem || filteredItems[0]).name}${!demoMode && displayMode === 'student' ? '' : ' · ' + (activeItem || filteredItems[0]).match.overall + '% Fit'}`
-                  : 'Live Algorithmic Evaluation'}
-              </span>
-            </span>
-            <ChevronDown
-              size={14}
-              className={`text-slate-400 shrink-0 transition-transform duration-200 ${mobileInspectorOpen ? 'rotate-180' : ''
-                }`}
-            />
-          </button>
-
-          <div
-            id="mobile-match-inspector-panel"
-            aria-hidden={!mobileInspectorOpen}
-            className={`discovery-collapsible-grid ${mobileInspectorOpen ? 'is-open' : ''}`}
-          >
-            <div
-              className={`discovery-collapsible-inner w-full min-w-0 ${getTransitionClass()}`}
-              inert={!mobileInspectorOpen ? true : undefined}
-            >
-              <LiveAiInspector
-                item={activeItem || filteredItems[0] || null}
-                mode={displayMode}
-                onOpenFullDetail={() => {
-                  const current = activeItem || filteredItems[0];
-                  if (current) handleCardTap(current);
-                }}
-                onOpenAiModal={() => {
-                  const current = activeItem || filteredItems[0];
-                  if (current) handleWhyMatches(current);
-                }}
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* Right / Bottom Column: Live AI Algorithmic Inspector (lg: docked full-width below 2-col row, xl: 3-col right rail) */}
-        <div className="hidden lg:block lg:col-span-12 xl:col-span-3 min-w-0 w-full">
-          <div className={`w-full min-w-0 ${getTransitionClass()}`}>
+        {/* Right Column: Inspector */}
+        <aside className="live-discovery__inspector">
+          {activeItem || filteredItems[0] ? (
             <LiveAiInspector
               item={activeItem || filteredItems[0] || null}
               mode={displayMode}
@@ -630,13 +532,15 @@ function DemoSwipeDiscoveryView({
                 if (current) handleWhyMatches(current);
               }}
             />
-          </div>
-        </div>
+          ) : (
+            <section className="live-discovery__inspector-empty">
+              <h2>A closer look at your candidate</h2>
+              <p>Select a candidate to see how their profile matches your position requirements.</p>
+            </section>
+          )}
+        </aside>
       </div>
 
-      {demoMode && <div className="info-banner" role="status">Demo discovery — sample cards are separate from saved Projects.</div>}
-      {!demoMode && displayMode === 'student' && tindy.projectsLoading && <div className="info-banner" role="status">Loading projects…</div>}
-      {!demoMode && displayMode === 'student' && Boolean(tindy.projectsError) && <div className="info-banner" role="alert">{projectErrorMessage(tindy.projectsError)} <button onClick={tindy.reloadProjects}>Retry</button></div>}
       {/* Modals */}
       <ProjectDetailModal
         project={projectDetailModalItem}
@@ -743,5 +647,5 @@ export default function SwipeDiscoveryView(props: SwipeDiscoveryViewProps) {
       setParams(next, { replace: true });
     }
   }, [teammates, params, setParams]);
-  return teammates ? <><div className="panel" role="note">Demo mode — Find Teammates uses sample candidates and actions. <Link className="text-link" to="/discover">Back to live projects</Link></div><DemoSwipeDiscoveryView {...props} initialMode="leader" /></> : <LiveDiscoveryView />;
+  return teammates ? <DemoSwipeDiscoveryView {...props} initialMode="leader" /> : <LiveDiscoveryView />;
 }

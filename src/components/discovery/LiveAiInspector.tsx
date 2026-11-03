@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { ArrowUpRight, AlertTriangle } from 'lucide-react';
+import { ArrowUpRight, AlertTriangle, Check, CircleHelp } from 'lucide-react';
 import { DiscoveryProject, DiscoveryCandidate } from '../../types/discovery';
-import AiMatchBadge from '../common/AiMatchBadge';
+import MatchScoreRing from './MatchScoreRing';
 import { getMatchTier } from '../../utils/matchTier';
+import './rule-match.css';
 
-function AnimatedScoringDimensionRow({
+function AnimatedFactorRow({
   label,
   score,
   weight,
@@ -30,7 +31,7 @@ function AnimatedScoringDimensionRow({
 
     setAnimatedPct(0);
     let rafId = 0;
-    const duration = 900;
+    const duration = 850;
     let startTime: number | null = null;
 
     const step = (timestamp: number) => {
@@ -47,32 +48,36 @@ function AnimatedScoringDimensionRow({
     };
     rafId = requestAnimationFrame(step);
 
-    return () => {
-      cancelAnimationFrame(rafId);
-    };
+    return () => cancelAnimationFrame(rafId);
   }, [clamped, triggerKey]);
 
   const displayScore = Math.round(animatedPct);
-  const activeTier = getMatchTier(displayScore);
+  const tier = getMatchTier(displayScore);
 
   return (
-    <div className="space-y-0.5">
-      <div className="flex items-center justify-between text-[11px]">
-        <span className="text-slate-600 flex items-center gap-1">
-          {score < 35 && <AlertTriangle size={11} className="text-rose-600" />}
-          <span>{label}</span>
-        </span>
-        <span
-          className={`font-mono font-bold transition-colors duration-150 ${activeTier.textColor}`}
-          style={{ fontVariantNumeric: 'tabular-nums' }}
-        >
-          {displayScore}% <span className="text-slate-400 font-normal">({weight}% wt)</span>
+    <div className="live-match-inspector__factor">
+      <div>
+        <span>{label}</span>
+        <span>
+          <strong style={{ color: tier.stroke }}>{displayScore}%</strong>
+          <small> ({Number(weight.toFixed(0))}% weight)</small>
         </span>
       </div>
-      <div className="w-full h-1.5 bg-slate-100 rounded-xs overflow-hidden">
-        <div
-          className={`h-full ${activeTier.progressBarBg} transition-colors duration-150`}
-          style={{ width: `${animatedPct}%` }}
+      <div
+        className="live-match-inspector__track"
+        role="progressbar"
+        aria-label={label}
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={displayScore}
+        style={{ backgroundColor: tier.trackStroke }}
+      >
+        <span
+          style={{
+            width: `${animatedPct}%`,
+            backgroundColor: tier.stroke,
+            transition: 'none',
+          }}
         />
       </div>
     </div>
@@ -94,12 +99,10 @@ export default function LiveAiInspector({
 }: LiveAiInspectorProps) {
   if (!item) {
     return (
-      <aside className="w-full min-w-0 bg-white rounded-xl border border-slate-200 p-6 flex flex-col items-center justify-center text-center shadow-xs">
-        <h4 className="font-bold text-slate-800 text-sm">No Card Selected</h4>
-        <p className="text-xs text-slate-500 mt-1">
-          Select or drag a recommendation to inspect its live match breakdown.
-        </p>
-      </aside>
+      <section className="live-discovery__inspector-empty">
+        <h2>No Candidate Selected</h2>
+        <p>Select or drag a recommendation to inspect their live match breakdown.</p>
+      </section>
     );
   }
 
@@ -108,59 +111,65 @@ export default function LiveAiInspector({
   const candidate = !isProject ? (item as DiscoveryCandidate) : null;
   const match = item.match;
 
-  if (project?.matchAvailable === false) return <aside className="w-full min-w-0 bg-white rounded-xl border border-slate-200 p-5 shadow-xs"><h4 className="font-bold text-slate-900 text-sm">{project.name}</h4><p className="text-xs text-slate-500 mt-2">Match scoring is not available. Review the project requirements and saved details.</p><button className="text-link" onClick={onOpenFullDetail}>View project</button></aside>;
+  if (project?.matchAvailable === false) {
+    return (
+      <aside className="live-match-inspector">
+        <div className="live-match-inspector__project">
+          <h2>{project.name}</h2>
+          <p>Match scoring is not available. Review the project requirements and saved details.</p>
+        </div>
+        <button type="button" className="live-match-inspector__inspect" onClick={onOpenFullDetail}>
+          View project <ArrowUpRight size={14} />
+        </button>
+      </aside>
+    );
+  }
 
   return (
-    <aside className="w-full min-w-0 bg-white rounded-xl border border-slate-200 p-5 shadow-xs flex flex-col h-fit xl:sticky xl:top-24 space-y-4">
+    <aside className="live-match-inspector" aria-label="Candidate algorithmic evaluation">
       {/* Header */}
-      <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+      <header>
         <div>
-          <span className="text-[9px] font-extrabold tracking-wider text-slate-900 uppercase block">
-            Match Inspector
-          </span>
-          <h4 className="font-bold text-slate-900 text-xs leading-none">
-            Live Algorithmic Evaluation
-          </h4>
+          <span className="live-discovery__eyebrow">MATCH INSPECTOR</span>
+          <strong>Position Match</strong>
         </div>
-        <button
-          onClick={onOpenAiModal}
-          className="text-[10px] font-semibold text-slate-900 hover:underline flex items-center gap-0.5"
-          title="Open deep breakdown"
-        >
-          Details
+        <button type="button" onClick={onOpenAiModal}>
+          Details <ArrowUpRight size={13} />
         </button>
-      </div>
+      </header>
 
       {/* Target Item Header */}
-      <div className="flex items-center gap-3">
-        {candidate && (
-          <img
-            src={candidate.avatar}
-            alt={candidate.name}
-            className="w-10 h-10 rounded-lg object-cover border border-slate-200"
-          />
-        )}
-        <div className="min-w-0 flex-1">
-          <h5 className="font-bold text-slate-900 text-sm truncate">
-            {item.name}
-          </h5>
-          <p className="text-[11px] text-slate-500 truncate">
-            {isProject ? project?.role : candidate?.preferredRole}
-          </p>
+      <div className="live-match-inspector__project">
+        <div className="flex items-center gap-3">
+          {candidate?.avatar && (
+            <img
+              src={candidate.avatar}
+              alt={candidate.name}
+              className="w-10 h-10 rounded-lg object-cover border border-slate-200 shrink-0"
+            />
+          )}
+          <div className="min-w-0 flex-1">
+            <h2>{item.name}</h2>
+            <p>{isProject ? project?.role : candidate?.preferredRole}</p>
+          </div>
         </div>
       </div>
 
       {/* Score Ring Component */}
-      <div className="py-1">
-        <AiMatchBadge key={item.id} score={match.overall} verdict={match.verdict} size="sm" showVerdict={true} />
+      <div className="live-match-inspector__score">
+        <MatchScoreRing score={match.overall} compact />
+        <div>
+          <strong>Rule-based match</strong>
+          <span>Candidate fit for this position</span>
+        </div>
       </div>
 
-      {/* Warning Banner if match < 35% */}
+      {/* Low Match Warning Banner */}
       {match.overall < 35 && (
-        <div className="p-2.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-start gap-2">
-          <AlertTriangle size={15} className="text-rose-600 shrink-0 mt-0.5" />
+        <div className="p-2.5 rounded-lg bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-start gap-2 mb-3">
+          <AlertTriangle size={14} className="text-rose-600 shrink-0 mt-0.5" />
           <div className="leading-tight">
-            <span className="font-bold block">Warning: Low Match (&lt;35%)</span>
+            <span className="font-bold block">Low Match (&lt;35%)</span>
             <span className="text-[10px] text-rose-600 mt-0.5 block">
               Significant gaps identified in required skills or availability.
             </span>
@@ -168,63 +177,51 @@ export default function LiveAiInspector({
         </div>
       )}
 
-      {/* Moderate banner if 35-65% */}
-      {match.overall >= 35 && match.overall <= 65 && (
-        <div className="p-2 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-[11px] flex items-center gap-2">
-          <span className="w-2 h-2 rounded-full bg-amber-500 shrink-0" />
-          <span>Moderate Match (35%–65%) · Growth alignment potential</span>
-        </div>
-      )}
-
       {/* Breakdown Weights */}
-      <div className="space-y-2 pt-2 border-t border-slate-100 text-xs">
-        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block">
-          Scoring Dimensions
-        </span>
-
-        <div className="space-y-2">
-          {(match?.factors || match?.dimensions || []).map((dim) => (
-            <AnimatedScoringDimensionRow
-              key={dim.label}
-              label={dim.label}
-              score={dim.score}
-              weight={dim.weight}
-              triggerKey={item.id}
-            />
-          ))}
-        </div>
+      <div className="live-match-inspector__factors">
+        <span className="live-discovery__eyebrow">SCORING FACTORS</span>
+        {(match?.factors || match?.dimensions || []).map((dim) => (
+          <AnimatedFactorRow
+            key={dim.label}
+            label={dim.label}
+            score={dim.score}
+            weight={dim.weight}
+            triggerKey={item.id}
+          />
+        ))}
       </div>
 
-      {/* Key Factors */}
-      <div className="pt-2 border-t border-slate-100 space-y-2 text-xs">
-        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block">
-          Verification Summary
-        </span>
-
-        <div className="space-y-1 text-[11px] text-slate-700">
-          <div className="flex items-center gap-1.5">
-            <span className="w-1 h-1 rounded-xs bg-slate-900" />
-            <span>Matched: {(match?.strongMatches || match?.strengths || []).slice(0, 2).join(', ') || 'Requirements met'}</span>
-          </div>
-          {((match?.skillGaps && match.skillGaps.length > 0) || (match?.gaps && match.gaps.length > 0)) && (
-            <div className="flex items-center gap-1.5 text-slate-600">
-              <span className="w-1 h-1 rounded-xs bg-slate-400" />
-              <span>Growth: {match?.skillGaps?.[0]?.skill || match?.gaps?.[0]}</span>
-            </div>
-          )}
-        </div>
+      {/* Key Factors & Skills */}
+      <div className="live-match-inspector__summary">
+        <span className="live-discovery__eyebrow">SKILL SUMMARY</span>
+        <p>
+          <Check size={14} />
+          <span>
+            <strong>Matched: </strong>
+            {(match?.strongMatches || match?.strengths || []).slice(0, 3).join(', ') || 'Requirements met'}
+          </span>
+        </p>
+        {((match?.skillGaps && match.skillGaps.length > 0) || (match?.gaps && match.gaps.length > 0)) && (
+          <p className="live-match-inspector__gaps">
+            <CircleHelp size={14} />
+            <span>
+              <strong>To grow: </strong>
+              {match?.skillGaps?.map((g) => g.skill).join(', ') || match?.gaps?.join(', ')}
+            </span>
+          </p>
+        )}
       </div>
+
+      <p className="live-match-inspector__note">The project leader makes the final decision.</p>
 
       {/* Full Audit Action */}
-      <div className="pt-2">
-        <button
-          onClick={onOpenFullDetail}
-          className="w-full py-2 px-3 rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-800 text-xs font-semibold flex items-center justify-center gap-1 transition-colors"
-        >
-          <span>Inspect Specifications</span>
-          <ArrowUpRight size={13} />
-        </button>
-      </div>
+      <button
+        type="button"
+        onClick={onOpenFullDetail}
+        className="live-match-inspector__inspect"
+      >
+        Inspect candidate <ArrowUpRight size={14} />
+      </button>
     </aside>
   );
 }
