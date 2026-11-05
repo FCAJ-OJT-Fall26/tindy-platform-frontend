@@ -23,6 +23,8 @@ import {
   UserCheck,
   UserX,
   Sparkles,
+  Briefcase,
+  XCircle,
 } from "lucide-react"
 import { useTindy, Project } from "../../store"
 import { Chips, PageHeader, Avatar, Badge, Button } from "../../components/ui"
@@ -860,29 +862,29 @@ export function ProjectWorkspaceView({ projectId: propProjectId }: ProjectWorksp
                                     <strong className="text-xs font-bold text-slate-900">
                                       {app.applicant.display_name}
                                     </strong>
-                                    <span
-                                      className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                                        status === "accepted"
-                                          ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                                          : status === "rejected"
-                                          ? "bg-rose-50 text-rose-700 border border-rose-200"
-                                          : "bg-amber-50 text-amber-700 border border-amber-200"
-                                      }`}
-                                    >
-                                      {status === "pending"
-                                        ? "Pending review"
-                                        : status === "accepted"
-                                        ? "Accepted"
-                                        : "Rejected"}
-                                    </span>
+                                    {status === "accepted" ? (
+                                      <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-600">
+                                        <CheckCircle2 size={12} className="text-emerald-500" />
+                                        <span>Accepted</span>
+                                      </span>
+                                    ) : status === "rejected" ? (
+                                      <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-slate-500">
+                                        <XCircle size={12} className="text-slate-400" />
+                                        <span>Rejected</span>
+                                      </span>
+                                    ) : (
+                                      <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-amber-600">
+                                        <Clock size={12} className="text-amber-500" />
+                                        <span>Pending review</span>
+                                      </span>
+                                    )}
                                   </div>
-                                  <p className="text-[11px] text-slate-500">
-                                    Applied for:{" "}
-                                    <strong className="text-slate-700">
-                                      {app.applied_position.title}
-                                    </strong>
-                                    {app.applicant.preferred_role_name && (
-                                      <span> • Preferred: {app.applicant.preferred_role_name}</span>
+                                  <p className="text-[11px] text-slate-500 flex items-center gap-1.5 flex-wrap mt-0.5">
+                                    <Briefcase size={12} className="text-blue-500 shrink-0" />
+                                    <span>Applied for:</span>
+                                    <strong className="text-slate-800 font-semibold">{app.applied_position.title}</strong>
+                                    {app.applicant.preferred_role_name && app.applicant.preferred_role_name.toLowerCase() !== app.applied_position.title.toLowerCase() && (
+                                      <span className="text-slate-400">• <span className="text-slate-600">{app.applicant.preferred_role_name}</span></span>
                                     )}
                                   </p>
                                 </div>

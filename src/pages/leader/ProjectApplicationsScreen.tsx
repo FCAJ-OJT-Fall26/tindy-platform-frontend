@@ -7,6 +7,7 @@ import {
   CheckCircle2,
   ChevronDown,
   ChevronLeft,
+  Clock,
   MessageSquareQuote,
   Users,
   UserCheck,
@@ -740,42 +741,44 @@ export default function ProjectApplicationsScreen() {
                           {row.applicant.display_name}
                         </span>
 
-                        <span
-                          className={`candidate-status-badge ${
-                            status === "accepted"
-                              ? "accepted"
-                              : status === "rejected"
-                              ? "rejected"
-                              : "pending"
-                          }`}
-                        >
-                          {status === "pending"
-                            ? "Pending review"
-                            : status === "accepted"
-                            ? "Accepted"
-                            : status === "rejected"
-                            ? "Rejected"
-                            : status}
-                        </span>
-
-                        <span className="candidate-position-pill">
-                          Applied: <strong>{row.applied_position.title}</strong>
-                        </span>
+                        {status === "accepted" ? (
+                          <span className="candidate-status-tag accepted">
+                            <CheckCircle2 size={13} />
+                            <span>Accepted</span>
+                          </span>
+                        ) : status === "rejected" ? (
+                          <span className="candidate-status-tag rejected">
+                            <XCircle size={13} />
+                            <span>Rejected</span>
+                          </span>
+                        ) : (
+                          <span className="candidate-status-tag pending">
+                            <Clock size={13} />
+                            <span>Pending review</span>
+                          </span>
+                        )}
                       </div>
 
                       <div className="candidate-meta-line">
-                        <span>{row.applicant.preferred_role_name || "Role unspecified"}</span>
-                        <span>•</span>
+                        <span className="candidate-applied-badge">
+                          <Briefcase size={12} className="candidate-applied-icon" />
+                          <span>Applied for:</span>
+                          <strong>{row.applied_position.title}</strong>
+                          <span className="candidate-slots-tag">({openSlots} {openSlots === 1 ? "slot" : "slots"} left)</span>
+                        </span>
+                        {row.applicant.preferred_role_name && row.applicant.preferred_role_name.toLowerCase() !== row.applied_position.title.toLowerCase() && (
+                          <>
+                            <span className="candidate-meta-divider">•</span>
+                            <span>{row.applicant.preferred_role_name}</span>
+                          </>
+                        )}
+                        <span className="candidate-meta-divider">•</span>
                         <span>
                           {row.applicant.available_hours_per_week !== null
                             ? `${row.applicant.available_hours_per_week} hrs/week committed`
                             : "Availability flexible"}
                         </span>
-                        <span>•</span>
-                        <span className="candidate-slots-remaining">
-                          {openSlots} {openSlots === 1 ? "slot" : "slots"} left
-                        </span>
-                        <span>•</span>
+                        <span className="candidate-meta-divider">•</span>
                         <span>
                           {row.applicant.experiences_count} exp, {row.applicant.certificates_count} certs
                         </span>
