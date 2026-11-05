@@ -50,3 +50,8 @@
   display: inline-flex;
   align-items: center;
 }
+/* Keep communication actions beside the project's application controls. */
+.project-detail-page .project-contact-row { width:100%; margin-top:4px; padding-top:11px; border-top:1px solid #e7edf5; }
+.project-detail-page .detail-header-actions { flex-shrink:0; }
+@media(max-width:700px) { .project-detail-page .detail-header-actions { width:100%; align-items:flex-start; } .project-detail-page .project-contact-row { padding-top:12px; } .project-detail-page .chat-contact-actions--project { justify-content:flex-start; } .project-detail-page .chat-contact-actions--project > button { min-height:38px; } }
+@media(max-width:700px) { .project-detail-page .detail-header-actions { width:100% !important; align-items:stretch !important; } .project-detail-page .detail-primary-actions, .project-detail-page .detail-sub-actions { justify-content:flex-start; } }

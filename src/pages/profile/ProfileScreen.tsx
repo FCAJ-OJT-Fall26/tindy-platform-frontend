@@ -1,3 +1,4 @@
+import ChatRequestButton from "../../components/messages/ChatRequestButton"
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react"
 import { Link, useParams, useSearchParams } from "react-router"
 import {
@@ -387,7 +388,7 @@ function ProfileView({ userId }: { userId?: string }) {
               <ProfileMediaImage profile={profile} />
               {owner && <button type="button" className="profile-avatar-edit" aria-label="Edit avatar" title="Edit avatar" onClick={() => setMediaEditing("avatar")}><Camera size={16} aria-hidden="true" /><span className="profile-media-sr-only">Edit avatar</span></button>}
             </div>
-            <div>
+            <div className="profile-identity-info">
               <h2>{profile.display_name}</h2>
               {profile.username && <p>@{profile.username}</p>}
               {profile.headline && <p>{profile.headline}</p>}
@@ -402,11 +403,18 @@ function ProfileView({ userId }: { userId?: string }) {
                 </p>
               )}
             </div>
-            {profile.available_hours_per_week != null && (
-              <div className="availability-badge">
-                <span className="online-dot" />
-                Availability
-                <small>{profile.available_hours_per_week} hours/week</small>
+            {(profile.available_hours_per_week != null || (!owner && userId && userId !== authUser?.user_id)) && (
+              <div className="profile-identity-actions">
+                {profile.available_hours_per_week != null && (
+                  <div className="availability-badge">
+                    <span className="online-dot" />
+                    Availability
+                    <small>{profile.available_hours_per_week} hours/week</small>
+                  </div>
+                )}
+                {!owner && userId && userId !== authUser?.user_id && (
+                  <ChatRequestButton userId={userId} name={profile.display_name} />
+                )}
               </div>
             )}
           </div>

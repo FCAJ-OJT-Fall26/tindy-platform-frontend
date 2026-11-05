@@ -1,10 +1,14 @@
-import { MessageCircle, Search, Send, X } from "lucide-react"
+import { MessageCircle, Inbox, Search, Send, X } from "lucide-react"
 import { useEffect, useMemo, useRef, useState } from "react"
-import { useSearchParams } from "react-router"
+import { Link, useSearchParams } from "react-router"
 import { EmptyState, PageHeader } from "../../components/ui"
-import { ApiError } from "../../services/apiClient"
+import { ChatRequestComposer } from "../../components/messages/ChatRequestButton"
+import ChatRequestsPanel from "../../components/messages/ChatRequestsPanel"
 import {
-  createDirectConversation,
+  setChatBlock,
+  chatRequestError,
+} from "../../services/chat-requests.service"
+import {
   getChatMessages,
   markChatRead,
   searchChatUsers,
@@ -35,7 +39,7 @@ function initials(name: string) {
 
 function formatMessageTime(value: string) {
   try {
-    return new Intl.DateTimeFormat("vi-VN", {
+    return new Intl.DateTimeFormat("en-US", {
       hour: "2-digit",
       minute: "2-digit",
     }).format(new Date(value))
@@ -46,9 +50,12 @@ function formatMessageTime(value: string) {
 
 export function Messages() {
   const [params, setParams] = useSearchParams()
+  const [requestTarget, setRequestTarget] = useState<ChatUser | null>(null)
+  const requestTab = params.get("tab") === "requests"
   const [query, setQuery] = useState("")
   const [users, setUsers] = useState<ChatUser[]>([])
   const {
+    pendingRequests,
     conversations,
     loading,
     error: inboxError,
@@ -90,11 +97,11 @@ export function Messages() {
     newestRef.current = messages.at(-1)?.messageId ?? null
   }, [messages])
   useEffect(() => {
-    if (!conversationId && conversations[0])
+    if (!requestTab && !conversationId && conversations[0])
       setParams({ conversation: conversations[0].conversationId }, {
         replace: true,
       })
-  }, [conversations, conversationId, setParams])
+  }, [conversations, conversationId, setParams, requestTab])
   useEffect(() => {
     let cancelled = false
     if (query.trim().length < 2) {
@@ -287,25 +294,38 @@ export function Messages() {
       window.removeEventListener("focus", schedule)
     }
   }, [conversationId, messages, messagesLoading, refresh])
-  async function selectUser(user: ChatUser) {
+  function selectUser(user: ChatUser) {
+    const room = conversations.find(
+      (c) => c.otherParticipant.userId === user.userId,
+    )
+    setQuery("")
+    setUsers([])
+    if (room) setParams({ conversation: room.conversationId })
+    else setRequestTarget(user)
+  }
+  async function toggleBlock() {
+    if (!selected) return
     try {
-      const c = await createDirectConversation(user.userId)
-      setQuery("")
-      setUsers([])
-      await refresh()
-      setParams({ conversation: c.conversationId })
-    } catch (reason) {
-      setError(
-        reason instanceof ApiError
-          ? reason.message
-          : "Could not start conversation.",
+      await setChatBlock(
+        selected.otherParticipant.userId,
+        !selected.blockedByMe,
       )
+      await refresh()
+    } catch (e) {
+      setError(chatRequestError(e))
     }
   }
   async function submitMessage() {
     const body = draft.trim(),
       id = conversationId
-    if (!body || !id || sendingRef.current || messagesLoading) return
+    if (
+      !body ||
+      !id ||
+      sendingRef.current ||
+      messagesLoading ||
+      selected?.isBlocked
+    )
+      return
     const attempt = JSON.stringify([id, body])
     const key = retryRef.current.get(attempt) ?? crypto.randomUUID()
     retryRef.current.set(attempt, key)
@@ -370,217 +390,273 @@ export function Messages() {
       ? "Today"
       : date.toDateString() === yesterday.toDateString()
         ? "Yesterday"
-        : date.toLocaleDateString("vi-VN")
+        : date.toLocaleDateString("en-US")
   }
 
   return (
     <>
       <PageHeader
-        title="Conversations that move things forward."
-        description="Connect directly with the people building projects with you."
+        title="Messages"
+        description="Good projects start with a conversation. Find your people here."
       />
-      <section className="messaging chat-workspace">
-        <aside className="conversation-sidebar chat-inbox">
-          <div className="conversation-heading chat-inbox-heading">
-            <div>
-              <span className="chat-eyebrow">INBOX</span>
-              <h3>Messages</h3>
+      <div className="messages-navigation" aria-label="Messages">
+        <button aria-pressed={!requestTab} onClick={() => setParams({})}>
+          <MessageCircle size={17} />
+          Conversations <span>{conversations.length}</span>
+        </button>
+        <button
+          aria-pressed={requestTab}
+          onClick={() => setParams({ tab: "requests" })}
+        >
+          <Inbox size={17} />
+          Requests {pendingRequests > 0 && <span>{pendingRequests}</span>}
+        </button>
+      </div>
+      {requestTarget && (
+        <ChatRequestComposer
+          userId={requestTarget.userId}
+          name={requestTarget.displayName}
+          onClose={() => setRequestTarget(null)}
+        />
+      )}
+      {requestTab ? (
+        <ChatRequestsPanel />
+      ) : (
+        <section className="messaging chat-workspace">
+          <aside className="conversation-sidebar chat-inbox">
+            <div className="conversation-heading chat-inbox-heading">
+              <div>
+                <span className="chat-eyebrow">INBOX</span>
+                <h3>Messages</h3>
+              </div>
+              <span className="chat-count">{conversations.length}</span>
             </div>
-            <span className="chat-count">{conversations.length}</span>
-          </div>
-          <label className="search-input chat-search">
-            <Search size={16} />
-            <input
-              aria-label="Search users"
-              placeholder="Search people to chat…"
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-            />
-          </label>
-          {users.length > 0 && (
-            <div className="chat-results">
-              <span className="chat-section-label">People</span>
-              {users.map((user) => (
-                <button
-                  className="chat-contact"
-                  key={user.userId}
-                  onClick={() => void selectUser(user)}
-                >
-                  <span className="chat-avatar chat-avatar-search">
-                    {initials(user.displayName)}
-                  </span>
-                  <span>
-                    <strong>{user.displayName}</strong>
-                    <small>
-                      {user.username ? `@${user.username}` : "Tindy account"}
-                    </small>
-                  </span>
-                  <MessageCircle size={16} />
-                </button>
-              ))}
-            </div>
-          )}
-          <div className="chat-conversation-list">
-            <span className="chat-section-label">Conversations</span>
-            {loading ? (
-              <p className="chat-muted">Loading…</p>
-            ) : (
-              conversations.map((item) => (
-                <button
-                  className={`chat-contact ${
-                    item.conversationId === conversationId ? "active" : ""
-                  }`}
-                  key={item.conversationId}
-                  onClick={() =>
-                    setParams({ conversation: item.conversationId })
-                  }
-                >
-                  <span className="chat-avatar">
-                    {initials(item.otherParticipant.displayName)}
-                  </span>
-                  <span className="chat-contact-copy">
-                    <strong>{item.otherParticipant.displayName}</strong>
-                    <small>
-                      {item.lastMessageAt
-                        ? "Active conversation"
-                        : "Start a conversation"}
-                    </small>
-                  </span>
-                  {item.unreadCount > 0 && (
-                    <span className="chat-unread">{item.unreadCount}</span>
-                  )}
-                </button>
-              ))
-            )}
-            {!loading && !conversations.length && !users.length && (
-              <EmptyState
-                title="No conversations yet"
-                description="Search for a real account to start chatting."
+            <label className="search-input chat-search">
+              <Search size={16} />
+              <input
+                aria-label="Search users"
+                placeholder="Search people to chat…"
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
               />
+            </label>
+            {users.length > 0 && (
+              <div className="chat-results">
+                <span className="chat-section-label">People</span>
+                {users.map((user) => (
+                  <button
+                    className="chat-contact"
+                    key={user.userId}
+                    onClick={() => void selectUser(user)}
+                  >
+                    <span className="chat-avatar chat-avatar-search">
+                      {initials(user.displayName)}
+                    </span>
+                    <span>
+                      <strong>{user.displayName}</strong>
+                      <small>
+                        {user.username ? `@${user.username}` : "Tindy account"}
+                      </small>
+                    </span>
+                    <MessageCircle size={16} />
+                  </button>
+                ))}
+              </div>
             )}
-          </div>
-        </aside>
-        <div className="chat-main chat-room">
-          {selected ? (
-            <>
-              <header className="chat-header chat-room-header">
-                <div className="chat-avatar chat-avatar-large">
-                  {initials(selected.otherParticipant.displayName)}
-                </div>
-                <div className="chat-room-identity">
-                  <h3>{selected.otherParticipant.displayName}</h3>
-                  <p>Private conversation · {status}</p>
-                </div>
-              </header>
-              <div
-                ref={messagesContainerRef}
-                className="chat-messages chat-message-stream"
-              >
-                {messagesLoading && <p role="status">Loading messages…</p>}
-                {page?.hasMore && (
+            <div className="chat-conversation-list">
+              <span className="chat-section-label">Conversations</span>
+              {loading ? (
+                <p className="chat-muted">Loading…</p>
+              ) : (
+                conversations.map((item) => (
                   <button
-                    type="button"
-                    disabled={olderLoading}
-                    onClick={() => void loadOlder()}
+                    className={`chat-contact ${
+                      item.conversationId === conversationId ? "active" : ""
+                    }`}
+                    key={item.conversationId}
+                    onClick={() =>
+                      setParams({ conversation: item.conversationId })
+                    }
                   >
-                    {olderLoading ? "Loading…" : "Load older messages"}
+                    <span className="chat-avatar">
+                      {initials(item.otherParticipant.displayName)}
+                    </span>
+                    <span className="chat-contact-copy">
+                      <strong>{item.otherParticipant.displayName}</strong>
+                      <small>
+                        {item.lastMessageAt
+                          ? "Active conversation"
+                          : "Start a conversation"}
+                      </small>
+                    </span>
+                    {item.unreadCount > 0 && (
+                      <span className="chat-unread">{item.unreadCount}</span>
+                    )}
                   </button>
-                )}
-                {unreadId && selected.unreadCount > 0 && (
+                ))
+              )}
+              {!loading && !conversations.length && !users.length && (
+                <EmptyState
+                  title="No conversations yet"
+                  description="Search for a real account to start chatting."
+                />
+              )}
+            </div>
+          </aside>
+          <div className="chat-main chat-room">
+            {selected ? (
+              <>
+                <header className="chat-header chat-room-header">
+                  <div className="chat-avatar chat-avatar-large">
+                    {initials(selected.otherParticipant.displayName)}
+                  </div>
+                  <div className="chat-room-identity">
+                    <h3>{selected.otherParticipant.displayName}</h3>
+                    <p>Private conversation · {status}</p>
+                  </div>
                   <button
-                    className="chat-unread-jump"
-                    type="button"
-                    onClick={() => void jumpToFirstUnread()}
+                    className="btn btn-secondary"
+                    onClick={() => void toggleBlock()}
                   >
-                    Jump to first unread <span>{selected.unreadCount}</span>
+                    {selected.blockedByMe ? "Unblock" : "Block"}
                   </button>
+                </header>
+                {selected.isBlocked && (
+                  <p className="info-banner">
+                    Messaging is unavailable for this contact. You can chat
+                    again once neither person has the other blocked.
+                  </p>
                 )}
-                {messages.map((message, index) => {
-                  const outgoing =
-                    message.senderId !== selected.otherParticipant.userId
-                  const isFirstUnread = message.messageId === unreadId
-                  return (
-                    <div
-                      className={`chat-message-row ${
-                        outgoing ? "outgoing" : "incoming"
-                      } ${isFirstUnread ? "first-unread" : ""}`}
-                      key={message.messageId}
-                      data-message-id={message.messageId}
-                      ref={isFirstUnread ? firstUnreadRef : undefined}
+                <div
+                  ref={messagesContainerRef}
+                  className="chat-messages chat-message-stream"
+                >
+                  {messagesLoading && <p role="status">Loading messages…</p>}
+                  {page?.hasMore && (
+                    <button
+                      type="button"
+                      disabled={olderLoading}
+                      onClick={() => void loadOlder()}
                     >
-                      {(index === 0 ||
-                        new Date(
-                          messages[index - 1].createdAt,
-                        ).toDateString() !==
-                          new Date(message.createdAt).toDateString()) && (
-                        <div className="chat-day-divider">
-                          <span>{dayLabel(message.createdAt)}</span>
-                        </div>
-                      )}
-                      {isFirstUnread && (
-                        <div className="chat-unread-divider">
-                          <span>New messages</span>
-                        </div>
-                      )}
-                      <div className="chat-message-stack">
-                        <div className="chat-bubble">{message.body}</div>
-                        <div className="chat-message-meta">
-                          <span>{formatMessageTime(message.createdAt)}</span>
+                      {olderLoading ? "Loading…" : "Load older messages"}
+                    </button>
+                  )}
+                  {unreadId && selected.unreadCount > 0 && (
+                    <button
+                      className="chat-unread-jump"
+                      type="button"
+                      onClick={() => void jumpToFirstUnread()}
+                    >
+                      Jump to first unread <span>{selected.unreadCount}</span>
+                    </button>
+                  )}
+                  {messages.map((message, index) => {
+                    const outgoing =
+                      message.senderId !== selected.otherParticipant.userId
+                    const isFirstUnread = message.messageId === unreadId
+                    return (
+                      <div
+                        className={`chat-message-row ${
+                          outgoing ? "outgoing" : "incoming"
+                        } ${isFirstUnread ? "first-unread" : ""}`}
+                        key={message.messageId}
+                        data-message-id={message.messageId}
+                        ref={isFirstUnread ? firstUnreadRef : undefined}
+                      >
+                        {(index === 0 ||
+                          new Date(
+                            messages[index - 1].createdAt,
+                          ).toDateString() !==
+                            new Date(message.createdAt).toDateString()) && (
+                          <div className="chat-day-divider">
+                            <span>{dayLabel(message.createdAt)}</span>
+                          </div>
+                        )}
+                        {isFirstUnread && (
+                          <div className="chat-unread-divider">
+                            <span>New messages</span>
+                          </div>
+                        )}
+                        <div className="chat-message-stack">
+                          <div className="chat-bubble">
+                            {message.contextProjectId && (
+                              <div className="chat-context-card">
+                                <Link
+                                  to={"/project/" + message.contextProjectId}
+                                >
+                                  {message.contextProjectName ?? "Project"}
+                                </Link>
+                                {message.contextPositionTitle && (
+                                  <small>{message.contextPositionTitle}</small>
+                                )}
+                              </div>
+                            )}
+                            {message.body}
+                          </div>
+                          <div className="chat-message-meta">
+                            <span>{formatMessageTime(message.createdAt)}</span>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  )
-                })}
-              </div>
-              <form
-                className="chat-composer"
-                onSubmit={(event) => {
-                  event.preventDefault()
-                  void submitMessage()
-                }}
-              >
-                <input
-                  aria-label="Message"
-                  placeholder="Write a message…"
-                  maxLength={4000}
-                  value={draft}
-                  onChange={(event) => setDraft(event.target.value)}
-                />
-                <button
-                  className="chat-send-button"
-                  disabled={sending || messagesLoading || !draft.trim()}
-                  type="submit"
-                  aria-label="Send"
+                    )
+                  })}
+                </div>
+                <form
+                  className="chat-composer"
+                  onSubmit={(event) => {
+                    event.preventDefault()
+                    void submitMessage()
+                  }}
                 >
-                  <Send size={17} />
-                </button>
-              </form>
-            </>
-          ) : (
-            <div className="chat-empty">
-              <div className="chat-empty-orbit">
-                <MessageCircle size={28} />
+                  <input
+                    disabled={selected.isBlocked}
+                    aria-label="Message"
+                    placeholder="Write a message…"
+                    maxLength={4000}
+                    value={draft}
+                    onChange={(event) => setDraft(event.target.value)}
+                  />
+                  <button
+                    className="chat-send-button"
+                    disabled={
+                      sending ||
+                      messagesLoading ||
+                      selected.isBlocked ||
+                      !draft.trim()
+                    }
+                    type="submit"
+                    aria-label="Send"
+                  >
+                    <Send size={17} />
+                  </button>
+                </form>
+              </>
+            ) : (
+              <div className="chat-empty">
+                <div className="chat-empty-orbit">
+                  <MessageCircle size={28} />
+                </div>
+                <h3>Start a conversation</h3>
+                <p>
+                  Search for an account on the left to send a private message.
+                </p>
               </div>
-              <h3>Start a conversation</h3>
-              <p>
-                Search for an account on the left to send a private message.
-              </p>
-            </div>
-          )}
-          {(error || inboxError) && (
-            <div className="chat-error" role="alert">
-              <span>{error ?? "Could not refresh conversations."}</span>
-              <button
-                type="button"
-                aria-label="Dismiss error"
-                onClick={() => setError(null)}
-              >
-                <X size={16} />
-              </button>
-            </div>
-          )}
-        </div>
-      </section>
+            )}
+            {(error || inboxError) && (
+              <div className="chat-error" role="alert">
+                <span>{error ?? "Could not refresh conversations."}</span>
+                <button
+                  type="button"
+                  aria-label="Dismiss error"
+                  onClick={() => setError(null)}
+                >
+                  <X size={16} />
+                </button>
+              </div>
+            )}
+          </div>
+        </section>
+      )}
     </>
   )
 }

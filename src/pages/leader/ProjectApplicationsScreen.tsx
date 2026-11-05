@@ -20,6 +20,7 @@ import {
   DonutProgressRing,
   SparklineBars,
 } from "../../components/common/MetricsDashboardCards"
+import ChatRequestButton from "../../components/messages/ChatRequestButton"
 import SkillIcon from "../../components/onboarding/SkillIcon"
 import RuleMatchPanel from "../../components/discovery/RuleMatchPanel"
 import MatchScoreRing from "../../components/discovery/MatchScoreRing"
@@ -826,6 +827,7 @@ export default function ProjectApplicationsScreen() {
                   </div>
                 </div>
 
+                {status === "pending" && <ChatRequestButton userId={row.applicant.user_id} name={row.applicant.display_name} projectId={row.application.project_id} positionId={row.application.position_id} label="Discuss application" />}
                 {/* Footer Action Bar */}
                 <div className="candidate-card-footer">
                   <Link

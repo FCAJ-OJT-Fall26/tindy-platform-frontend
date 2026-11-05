@@ -18,9 +18,11 @@ import {
   type ChatConversation,
   type ChatMessage,
 } from "./chat.service"
+import { getChatRequests } from "./chat-requests.service"
 export const CHAT_MESSAGE = "tindy:chat-message"
 export const CHAT_RESYNC = "tindy:chat-resync"
 const Context = createContext<{
+  pendingRequests: number
   conversations: ChatConversation[]
   loading: boolean
   error: boolean
@@ -34,6 +36,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   const token =
     !authLoading && authUser?.is_onboarding_completed ? storedToken : null
   const [conversations, setConversations] = useState<ChatConversation[]>([])
+  const [pendingRequests, setPendingRequests] = useState(0)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
   const [status, setStatus] = useState("Connecting…")
@@ -43,14 +46,19 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   const refresh = useCallback(async () => {
     const version = ++request.current
     if (!token) {
+      setPendingRequests(0)
       setConversations([])
       setError(false)
       setLoading(false)
       return
     }
     try {
-      const rows = await getChatConversations()
+      const [rows, requests] = await Promise.all([
+        getChatConversations(),
+        getChatRequests(),
+      ])
       if (version === request.current && token === getStoredToken()) {
+        setPendingRequests(requests.pending_received)
         setConversations(rows)
         setError(false)
       }
@@ -66,6 +74,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       if (nextToken === observedToken.current) return
       observedToken.current = nextToken
       ++request.current
+      setPendingRequests(0)
       setConversations([])
       setToken(nextToken)
       setLoading(true)
@@ -102,6 +111,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
         void refresh()
       }
     })
+    hub.on("chat.requests.changed", resync)
     hub.on("conversation.read", () => {
       void refresh()
     })
@@ -164,7 +174,15 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   }
   return (
     <Context.Provider
-      value={{ conversations, loading, error, status, refresh, send }}
+      value={{
+        pendingRequests,
+        conversations,
+        loading,
+        error,
+        status,
+        refresh,
+        send,
+      }}
     >
       {children}
     </Context.Provider>

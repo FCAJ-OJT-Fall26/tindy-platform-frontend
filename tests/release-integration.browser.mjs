@@ -130,7 +130,7 @@ try {
   assert.equal("phone_number" in candidate.candidate, false)
   assert.equal("open_to_team_invitations" in candidate.candidate, false)
   await leader.go(`/candidate/${c.member}?project_id=${c.project}&position_id=${c.position}`)
-  await leader.click("Send Invitation"); await leader.click("Confirm Send Invitation")
+  await leader.click("Send Invitation"); await leader.click("Send invitation")
   await leader.waitFor("!document.querySelector('[role=dialog]')")
   const sent = (await data(c.leaderToken, leaderPath(c))).items[0]
   assert.equal(sent.status, "pending")

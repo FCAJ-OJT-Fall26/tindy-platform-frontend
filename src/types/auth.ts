@@ -18,6 +18,7 @@ export interface ApiProblemDetails {
   detail?: string
   instance?: string
   error_code?: string
+  retry_at?: string
   traceId?: string
   errors?: Record<string, string[]>
   missing_steps?: number[]

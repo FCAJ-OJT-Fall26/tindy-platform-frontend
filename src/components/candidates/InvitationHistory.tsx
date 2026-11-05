@@ -63,9 +63,12 @@ export default function InvitationHistory({
       }
     >
       <div className="pipeline-section-heading">
-        <div>
-          <h2>{mode === "leader" ? "Project invitations" : "Invitation history"}</h2>
-          <p>{mode === "leader" ? "Follow your invitations and responses. Pending invitations don't reserve a place." : "Review team invitations and choose your next project."}</p>
+        <div className={mode === "member" ? "member-invitation-heading" : undefined}>
+          {mode === "member" && <span className="member-invitation-heading-icon" aria-hidden="true"><Mail size={19} strokeWidth={1.7} /></span>}
+          <div>
+            <h2>Project invitations</h2>
+            <p>{mode === "leader" ? "Follow your invitations and responses. Pending invitations don't reserve a place." : "Review invitations and choose your next team."}</p>
+          </div>
         </div>
         {loaded && loaded.pagination.total_items > 0 && <span className="pipeline-count">{loaded.pagination.total_items} invitations</span>}
       </div>

@@ -93,3 +93,33 @@
 .teammate-card{height:100%;min-height:0}.teammate-card__body{min-height:0;overflow-y:auto;align-content:start;touch-action:pan-y}.teammate-card__context,.teammate-card__footer{flex-shrink:0}
 .live-teammates .field{min-width:0}.live-teammates select{width:100%;min-width:0}.teammate-card__person>div{min-width:0}.teammate-card__person h2,.teammate-card__context{overflow-wrap:anywhere}
 @media(max-width:700px){.live-teammates .teammate-filter-toggle{display:inline-flex}.teammate-filters:not(.is-open){display:none}}
+/* Match the project discovery header and filter rail; recruitment context stays specific to teammates. */
+.live-discovery.live-teammates.teammate-discovery { max-width:none; margin:0; padding:0 0 48px; gap:24px; }
+.teammate-discovery .teammate-discovery-grid { grid-template-columns:minmax(200px,240px) minmax(0,1fr) minmax(240px,280px); gap:24px; }
+.teammate-discovery .teammate-discovery-main { min-width:0; }
+.teammate-discovery .teammate-filters { padding:22px 18px; min-width:0; }
+.teammate-discovery .teammate-filters .field-group { display:flex; flex-direction:column; gap:8px; margin:0 0 21px; font-size:10px; font-weight:750; text-transform:uppercase; color:#5e6f8b; letter-spacing:.35px; }
+.teammate-discovery .teammate-filters .field-select { width:100%; min-width:0; min-height:43px; height:43px; padding:0 11px; border:1px solid #dce4ef; border-radius:7px; background:#f8fafd; color:#263750; font-size:13px; font-weight:450; letter-spacing:0; text-transform:none; }
+.teammate-discovery .teammate-filters .field-select:focus { border-color:#9aabd2; outline:2px solid #e4eafa; }
+.teammate-discovery .teammate-filters .live-discovery__reset:disabled { opacity:.45; cursor:default; }
+.teammate-discovery .teammate-filters .live-discovery__session { margin-bottom:14px; }
+.teammate-snapshot-note { margin:17px 0 0; padding-top:14px; border-top:1px solid #edf1f6; color:#95a2b6; font-size:10px; line-height:1.75; }
+.teammate-discovery .teammate-context { padding:20px 22px; border-radius:13px; border-color:var(--discovery-border); box-shadow:0 2px 3px #17243b03; }
+.teammate-discovery .teammate-context .field { margin:0; gap:8px; color:#5e6f8b; font-size:10px; font-weight:750; text-transform:uppercase; letter-spacing:.35px; }
+.teammate-discovery .teammate-context select { min-height:43px; padding:0 11px; border-radius:7px; border-color:#dce4ef; background:#f8fafd; color:#263750; font-size:13px; font-weight:450; text-transform:none; letter-spacing:0; }
+.teammate-discovery .teammate-context .helper-text { display:none; }
+.teammate-discovery .teammate-context p[role] { margin:12px 0 0; color:#8190a5; font-size:12px; }
+.teammate-discovery-mobile-tools a { display:flex; align-items:center; justify-content:center; flex:1; gap:6px; padding:11px 8px; border:1px solid var(--discovery-border); border-radius:8px; background:#fff; font-size:12px; color:#415775; text-decoration:none; }
+.teammate-discovery .teammate-filters .live-discovery__saved-link { gap:6px; font-size:12px; }
+@media(min-width:960px) { .teammate-discovery .teammate-filters { display:block; } }
+@media(min-width:960px) and (max-width:1279px) { .teammate-discovery .teammate-discovery-grid { grid-template-columns:210px minmax(0,1fr); } .teammate-discovery .teammate-discovery-grid > aside:last-child { grid-column:2; } }
+@media(max-width:959px) { .teammate-discovery .teammate-discovery-grid { grid-template-columns:1fr; } .teammate-discovery .teammate-discovery-grid > aside:last-child { grid-column:auto; } .teammate-discovery .teammate-filters:not(.is-open) { display:none; } .teammate-discovery .teammate-filters.is-open { display:block; } }
+@media(max-width:600px) { .live-discovery.live-teammates.teammate-discovery { gap:17px; padding-bottom:55px; } .teammate-discovery .teammate-context { padding:17px; } .teammate-discovery .teammate-context .form-grid { grid-template-columns:1fr; gap:13px; } .teammate-discovery .teammate-discovery-grid { gap:18px; } }
+/* One compact heading inside the member's Invited tab. */
+.live-teammates.project-invitations-view { max-width:none; margin:0; padding:4px 0 0; }
+.project-invitations-view .pipeline-section-heading { margin:22px 0; }
+.member-invitation-heading { display:flex; align-items:center; gap:12px; min-width:0; }
+.member-invitation-heading-icon { display:grid; place-items:center; flex-shrink:0; width:43px; height:43px; border:1px solid #e1e8f8; border-radius:13px; color:#7b91c8; background:linear-gradient(135deg,#edf2ff,#f7f9fe); }
+.project-invitations-view .pipeline-section-heading h2 { margin:0 0 5px; color:#3b526f; font-size:18px; font-weight:650; letter-spacing:-.35px; }
+.project-invitations-view .pipeline-section-heading p { margin:0; color:#8b9ab0; font-size:12px; line-height:1.65; }
+@media(max-width:540px) { .project-invitations-view .pipeline-section-heading { margin:18px 0; } .member-invitation-heading { gap:10px; } .member-invitation-heading-icon { width:38px; height:38px; border-radius:11px; } .project-invitations-view .pipeline-section-heading h2 { font-size:16px; } .project-invitations-view .pipeline-section-heading p { font-size:11px; } }

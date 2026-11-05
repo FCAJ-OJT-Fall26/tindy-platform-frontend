@@ -25,6 +25,7 @@ import type { ProjectDetailDto } from "../../types/project"
 import { useExplanation } from "../../utils/useExplanation"
 import useRemoteResource from "../../hooks/useRemoteResource"
 import { projectErrorMessage } from "../../services/projectEditor.service"
+import ChatRequestButton from "../../components/messages/ChatRequestButton"
 import ApplyModal from "../../components/projects/ApplyModal"
 import useMyApplications from "../../hooks/useMyApplications"
 import { applicationBlocker } from "../../types/application"
@@ -158,6 +159,7 @@ export function ProjectDetailScreen() {
               </>
             )}
           </div>
+          {!isOwner && <div className="project-contact-row"><ChatRequestButton variant="project" userId={remoteDetail.leader.user_id} name={remoteDetail.leader.display_name} projectId={remoteDetail.project_id} disabled={!remoteDetail.is_recruitment_open} label="Contact project leader" /></div>}
           {!isOwner && (
             <div className="detail-sub-actions">
               {Boolean(applications.error) && (

@@ -132,6 +132,7 @@ function parseProblem(
     error_code:
       typeof value.error_code === "string" ? value.error_code : undefined,
 
+    retry_at: typeof value.retry_at === "string" ? value.retry_at : undefined,
     traceId: typeof value.traceId === "string" ? value.traceId : undefined,
 
     errors: Object.keys(errors).length ? errors : undefined,

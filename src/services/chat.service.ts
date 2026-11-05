@@ -12,6 +12,8 @@ type ApiChatConversation = {
   last_message_at?: string | null
   unread_count: number
   first_unread_at?: string | null
+  is_blocked?: boolean
+  blocked_by_me?: boolean
   first_unread_message_id?: string | null
 }
 type ApiChatMessage = {
@@ -20,6 +22,9 @@ type ApiChatMessage = {
   sender_id: string
   body: string
   created_at: string
+  context_project_id?: string | null
+  context_project_name?: string | null
+  context_position_title?: string | null
   client_message_id?: string | null
 }
 
@@ -35,6 +40,8 @@ export type ChatConversation = {
   otherParticipant: ChatUser
   lastMessageAt?: string | null
   unreadCount: number
+  isBlocked?: boolean
+  blockedByMe?: boolean
   firstUnreadMessageId?: string | null
   firstUnreadAt?: string | null
 }
@@ -45,6 +52,9 @@ export type ChatMessage = {
   senderId: string
   body: string
   createdAt: string
+  contextProjectId?: string | null
+  contextProjectName?: string | null
+  contextPositionTitle?: string | null
   clientMessageId?: string | null
 }
 
@@ -70,6 +80,8 @@ function mapConversation(item: ApiChatConversation): ChatConversation {
     otherParticipant: mapUser(item.other_participant),
     lastMessageAt: item.last_message_at,
     unreadCount: item.unread_count,
+    isBlocked: item.is_blocked,
+    blockedByMe: item.blocked_by_me,
     firstUnreadAt: item.first_unread_at,
     firstUnreadMessageId: item.first_unread_message_id,
   }
@@ -85,6 +97,10 @@ export function mapChatMessage(
     senderId: value.sender_id ?? value.senderId,
     body: value.body,
     createdAt: value.created_at ?? value.createdAt,
+    contextProjectId: value.context_project_id ?? value.contextProjectId,
+    contextProjectName: value.context_project_name ?? value.contextProjectName,
+    contextPositionTitle:
+      value.context_position_title ?? value.contextPositionTitle,
     clientMessageId: value.client_message_id ?? value.clientMessageId,
   }
 }

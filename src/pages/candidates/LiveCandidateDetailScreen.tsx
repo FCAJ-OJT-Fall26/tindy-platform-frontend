@@ -1,6 +1,7 @@
 import { useCallback, useState } from "react"
 import { Link, useParams, useSearchParams } from "react-router"
 import LiveCandidateDetail from "../../components/candidates/LiveCandidateDetail"
+import ChatRequestButton from "../../components/messages/ChatRequestButton"
 import SendInvitationModal from "../../components/candidates/SendInvitationModal"
 import ProjectPositionSelector from "../../components/candidates/ProjectPositionSelector"
 import useTeammateProjectContext from "../../hooks/useTeammateProjectContext"
@@ -63,6 +64,7 @@ export default function LiveCandidateDetailScreen() {
       >
         Send Invitation
       </button>
+      <ChatRequestButton userId={id} name={identity?.key === identityKey ? identity.name : "Candidate"} projectId={project} positionId={position} disabled={!!context.blocker || id === context.userId} label="Discuss project" />
       {invite && context.project && context.position && (
         <SendInvitationModal
           key={`${context.key}:${project}:${position}:${id}`}

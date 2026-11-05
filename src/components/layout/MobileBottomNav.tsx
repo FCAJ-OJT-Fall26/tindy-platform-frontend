@@ -7,7 +7,7 @@ import { navItems } from "./Sidebar"
 
 export default function MobileBottomNav() {
   const location = useLocation()
-  const { conversations } = useChat()
+  const { conversations, pendingRequests } = useChat()
   const unread = conversations.reduce((sum, c) => sum + c.unreadCount, 0)
 
   const mobileBottomRef = useRef<HTMLElement>(null)
@@ -115,6 +115,14 @@ export default function MobileBottomNav() {
               aria-label={`${unread} unread messages`}
             >
               {unread}
+            </span>
+          )}
+          {item.label === "Messages" && pendingRequests > 0 && (
+            <span
+              className="nav-count"
+              aria-label={`${pendingRequests} pending chat requests`}
+            >
+              {pendingRequests} req
             </span>
           )}
           <span>

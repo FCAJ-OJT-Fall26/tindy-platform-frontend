@@ -49,7 +49,7 @@ interface SidebarProps {
 
 export default function Sidebar({ mobile, onClose }: SidebarProps) {
   const { notifications, logout, loggingOut } = useTindy()
-  const { conversations } = useChat()
+  const { conversations, pendingRequests } = useChat()
   const chatUnread = conversations.reduce((sum, c) => sum + c.unreadCount, 0)
   const location = useLocation()
   const navigate = useNavigate()
@@ -162,6 +162,14 @@ export default function Sidebar({ mobile, onClose }: SidebarProps) {
                   aria-label={`${chatUnread} unread messages`}
                 >
                   {chatUnread}
+                </span>
+              )}
+              {item.label === "Messages" && pendingRequests > 0 && (
+                <span
+                  className="nav-count"
+                  aria-label={`${pendingRequests} pending chat requests`}
+                >
+                  {pendingRequests} req
                 </span>
               )}
               {item.label === "Notifications" &&

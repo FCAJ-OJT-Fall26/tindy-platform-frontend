@@ -1,0 +1,11 @@
+.chat-contact-actions { display:flex; align-items:center; flex-wrap:wrap; gap:8px; }
+.chat-contact-actions > button { display:inline-flex; align-items:center; justify-content:center; gap:7px; }
+.chat-contact-actions > button > svg { flex-shrink:0; }
+.chat-contact-actions--project { justify-content:flex-end; }
+.chat-contact-actions--project > button { min-height:35px; padding:8px 11px; border:1px solid #dfe7f4; border-radius:9px; background:#f5f8ff; color:#6883ba; font-size:11px; font-weight:550; line-height:1.5; box-shadow:none; transition:background .15s,border-color .15s; }
+.chat-contact-actions--project > button:hover:not(:disabled) { background:#edf2fc; border-color:#c9d6ef; }
+.chat-contact-actions--project > button:nth-child(2) { background:transparent; color:#91a0b5; border-color:transparent; }
+.chat-contact-actions--project > button:nth-child(2):hover:not(:disabled) { color:#6580af; background:#f1f5fc; border-color:#e0e8f4; }
+.chat-contact-actions--project > button:focus-visible { outline:2px solid #98b2e4; outline-offset:3px; }
+.chat-contact-actions--project > button:disabled { opacity:.5; cursor:default; }
+@media(prefers-reduced-motion:reduce) { .chat-contact-actions--project > button { transition:none; } }

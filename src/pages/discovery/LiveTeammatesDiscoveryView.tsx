@@ -1,6 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { Link, useNavigate, useSearchParams } from "react-router"
-import { RefreshCw } from "lucide-react"
+import {
+  RefreshCw,
+  SlidersHorizontal,
+  ChevronDown,
+  ArrowUpRight,
+  UsersRound,
+} from "lucide-react"
 import useTeammateProjectContext from "../../hooks/useTeammateProjectContext"
 import useTeammateDiscovery from "../../hooks/useTeammateDiscovery"
 import useCandidateAction from "../../hooks/useCandidateAction"
@@ -85,7 +91,9 @@ export default function LiveTeammatesDiscoveryView() {
     setShortlist(null)
     setInvite(null)
     setHistory([])
-    return () => { scope.current = null }
+    return () => {
+      scope.current = null
+    }
   }, [feed.key])
   const activeChanged = useCallback(
     (card: LiveTeammateCard | null) => setActive(card),
@@ -141,27 +149,42 @@ export default function LiveTeammatesDiscoveryView() {
   const contextLabel = `${context.project?.name ?? project} · ${context.position?.title ?? position}`
   return (
     <div
-      className="live-discovery live-teammates"
+      className="live-discovery live-teammates teammate-discovery"
       data-live-teammates
       data-loaded-count={cards.length}
     >
-      <header className="teammate-heading">
+      <header className="live-discovery__header">
         <div>
-          <span className="live-discovery__eyebrow">DISCOVERY</span>
-          <h1>Find Teammates</h1>
-          <p>Review eligible members for a position you lead.</p>
+          <span className="live-discovery__pill">
+            INTERACTIVE MATCHING STACK
+          </span>
+          <h1>Discover Teammates for Your Team</h1>
+          <p>
+            Find the right people for your project. Skip, save, or shortlist a
+            candidate.
+          </p>
         </div>
-        <DiscoverySegmentedControl
-          ariaLabel="Discovery Mode Switcher"
-          value="teammates"
-          options={[
-            { value: "projects", label: "Find Projects" },
-            { value: "teammates", label: "Find Teammates" },
-          ]}
-          onChange={(v) => {
-            if (v === "projects") navigate("/discover")
-          }}
-        />
+        <div className="live-discovery__header-actions">
+          <DiscoverySegmentedControl
+            ariaLabel="Discovery Mode Switcher"
+            value="teammates"
+            options={[
+              { value: "projects", label: "Find Projects" },
+              { value: "teammates", label: "Find Teammates" },
+            ]}
+            onChange={(v) => {
+              if (v === "projects") navigate("/discover")
+            }}
+          />
+          <button
+            className="live-discovery__refresh"
+            disabled={!feed.key || blocked || feed.loading}
+            onClick={refresh}
+          >
+            <RefreshCw size={14} />
+            Refresh
+          </button>
+        </div>
       </header>
       <ProjectPositionSelector
         context={context}
@@ -178,38 +201,51 @@ export default function LiveTeammatesDiscoveryView() {
           setParams(next)
         }}
       />
-      <div className="teammate-toolbar">
-        <button type="button" className="btn-secondary teammate-filter-toggle" aria-expanded={filtersOpen} aria-controls="teammate-filters" onClick={() => setFiltersOpen(value => !value)}>Filters</button>
-        <Link
-          className="text-link"
-          to={`/candidates?project_id=${project}&position_id=${position}`}
-        >
-          Candidate Pipeline
-        </Link>
+      <div className="live-discovery__mobile-tools teammate-discovery-mobile-tools">
         <button
-          className="btn-secondary"
-          disabled={!feed.key || blocked || feed.loading}
-          onClick={refresh}
+          type="button"
+          aria-expanded={filtersOpen}
+          aria-controls="teammate-filters"
+          onClick={() => setFiltersOpen((value) => !value)}
         >
-          <RefreshCw size={15} />
-          Refresh candidates
+          <SlidersHorizontal size={15} />
+          Filters
+          {[role, skill, hours].filter(Boolean).length > 0 && (
+            <span>{[role, skill, hours].filter(Boolean).length}</span>
+          )}
+          <ChevronDown size={14} />
         </button>
+        <Link
+          to={"/candidates?project_id=" + project + "&position_id=" + position}
+        >
+          <UsersRound size={15} />
+          Candidate Pipeline
+          <ArrowUpRight size={14} />
+        </Link>
       </div>
       <div className="teammate-discovery-grid">
-        <aside id="teammate-filters" className={`panel teammate-filters${filtersOpen ? " is-open" : ""}`} aria-label="Teammate filters">
-          <h3>Filters</h3>
-          <p className="helper-text">
-            Applied by the Backend. Ranking uses rule-v1.
-          </p>
+        <aside
+          id="teammate-filters"
+          className={`live-discovery__filters teammate-filters${
+            filtersOpen ? " is-open" : ""
+          }`}
+          aria-label="Teammate filters"
+        >
+          <div className="live-discovery__filter-heading">
+            <span className="live-discovery__eyebrow">YOUR NEXT TEAMMATE</span>
+            <h2>Find your people</h2>
+            <p>A few filters. A stronger team.</p>
+          </div>
           {catalog.error ? (
             <p role="alert">
               Filter catalog unavailable.{" "}
               <button onClick={catalog.reload}>Retry catalog</button>
             </p>
           ) : null}
-          <label className="field">
-            Preferred Role
+          <label className="field-group">
+            Preferred role
             <select
+              className="field-select"
               aria-label="Candidate role"
               value={role}
               disabled={blocked || !catalog.data}
@@ -226,9 +262,10 @@ export default function LiveTeammatesDiscoveryView() {
               ))}
             </select>
           </label>
-          <label className="field">
-            Skill
+          <label className="field-group">
+            Key technology
             <select
+              className="field-select"
               aria-label="Candidate skill"
               value={skill}
               disabled={blocked || !catalog.data}
@@ -242,9 +279,10 @@ export default function LiveTeammatesDiscoveryView() {
               ))}
             </select>
           </label>
-          <label className="field">
-            Minimum hours/week
+          <label className="field-group">
+            Weekly availability
             <select
+              className="field-select"
               aria-label="Candidate availability"
               value={hours}
               disabled={blocked}
@@ -258,10 +296,51 @@ export default function LiveTeammatesDiscoveryView() {
               ))}
             </select>
           </label>
+          <button
+            className="live-discovery__reset"
+            disabled={blocked}
+            onClick={() => {
+              const next = new URLSearchParams(params)
+              ;["role_id", "skill_id", "hours"].forEach((key) =>
+                next.delete(key),
+              )
+              setParams(next)
+            }}
+          >
+            <RefreshCw size={14} />
+            Reset filters
+          </button>
+          <div className="live-discovery__session">
+            <span className="live-discovery__eyebrow">YOUR OVERVIEW</span>
+            <dl>
+              <div>
+                <dt>Loaded</dt>
+                <dd>{feed.loading && !cards.length ? "…" : cards.length}</dd>
+              </div>
+              <div>
+                <dt>Reviewed here</dt>
+                <dd>{history.length}</dd>
+              </div>
+            </dl>
+          </div>
+          <Link
+            className="live-discovery__saved-link"
+            to={
+              "/candidates?project_id=" + project + "&position_id=" + position
+            }
+          >
+            <UsersRound size={14} />
+            Candidate Pipeline
+            <ArrowUpRight size={14} />
+          </Link>
           {feed.scoredAt && (
-            <p className="helper-text">
-              Scored at {new Date(feed.scoredAt).toLocaleString()}. Scores are
-              frozen for this feed snapshot; refresh to recalculate.
+            <p className="teammate-snapshot-note">
+              Updated{" "}
+              {new Date(feed.scoredAt).toLocaleTimeString("en-US", {
+                hour: "numeric",
+                minute: "2-digit",
+              })}
+              . Refresh to update matches.
             </p>
           )}
         </aside>
@@ -275,7 +354,9 @@ export default function LiveTeammatesDiscoveryView() {
               {action.uncertain && (
                 <button
                   disabled={action.busy}
-                  onClick={async () => { if (await action.check()) refresh() }}
+                  onClick={async () => {
+                    if (await action.check()) refresh()
+                  }}
                 >
                   Check stored action
                 </button>
@@ -390,7 +471,12 @@ export default function LiveTeammatesDiscoveryView() {
         </Modal>
       )}
       {detail && (
-        <Modal title="Candidate Profile" wide onClose={() => setDetail(null)}>
+        <Modal
+          title="Candidate profile"
+          wide
+          className="candidate-profile-modal"
+          onClose={() => setDetail(null)}
+        >
           <LiveCandidateDetail userId={detail.id} />
         </Modal>
       )}
@@ -410,7 +496,9 @@ export default function LiveTeammatesDiscoveryView() {
             {action.uncertain && (
               <button
                 disabled={action.busy}
-                onClick={async () => { if (await action.check()) refresh() }}
+                onClick={async () => {
+                  if (await action.check()) refresh()
+                }}
               >
                 Check stored action
               </button>
