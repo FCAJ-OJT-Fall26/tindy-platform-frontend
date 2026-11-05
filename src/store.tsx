@@ -18,11 +18,12 @@ import { getMeApi, logoutApi } from "./services/auth.service"
 import { clearLinkUser } from "./services/oauth.service"
 import { authErrorMessage } from "./services/authValidation"
 import { getMyProfile, patchMyProfile } from "./services/profile.service"
-import type { ProfilePatch } from "./types/profile"
+import type { MyProfileResponse, ProfilePatch } from "./types/profile"
 import useRemoteResource from "./hooks/useRemoteResource"
 import { getProjectsApi, mapProjectSummaryToUiProject } from "./services/projects.service"
 import { getAllSavedProjects, setDiscoveryFlag } from "./services/discovery.service"
 import { projectErrorMessage } from "./services/projectEditor.service"
+import useNotificationState from "./hooks/useNotificationState"
 
 const loadProjectCatalog = (signal: AbortSignal) => getProjectsApi({ page_size: 50 }, signal)
 
@@ -59,6 +60,7 @@ function useAppState() {
   const [authLoading, setAuthLoading] = useState<boolean>(true)
   const [loggingOut, setLoggingOut] = useState(false)
   const [sessionError, setSessionError] = useState('')
+  const notifications = useNotificationState(authUser, !authLoading && !loggingOut)
   const logoutRequest = useRef<Promise<void> | null>(null)
   const sessionGeneration = useRef(0)
   const profileOwner = useRef<string | null>(null)
@@ -67,8 +69,49 @@ function useAppState() {
   const saveOwnerProfile = async (patch: ProfilePatch) => {
     const token = getStoredToken()
     const generation = sessionGeneration.current
-    const updated = await patchMyProfile(patch)
-    if (generation !== sessionGeneration.current || token !== getStoredToken()) return
+    const confirms = (value: MyProfileResponse) =>
+      value.user_id === authUser?.user_id &&
+      Object.entries(patch).every(([field, expected]) => {
+        const actual =
+          field === "preferred_role_id"
+            ? value.preferred_role?.professional_role_id
+            : field === "skill_ids"
+              ? value.skills.map((s) => s.skill_id)
+              : value[field as keyof MyProfileResponse]
+
+        return Array.isArray(expected) && Array.isArray(actual)
+          ? [...expected].sort().join(",") === [...actual].sort().join(",")
+          : actual === expected
+      })
+
+    let updated: MyProfileResponse
+
+    try {
+      updated = await patchMyProfile(patch)
+      if (patch.open_to_team_invitations !== undefined && !confirms(updated))
+        throw Error("Invitation consent could not be confirmed.")
+    } catch (reason) {
+      if (
+        patch.open_to_team_invitations === undefined ||
+        (reason instanceof ApiError &&
+          reason.status >= 400 &&
+          reason.status < 500)
+      )
+        throw reason
+
+      // PATCH may have committed before a response was lost. Read; never repeat consent automatically.
+
+      updated = await getMyProfile()
+
+      if (!confirms(updated))
+        throw Error(
+          "The profile update is unconfirmed. Reload your profile before trying again.",
+        )
+    }
+
+    if (generation !== sessionGeneration.current || token !== getStoredToken())
+      throw Error("The account session changed.")
+
     ownerProfile.replace(updated)
   }
 
@@ -103,7 +146,6 @@ function useAppState() {
   const [invited, setInvited] = useStored<string[]>("invited", [])
   const [completed] = useStored<string[]>("completed", [])
   const [mode, setMode] = useStored<string>("mode", "User")
-  const [read, setRead] = useStored<number[]>("read", [])
   const [dismissed, setDismissed] = useStored<string[]>("dismissed", [])
   const [candidateInvites, setCandidateInvites] = useStored<string[]>(
     "candidate-invites",
@@ -119,10 +161,6 @@ function useAppState() {
   )
   const [candidateActive, setCandidateActive] = useStored<string[]>(
     "candidate-active",
-    [],
-  )
-  const [candidateArchived, setCandidateArchived] = useStored<string[]>(
-    "candidate-archived",
     [],
   )
   const [toast, setToast] = useState("")
@@ -244,7 +282,7 @@ function useAppState() {
       old.includes(name) ? old.filter((item) => item !== name) : [...old, name],
     )
   return {
-    profile: authUser ? (ownerProfile.data ? {
+    profile: authUser ? ownerProfile.data ? {
       name: ownerProfile.data.display_name,
       university: ownerProfile.data.university ?? '',
       email: authUser.email ?? '',
@@ -259,7 +297,8 @@ function useAppState() {
       technologies: ownerProfile.data.technologies_to_learn ?? '',
       summary: ownerProfile.data.bio ?? '',
     } : { ...(!authUser.is_onboarding_completed && profileOwner.current === authUser.user_id ? profile : emptySessionProfile),
-      name: authUser.display_name, email: authUser.email ?? '', university: authUser.university ?? '' }) : emptySessionProfile,
+      name: authUser.display_name, email: authUser.email ?? '', university: authUser.university ?? '' }
+      : emptySessionProfile,
     ownerProfile,
     saveOwnerProfile,
     setProfile,
@@ -291,8 +330,7 @@ function useAppState() {
     completed,
     mode,
     setMode,
-    read,
-    setRead,
+    notifications,
     dismissed,
     setDismissed,
     candidateInvites,
@@ -303,8 +341,6 @@ function useAppState() {
     setCandidateInterested,
     candidateActive,
     setCandidateActive,
-    candidateArchived,
-    setCandidateArchived,
     toggleShortlistCandidate,
     toast,
     notify,
@@ -314,8 +350,8 @@ function useAppState() {
 type AppState = ReturnType<typeof useAppState>
 
 const Context =
-  (globalThis as unknown as { __TINDY_CONTEXT__?: React.Context<AppState | null> }).__TINDY_CONTEXT__ ??=
-  createContext<AppState | null>(null)
+  ((globalThis as unknown as { __TINDY_CONTEXT__?: React.Context<AppState | null> }).__TINDY_CONTEXT__ ??=
+  createContext<AppState | null>(null))
 
 export function TindyProvider({ children }: { children: ReactNode }) {
   const state = useAppState()

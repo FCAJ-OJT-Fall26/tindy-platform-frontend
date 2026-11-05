@@ -9,26 +9,12 @@ import {
   Phone,
 } from "lucide-react"
 import { useTindy } from "../../store"
-import { PageHeader, Button } from "../../components/ui"
+import { PageHeader } from "../../components/ui"
 import ConnectedAccounts from "../../components/auth/ConnectedAccounts"
 
 export function SettingsScreen() {
-  const { authUser, notify, logout, loggingOut } = useTindy()
+  const { authUser, logout, loggingOut } = useTindy()
   const navigate = useNavigate()
-  const [preferences, setPreferences] = useState<Record<string, boolean>>(
-    () => {
-      try {
-        const stored = localStorage.getItem("tindy-v2-preferences")
-        if (stored) return JSON.parse(stored)
-      } catch {}
-      return {
-        "Email notifications": true,
-        "Project invitations": true,
-        "New recommendations": true,
-        "Team announcements": true,
-      }
-    },
-  )
   const [activeSection, setActiveSection] = useState("account")
 
   // ScrollSpy to highlight the active section when the page enters its region
@@ -87,7 +73,7 @@ export function SettingsScreen() {
     <>
       <PageHeader
         title="Settings & Preferences"
-        description="Manage your account profile, notification preferences, and privacy controls."
+        description="Manage your account profile, in-app updates, and privacy controls."
       />
       <div className="settings-layout">
         <aside
@@ -147,35 +133,8 @@ export function SettingsScreen() {
             className={`panel settings-panel ${activeSection === "preferences" ? "active-section" : ""}`}
           >
             <h2>Notifications</h2>
-            <p>Keep the important updates. Leave the noise.</p>
-            {Object.entries(preferences).map(([label, value]) => (
-              <label className="toggle-row" key={label}>
-                <span>{label}</span>
-                <input
-                  type="checkbox"
-                  role="switch"
-                  checked={value}
-                  onChange={(event) =>
-                    setPreferences({
-                      ...preferences,
-                      [label]: event.target.checked,
-                    })
-                  }
-                />
-              </label>
-            ))}
-            <Button
-              variant="secondary"
-              onClick={() => {
-                localStorage.setItem(
-                  "tindy-v2-preferences",
-                  JSON.stringify(preferences),
-                )
-                notify("Notification preferences saved")
-              }}
-            >
-              Save preferences
-            </Button>
+            <p>Important project invitation updates are delivered inside Tindy.</p>
+            {authUser?.is_onboarding_completed && <Link className="text-link" to="/notifications">View notifications</Link>}
           </section>
           <section
             id="privacy"
@@ -193,6 +152,7 @@ export function SettingsScreen() {
                 sign you out of Google or GitHub.
               </span>
             </div>
+            {authUser?.is_onboarding_completed && <p><Link className="btn btn-secondary" to="/profile?edit=team-invitations">Manage Team Invitations</Link></p>}
             <ConnectedAccounts />
             <div style={{ marginTop: '20px', marginBottom: '20px', display: 'flex', gap: '10px' }}>
               <button type="button" className="btn btn-secondary" disabled={loggingOut} onClick={async () => {

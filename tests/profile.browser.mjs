@@ -451,7 +451,7 @@ try {
     }
   })()`)
   await click("Generate profile")
-  await waitFor(text("Demo summary generated"))
+  await waitFor(text("Summary generated · Review and edit before accepting"))
   assert.equal(mutations().length, beforeAiDraft)
   await check(
     text("Updated Student"),

@@ -5,7 +5,7 @@ import type { ApplicationReviewPage, ApplicationReviewQuery, MyApplicationsPage,
 
 export const APPLICATIONS_CHANGED_EVENT = "tindy:applications-changed"
 const base = (id: string) => { requireProjectId(id, "Project"); return `/api/projects/${encodeURIComponent(id)}/applications` }
-export const getMyApplications = (page = 1, signal?: AbortSignal) => apiRequest<MyApplicationsPage>(`/api/me/project-applications?page=${page}&page_size=50`, { signal }).then(res => res.data)
+export const getMyApplications = (page = 1, signal?: AbortSignal) => apiRequest<MyApplicationsPage>(`/api/me/project-applications?page=${page}&page_size=50`, { signal }).then((res) => res.data)
 export async function getAllMyApplications(signal?: AbortSignal): Promise<ProjectApplicationDto[]> {
   const rows: ProjectApplicationDto[] = []
   for (let page = 1; ; page++) {
@@ -51,6 +51,10 @@ export function applicationErrorMessage(error: unknown): string {
   if (error instanceof ApiError) {
     const messages: Record<string, string> = {
       APPLICATION_ALREADY_PENDING: "You already have a pending application to this project. Check My Applications.",
+
+      INVITATION_ALREADY_PENDING:
+        "You have a pending invitation to this project. Review My Projects → Invited instead.",
+
       APPLICATION_NOT_PENDING: "This application was already reviewed or withdrawn. Refreshing its current status.",
       PROJECT_NOT_ELIGIBLE: "This project is no longer eligible: it may be closed, full or already joined.",
       POSITION_UNAVAILABLE: "This position has closed or filled. Refresh to check other positions.",

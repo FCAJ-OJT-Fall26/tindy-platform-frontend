@@ -1,4 +1,3 @@
-import { INITIAL_NOTIFICATIONS } from "../../data/notifications"
 import { useState, useEffect, useRef, useCallback } from "react"
 import { NavLink, Link, useLocation } from "react-router"
 import { ChevronDown,
@@ -24,8 +23,9 @@ export const navItems = [
   { to: "/discover", label: "Discover Projects", icon: Compass, preview: false },
   { to: "/projects", label: "My Projects", icon: FolderKanban, preview: false },
   { to: "/applications", label: "Applications", icon: UserCheck, preview: false },
+  { to: "/candidates", label: "Candidates", icon: Users, preview: false },
   { to: "/messages", label: "Messages", icon: MessageSquare, preview: true },
-  { to: "/notifications", label: "Notifications", icon: Bell, preview: true },
+  { to: "/notifications", label: "Notifications", icon: Bell, preview: false },
   { to: "/team", label: "Team Workspace", icon: Users, preview: true },
 ]
 
@@ -35,7 +35,7 @@ interface SidebarProps {
 }
 
 export default function Sidebar({ mobile, onClose }: SidebarProps) {
-  const { read, logout, loggingOut } = useTindy()
+  const { notifications, logout, loggingOut } = useTindy()
   const location = useLocation()
   const navigate = useNavigate()
 
@@ -138,8 +138,8 @@ export default function Sidebar({ mobile, onClose }: SidebarProps) {
               {item.label === "Messages" && (
                 <span className="nav-count">2</span>
               )}
-              {item.label === "Notifications" && INITIAL_NOTIFICATIONS.some(n => !read.includes(Number(n.id))) && (
-                <span className="nav-dot" />
+              {item.label === "Notifications" && notifications.count !== null && notifications.count > 0 && (
+                <span className="nav-dot" aria-label={`${notifications.count} unread notifications${notifications.countError ? ", last confirmed count" : ""}`} />
               )}
             </NavLink>
           ))}

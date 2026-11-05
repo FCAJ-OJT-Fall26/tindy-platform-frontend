@@ -1,7 +1,28 @@
 purpose:
-  stands_in_for: Local Tindy backend Project, Position, Skill, Catalog and session-read contracts
-  unblocks: Frontend Project CRUD regression checks without production or PostgreSQL access
+  stands_in_for: Local Tindy backend Project, Position, Skill, Catalog, session-read, Teammates, Invitation and owner-consent contracts
+  unblocks: Frontend HTTP contract checks without production or PostgreSQL access; real PostgreSQL smoke uses a separate Testcontainers host
 assumptions:
+  - id: release-verification-2026-11-05
+    status: supported
+    claim: The exercised V1 frontend contracts also work with the real sibling ASP.NET Core backend and disposable PostgreSQL, independently of this simulation.
+    reason: A new browser suite used separate real JWT accounts, production controllers/repositories/EF mappings and the existing guarded test database factory; mock response assertions were not treated as backend evidence.
+    verification: On 2026-11-05, test:release:integration passed 19 groups, 92 direct API checks and 245 browser HTTP requests covering opt-in, discovery, Invitation/Notification lifecycle, read state, membership, capacity races and session isolation. The fresh database applied 21 migrations with no pending model changes. The separately rerun backend assembly had 1006 passed, 1 unrelated CORS policy/test contract failure and 2 opt-in ClamAV skips. Release remains Needs Fixes until that CORS disagreement is resolved. Repeated-outage controls were added to this local mock to prevent StrictMode cancellations from consuming one-shot Candidate error fixtures; production behavior is unchanged.
+    source: tests/release-integration.browser.mjs; tests/live-teammates-host/Program.cs; .tmp-release-verification/evidence.json; sibling tests/Tindy.Tests/TestResults/release-verification.trx; FIND_TEAMMATES_RELEASE_VERIFICATION.md
+    updated_at: "2026-11-05"
+  - id: notifications-v1-and-candidate-polish
+    status: supported
+    claim: The real frontend uses the implemented Notifications V1 API, shares server-owned read state and unread counts, polls only visible authenticated sessions, and filters active members by position_id in the exercised scenarios.
+    reason: The stand-in was extended from the sibling backend Notification DTOs, controller, repository and documented migration; browser tests call the real apiRequest wrapper over HTTP without replacing fetch.
+    verification: On 2026-11-05, test:notifications passed 11 groups including pagination, read and mark-all deduplication, delayed responses, late notification cutoff, malformed JSON, visibility, account switch/logout and all four navigation events. test:candidates:polish passed 7 groups for GUID-based Active filtering, nullable Leader positions, archived URL fallback, loading/error/empty states, Settings and dirty-only opt-in PATCH. Required Teammates suites passed 16, 15 and 6 groups; Profile regression passed 44 groups. Polling timer callbacks and document visibility were controlled in the browser. This proves frontend behavior against the HTTP stand-in, not a live deployment or database transactions.
+    source: tests/notifications.browser.mjs; tests/candidates-polish.browser.mjs; src/services/notifications.service.ts; src/hooks/useNotificationState.ts; sibling tindy-backend-platform/docs/api/NOTIFICATIONS_V1.md; NOTIFICATIONS_PIPELINE_FRONTEND_IMPLEMENTATION.md
+    updated_at: "2026-11-05"
+  - id: teammates-v1-frontend-contract
+    status: supported
+    claim: Teammate routes use Backend callers without a feature flag or runtime mock branch, preserve UUID and Position context, consume server matching, confirm interactions and Invitations, and reconcile uncertain writes through authorized history.
+    reason: The stand-in follows the implemented sibling Backend controllers and DTOs; synthetic fixture scores are response inputs, not a production scorer.
+    verification: On 2026-11-03, test:teammates passed 16 browser/service groups, test:teammates:errors passed 15 failure/privacy/history groups, test:teammates:regression passed 6 Project/Apply/Approval/dashboard/always-Backend groups, and test:discovery-actions passed 9 routing/action groups. The separate real Backend/PostgreSQL smoke passed 6 groups; that result does not derive from this simulation. Known baseline failures are recorded in the implementation report.
+    source: tests/teammates.browser.mjs; tests/teammates-errors.browser.mjs; tests/teammates-project-regression.browser.mjs; tests/teammates.live.browser.mjs; postman/mocks/tindy-project/handler.js; DISCOVERY_TEAMMATES_FRONTEND_IMPLEMENTATION.md
+    updated_at: "2026-11-03"
   - id: discovery-applications-v1
     status: supported
     claim: The frontend sends the implemented V1 deadline, discovery, saved/skipped and application contract and waits for confirmed mutations.

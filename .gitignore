@@ -11,7 +11,10 @@ vite.config.*.timestamp-*
 logs/
 *.log
 .claude-replay.*
+.tmp
 .tmp-*
+/tests/live-teammates-host/bin/
+/tests/live-teammates-host/obj/
 /.figma/design-context/
 notouch/
 notouch

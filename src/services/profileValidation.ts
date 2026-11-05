@@ -77,6 +77,8 @@ export type ProfileDraft = Record<ProfileTextField, string> & {
   preferred_role_id: string
   available_hours_per_week: string
   skill_ids: string[]
+
+  open_to_team_invitations: boolean | undefined
 }
 
 export function profileDraft(profile: MyProfileResponse): ProfileDraft {
@@ -88,6 +90,11 @@ export function profileDraft(profile: MyProfileResponse): ProfileDraft {
     preferred_role_id: profile.preferred_role?.professional_role_id ?? "",
     available_hours_per_week: String(profile.available_hours_per_week ?? ""),
     skill_ids: profile.skills.map((skill) => skill.skill_id),
+
+    open_to_team_invitations:
+      typeof profile.open_to_team_invitations === "boolean"
+        ? profile.open_to_team_invitations
+        : undefined,
   }
 }
 
@@ -97,6 +104,14 @@ export function buildProfilePatch(
 ): ProfilePatch {
   const before = profileDraft(original)
   const patch: ProfilePatch = {}
+
+  if (
+    typeof before.open_to_team_invitations === "boolean" &&
+    typeof draft.open_to_team_invitations === "boolean" &&
+    draft.open_to_team_invitations !== before.open_to_team_invitations
+  )
+    patch.open_to_team_invitations = draft.open_to_team_invitations
+
   for (const { key } of profileFields) {
     const value = nullable(draft[key])
     if (value !== nullable(before[key])) Object.assign(patch, { [key]: value })

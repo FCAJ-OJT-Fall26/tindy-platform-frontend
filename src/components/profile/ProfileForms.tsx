@@ -346,12 +346,21 @@ export function ProfileEditor({
   onSave,
   onCancel,
   onBusyChange,
+  focusTeamInvitations = false,
 }: {
   profile: MyProfileResponse
   onSave: (patch: ProfilePatch) => Promise<void>
   onCancel: () => void
   onBusyChange: (busy: boolean) => void
+  focusTeamInvitations?: boolean
 }) {
+  const invitationControl = useRef<HTMLInputElement>(null)
+  useEffect(() => {
+    if (focusTeamInvitations) {
+      invitationControl.current?.scrollIntoView({ behavior: "smooth", block: "center" })
+      invitationControl.current?.focus({ preventScroll: true })
+    }
+  }, [focusTeamInvitations])
   const [draft, setDraft] = useState<ProfileDraft>(() => profileDraft(profile))
   const roles = useRemoteResource("profile-role-catalog", loadRoles)
   const [unchanged, setUnchanged] = useState(false)
@@ -394,7 +403,7 @@ export function ProfileEditor({
     },
     onBusyChange,
   )
-  const update = (name: keyof ProfileDraft, value: string | string[]) => {
+  const update = (name: keyof ProfileDraft, value: string | string[] | boolean) => {
     setUnchanged(false)
     setDraft((previous) => ({ ...previous, [name]: value }))
   }
@@ -411,6 +420,28 @@ export function ProfileEditor({
       </p>
       <RequestFeedback error={submission.error} />
       <fieldset disabled={submission.busy}>
+        <label className="field" style={{ marginBottom: 20 }}>
+          <span>
+            <input
+              type="checkbox"
+              name="open_to_team_invitations"
+              ref={invitationControl}
+              id="team-invitations-opt-in"
+              aria-label="Open to Team Invitations"
+              checked={draft.open_to_team_invitations === true}
+              disabled={typeof draft.open_to_team_invitations !== "boolean"}
+              onChange={(e) =>
+                update("open_to_team_invitations", e.target.checked)
+              }
+            />{" "}
+            Allow project leaders to discover me and send me team invitations
+          </span>
+          <small className="helper-text">
+            {typeof draft.open_to_team_invitations === "boolean"
+              ? "Only you can change this setting. Disabling it stops discovery and new invitations. Re-enable it before accepting an existing invitation."
+              : "Invitation consent is unavailable on this Backend version. No default or consent change will be submitted."}
+          </small>
+        </label>
         <div className="form-grid">
           {profileFields
             .filter((field) => !("multiline" in field))

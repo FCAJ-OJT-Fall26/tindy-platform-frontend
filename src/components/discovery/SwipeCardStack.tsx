@@ -5,22 +5,31 @@ import ProjectCardContent from '../projects/ProjectCardContent';
 import CandidateCardContent from '../candidates/CandidateCardContent';
 import { SkipActionButton, StarActionButton, InterestedActionButton } from '../common/DiscoveryActionButtons';
 
-interface SwipeCardStackProps {
-  items: (DiscoveryProject | DiscoveryCandidate)[];
+interface SwipeCardStackProps<T extends { id: string; name: string }> {
+  items: T[];
   mode: DiscoveryMode;
-  onSwipe: (item: DiscoveryProject | DiscoveryCandidate, direction: SwipeDirection) => void | boolean | Promise<void | boolean>;
+  onSwipe: (item: T,
+    direction: SwipeDirection) => void | boolean | Promise<void | boolean>;
   disabled?: boolean;
   live?: boolean;
-  onCardTap: (item: DiscoveryProject | DiscoveryCandidate) => void;
-  onWhyMatchesClick: (item: DiscoveryProject | DiscoveryCandidate) => void;
+  onCardTap: (item: T) => void;
+  onWhyMatchesClick: (item: T) => void
+
+  renderContent?: (item: T, isActive: boolean) => React.ReactNode
+
+  rightAction?: string
+
   onUndo?: () => void | boolean | Promise<void | boolean>;
   canUndo?: boolean;
   onResetStack?: () => void;
-  activeItemChanged?: (item: DiscoveryProject | DiscoveryCandidate | null) => void;
+  activeItemChanged?: (item: T | null) => void;
   onCandidateChatClick?: (candidate: DiscoveryCandidate) => void;
 }
 
-export default function SwipeCardStack({
+export default function SwipeCardStack<T extends {
+  id: string
+  name: string
+} = DiscoveryProject | DiscoveryCandidate,>({
   disabled = false,
   live = false,
   items,
@@ -32,7 +41,15 @@ export default function SwipeCardStack({
   canUndo = false,
   onResetStack,
   activeItemChanged,
-}: SwipeCardStackProps) {
+
+  renderContent,
+
+  rightAction,
+}: SwipeCardStackProps<T>) {
+  const rightLabel =
+    rightAction ??
+    (live ? 'Apply' : mode === 'student' ? 'Interested' : 'Shortlist')
+
   const [currentIndex, setCurrentIndex] = useState(0);
   const [dragOffset, setDragOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
@@ -91,7 +108,7 @@ export default function SwipeCardStack({
     if (!canUndo || disabled || busy.current) return;
     busy.current = true; setPending(true);
     try {
-      if (await onUndo?.() === false || !mounted.current) return;
+      if ((await onUndo?.()) === false || !mounted.current) return;
       const id = swipedOrderRef.current.pop();
       if (id) swipedIdsRef.current.delete(id);
       const index = latestItems.current.findIndex(item => !swipedIdsRef.current.has(item.id));
@@ -145,7 +162,7 @@ export default function SwipeCardStack({
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (!currentItem || flyDirection || disabled || busy.current || document.querySelector('[role="dialog"]')) return;
-      if ((e.target as HTMLElement)?.closest('input,textarea,select,button,a')) return;
+      if ((e.target as HTMLElement)?.closest('input,textarea,select,button,a,[data-card-scroll]')) return;
 
       if (e.key === 'ArrowLeft') {
         e.preventDefault();
@@ -261,7 +278,7 @@ export default function SwipeCardStack({
                       style={{ opacity: Math.min(1, (dragOffset.x - 30) / 70) }}
                     >
                       <Heart size={16} fill="currentColor" />
-                      <span>{live ? 'APPLY' : mode === 'student' ? 'INTERESTED' : 'SHORTLIST'}</span>
+                      <span>{rightLabel.toUpperCase()}</span>
                     </div>
                   )}
 
@@ -287,10 +304,12 @@ export default function SwipeCardStack({
                 </>
               )}
 
-              {/* Card content */}
-              {mode === 'student' ? (
+              {/* Drag feedback banners */}
+              {renderContent ? (
+                renderContent(item, isTop)
+              ) : mode === 'student' ? (
                 <ProjectCardContent
-                  project={item as DiscoveryProject}
+                  project={item as unknown as DiscoveryProject}
                   live={live}
                   isActive={isTop}
                   onWhyMatchesClick={(e) => {
@@ -304,7 +323,7 @@ export default function SwipeCardStack({
                 />
               ) : (
                 <CandidateCardContent
-                  candidate={item as DiscoveryCandidate}
+                  candidate={item as unknown as DiscoveryCandidate}
                   isActive={isTop}
                   onWhyMatchesClick={(e) => {
                     e.stopPropagation();
@@ -321,17 +340,17 @@ export default function SwipeCardStack({
         })}
       </div>
 
-      {/* Accessible Action Buttons */}
+      {/* Drag feedback banners */}
       <div className={`${live ? 'live-discovery__actions' : ''} w-full mt-4 flex items-center justify-center gap-2 px-1 sm:px-2 min-w-0`}>
         <button
           type="button"
           disabled={!canUndo || disabled || pending}
           onClick={() => { void undo(); }}
-          className={`w-10 h-10 min-h-[40px] shrink-0 rounded-lg border flex items-center justify-center transition-all ${
-            canUndo && currentIndex > 0
+          className={`absolute inset-0 bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-md ${
+            canUndo
               ? 'border-slate-300 bg-white text-slate-800 hover:bg-slate-100'
               : 'border-slate-200 bg-slate-50 text-slate-300 cursor-not-allowed'
-          }`}
+          } w-full max-w-[460px] sm:max-w-[480px] mx-auto flex flex-col items-center select-none min-w-0`}
           title="Undo last action"
           aria-label="Undo"
         >
@@ -365,15 +384,18 @@ export default function SwipeCardStack({
           isActionTrigger
           onClick={() => executeSwipe('right')}
           className="flex-1 min-w-[88px] max-w-[140px] min-h-[40px] py-2.5 px-2 rounded-lg border border-emerald-400 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-bold text-xs flex items-center justify-center gap-1.5 transition-colors shadow-2xs"
-          title={live ? 'Apply to a position' : mode === 'student' ? 'Mark Interested' : 'Shortlist Candidate'}
-          ariaLabel={live ? 'Apply' : mode === 'student' ? 'Interested' : 'Shortlist'}
+          title={
+            rightAction ??
+            (live ? 'Apply to a position' : mode === 'student' ? 'Mark Interested' : 'Shortlist Candidate')
+          }
+          ariaLabel={rightLabel}
           iconSize={15}
         >
-          <span className="truncate">{live ? 'Apply' : mode === 'student' ? 'Interested' : 'Shortlist'}</span>
+          <span className="truncate">{rightLabel}</span>
         </InterestedActionButton>
       </div>
 
-      {/* Keyboard Controls Note */}
+      {/* Drag feedback banners */}
       <div className="mt-3 text-[11px] text-slate-500 flex flex-wrap items-center justify-center gap-x-3 gap-y-1">
         <span className="flex items-center gap-1 text-rose-600 font-semibold">
           <X size={12} strokeWidth={2.5} className="text-rose-600" /> Skip (←)
@@ -384,7 +406,8 @@ export default function SwipeCardStack({
         </span>
         <span>•</span>
         <span className="flex items-center gap-1 text-emerald-700 font-semibold">
-          <Heart size={12} className="text-emerald-600 fill-emerald-600" /> {live ? 'Apply' : mode === 'student' ? 'Interested' : 'Shortlist'} (→)
+          <Heart size={12} className="text-emerald-600 fill-emerald-600" /> {" "}
+          {rightLabel} (→)
         </span>
       </div>
     </div>

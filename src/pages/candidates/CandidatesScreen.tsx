@@ -33,17 +33,15 @@ export function Candidates() {
     candidateShortlisted,
     candidateInvites,
     candidateActive,
-    candidateArchived,
     setCandidateInterested,
     setCandidateShortlisted,
     setCandidateInvites,
     setCandidateActive,
-    setCandidateArchived,
     toggleShortlistCandidate,
     notify,
   } = useTindy()
   const [params, setParams] = useSearchParams()
-  const tab = params.get("tab") || "Interested"
+  const tab = params.get("tab") === "Archived" ? "Interested" : params.get("tab") || "Interested"
 
   const [inviteModal, setInviteModal] = useState<string | null>(null)
   const [explainCandidate, setExplainCandidate] = useState<
@@ -55,7 +53,6 @@ export function Candidates() {
     Shortlisted: candidateShortlisted,
     Invited: candidateInvites,
     Active: candidateActive,
-    Archived: candidateArchived,
   }
 
   const selected = initialCandidates.filter((candidate) =>

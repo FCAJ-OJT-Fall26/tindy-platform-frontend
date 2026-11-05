@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react"
-import { Link, useParams } from "react-router"
+import { Link, useParams, useSearchParams } from "react-router"
 import {
   ArrowUpRight,
   BriefcaseBusiness,
@@ -238,6 +238,17 @@ function ProfileView({ userId }: { userId?: string }) {
     if (owner && ownerProfile.data) ownerProfile.reload()
   }, [owner, ownerProfile.reload])
   const [editing, setEditing] = useState(false)
+  const [search, setSearch] = useSearchParams()
+  const [focusInvitations, setFocusInvitations] = useState(false)
+  useEffect(() => {
+    if (owner && search.get("edit") === "team-invitations") {
+      setEditing(true)
+      setFocusInvitations(true)
+      const next = new URLSearchParams(search)
+      next.delete("edit")
+      setSearch(next, { replace: true })
+    }
+  }, [owner, search, setSearch])
   const [mediaEditing, setMediaEditing] = useState<"avatar" | "cover-image" | null>(null)
   const coverElement = useRef<HTMLDivElement>(null)
   const [profileBusy, setProfileBusy] = useState(false)
@@ -402,6 +413,7 @@ function ProfileView({ userId }: { userId?: string }) {
           {owner && mediaEditing && <ProfileMediaControls kind={mediaEditing} coverElement={coverElement.current} onClose={() => setMediaEditing(null)} />}
           {owner && editing && (
             <ProfileEditor
+              focusTeamInvitations={focusInvitations}
               profile={profile as MyProfileResponse}
               onBusyChange={setProfileBusy}
               onCancel={() => setEditing(false)}

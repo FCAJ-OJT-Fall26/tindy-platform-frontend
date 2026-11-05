@@ -17,6 +17,7 @@ export interface ProjectLeaderSummary {
 }
 
 export interface ProjectTeamMemberDto {
+  position_id: string | null
   user_id: string
   display_name: string
   role_title: string

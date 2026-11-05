@@ -7,11 +7,15 @@ export default function MatchScoreRing({
   compact = false,
   large = false,
   serverValue = false,
+
+  staticValue = false,
 }: {
   score: number
   compact?: boolean
   large?: boolean
   serverValue?: boolean
+
+  staticValue?: boolean
 }) {
   const radius = 25
   const circumference = 2 * Math.PI * radius
@@ -50,7 +54,7 @@ export default function MatchScoreRing({
     return () => cancelAnimationFrame(rafId)
   }, [clamped])
 
-  const displayScore = Math.round(animatedScore)
+  const displayScore = staticValue ? score : Math.round(animatedScore)
   const tier = getMatchTier(displayScore)
   const isHundred = displayScore >= 100
 

@@ -31,10 +31,14 @@ export interface MemberProfileResponse {
   certificates_count: number
 }
 export interface MyProfileResponse extends MemberProfileResponse {
+  open_to_team_invitations: boolean
+
   phone_number: string | null
   resume_url: string | null
 }
 export interface ProfilePatch {
+  open_to_team_invitations?: boolean
+
   display_name?: string
   university?: string
   phone_number?: string | null
