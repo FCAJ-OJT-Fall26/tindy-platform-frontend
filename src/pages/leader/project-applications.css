@@ -355,34 +355,49 @@
 .candidate-status-tag {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: 5px;
   font-size: 11.5px;
-  font-weight: 600;
-  line-height: 1;
+  font-weight: 700;
+  line-height: 1.2;
+  padding: 2.5px 9px;
+  border-radius: 6px;
+  letter-spacing: 0.1px;
 }
 
 .candidate-status-tag.accepted {
-  color: #059669;
+  background: #ecfdf5;
+  color: #065f46;
+  border: 1px solid #a7f3d0;
+  box-shadow: 0 1px 2px rgba(16, 185, 129, 0.12);
 }
 
 .candidate-status-tag.accepted svg {
-  color: #10b981;
+  color: #059669;
+  flex-shrink: 0;
 }
 
 .candidate-status-tag.pending {
-  color: #d97706;
+  background: #fffbeb;
+  color: #92400e;
+  border: 1px solid #fde68a;
+  box-shadow: 0 1px 2px rgba(245, 158, 11, 0.08);
 }
 
 .candidate-status-tag.pending svg {
-  color: #f59e0b;
+  color: #d97706;
+  flex-shrink: 0;
 }
 
 .candidate-status-tag.rejected {
-  color: #64748b;
+  background: #fef2f2;
+  color: #991b1b;
+  border: 1px solid #fecaca;
+  box-shadow: 0 1px 2px rgba(239, 68, 68, 0.08);
 }
 
 .candidate-status-tag.rejected svg {
-  color: #94a3b8;
+  color: #dc2626;
+  flex-shrink: 0;
 }
 
 .candidate-meta-line {

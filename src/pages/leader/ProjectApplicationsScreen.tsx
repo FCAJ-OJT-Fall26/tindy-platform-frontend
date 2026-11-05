@@ -743,17 +743,17 @@ export default function ProjectApplicationsScreen() {
 
                         {status === "accepted" ? (
                           <span className="candidate-status-tag accepted">
-                            <CheckCircle2 size={13} />
+                            <CheckCircle2 size={13} strokeWidth={2.5} />
                             <span>Accepted</span>
                           </span>
                         ) : status === "rejected" ? (
                           <span className="candidate-status-tag rejected">
-                            <XCircle size={13} />
+                            <XCircle size={13} strokeWidth={2.5} />
                             <span>Rejected</span>
                           </span>
                         ) : (
                           <span className="candidate-status-tag pending">
-                            <Clock size={13} />
+                            <Clock size={13} strokeWidth={2.5} />
                             <span>Pending review</span>
                           </span>
                         )}

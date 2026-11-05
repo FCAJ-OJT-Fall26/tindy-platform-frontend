@@ -863,18 +863,18 @@ export function ProjectWorkspaceView({ projectId: propProjectId }: ProjectWorksp
                                       {app.applicant.display_name}
                                     </strong>
                                     {status === "accepted" ? (
-                                      <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-600">
-                                        <CheckCircle2 size={12} className="text-emerald-500" />
+                                      <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[11px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200 shadow-sm">
+                                        <CheckCircle2 size={12} className="text-emerald-600" strokeWidth={2.5} />
                                         <span>Accepted</span>
                                       </span>
                                     ) : status === "rejected" ? (
-                                      <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-slate-500">
-                                        <XCircle size={12} className="text-slate-400" />
+                                      <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[11px] font-bold bg-rose-50 text-rose-800 border border-rose-200 shadow-sm">
+                                        <XCircle size={12} className="text-rose-600" strokeWidth={2.5} />
                                         <span>Rejected</span>
                                       </span>
                                     ) : (
-                                      <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-amber-600">
-                                        <Clock size={12} className="text-amber-500" />
+                                      <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[11px] font-bold bg-amber-50 text-amber-800 border border-amber-200 shadow-sm">
+                                        <Clock size={12} className="text-amber-600" strokeWidth={2.5} />
                                         <span>Pending review</span>
                                       </span>
                                     )}
