@@ -1,8 +1,12 @@
+import { useState } from "react"
 import { useTindy } from "../../store"
+import { X } from "lucide-react"
+import "../../pages/notifications/notifications.css"
 
 export default function NotificationFeedback() {
   const { notifications: n } = useTindy()
-  if (!n.enabled || (!n.countError && !n.mutationError)) return null
+  const [dismissed, setDismissed] = useState(false)
+  if (!n.enabled || (!n.countError && !n.mutationError) || dismissed) return null
   return (
     <div className="notification-feedback" role="alert">
       {n.countError && (
@@ -39,6 +43,22 @@ export default function NotificationFeedback() {
           </button>
         </p>
       )}
+      <button
+        onClick={() => setDismissed(true)}
+        aria-label="Dismiss notification alert"
+        style={{
+          background: "none",
+          border: 0,
+          color: "#94a3b8",
+          cursor: "pointer",
+          padding: 4,
+          marginLeft: "auto",
+          display: "inline-flex",
+          alignItems: "center",
+        }}
+      >
+        <X size={15} />
+      </button>
     </div>
   )
 }

@@ -107,11 +107,13 @@ export default function LiveDiscoveryView({
     <Link to="/projects?tab=Saved" className="live-discovery__saved-link"><Bookmark size={14} />Your saved projects<ArrowUpRight size={14} /></Link>
   </aside>
   const viewActiveProject = () => { if (active) setPreviewProject(active) }
-  return <div className="live-discovery" data-live-discovery data-loaded-count={projects.length}>
-    <header className="live-discovery__header">
-      <div><span className="live-discovery__pill">INTERACTIVE MATCHING STACK</span><h1>Discover Projects That Fit You</h1><p>Discover your next team. Skip, save, or explore a position before you apply.</p></div>
-      <div className="live-discovery__header-actions"><DiscoverySegmentedControl value="student" options={[{ value: "student", label: "Find Projects" }, { value: "leader", label: "Find Teammates" }]} ariaLabel="Discovery Mode Switcher" onChange={value => { if (value === "leader") navigate("/discover?mode=teammates") }} /><button className="live-discovery__refresh" onClick={refresh}><RefreshCw size={14} />Refresh</button></div>
-    </header>
+  return <div className={hideHeader ? "live-discovery-content" : "live-discovery"} data-live-discovery data-loaded-count={projects.length}>
+    {!hideHeader && (
+      <header className="live-discovery__header">
+        <div><span className="live-discovery__pill">INTERACTIVE MATCHING STACK</span><h1>Discover Projects That Fit You</h1><p>Discover your next team. Skip, save, or explore a position before you apply.</p></div>
+        <div className="live-discovery__header-actions"><DiscoverySegmentedControl value="student" options={[{ value: "student", label: "Find Projects" }, { value: "leader", label: "Find Teammates" }]} ariaLabel="Discovery Mode Switcher" onChange={value => { if (value === "leader") navigate("/discover?mode=teammates") }} /><button className="live-discovery__refresh" onClick={refresh}><RefreshCw size={14} />Refresh</button></div>
+      </header>
+    )}
     <div className="live-discovery__mobile-tools"><button aria-expanded={filtersOpen} aria-controls="live-discovery-filters" onClick={() => setFiltersOpen(v => !v)}><SlidersHorizontal size={15} />Filters{([category, role, skill].filter(Boolean).length + (minScore > 0 ? 1 : 0)) > 0 && <span>{[category, role, skill].filter(Boolean).length + (minScore > 0 ? 1 : 0)}</span>}<ChevronDown size={14} /></button><button disabled={!active?.ruleMatch} onClick={() => setExplanation(active?.ruleMatch ?? null)}>Match insights</button></div>
     <div className="live-discovery__layout">
       <div id="live-discovery-filters" className={`live-discovery__filter-column${filtersOpen ? " is-open" : ""}`}>{filters}</div>
