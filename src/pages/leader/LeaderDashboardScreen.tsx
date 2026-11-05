@@ -25,7 +25,6 @@ import { deleteProjectApi } from "../../services/projects.service"
 import useRemoteResource from "../../hooks/useRemoteResource"
 import useTeammateSession from "../../hooks/useTeammateSession"
 import { getProjectInvitations, INVITATIONS_CHANGED_EVENT } from "../../services/invitations.service"
-import "./leader-dashboard.css"
 
 export function LeaderDashboard() {
   const { setProjects, notify, candidateInterested, candidateInvites, dismissed } = useTindy()
@@ -387,142 +386,222 @@ export function LeaderDashboard() {
         </div>
       ) : (
         <>
-          <div className={`leader-project-grid grid-cols-${Math.min(3, Math.max(1, pageItemsCount))}`}>
-            {currentProjects.map((project: Project) => {
-              const pending = pendingFor(project.id)
-              return (
-                <article
-                  key={project.id}
-                  className="leader-project-card panel"
-                >
-                  <div className="card-top">
-                    <span
-                      className="project-badge"
+                    <div
+            className={`leader-projects-grid grid-cols-${pageItemsCount}`}
+            data-count={pageItemsCount}
+          >
+            {currentProjects.map((project) => (
+              <section className="leader-project panel" key={project.id}>
+                <div className="leader-project-top">
+                  <span className={`project-mark ${project.color}`}>
+                    {project.initials}
+                  </span>
+                  <div className="leader-project-info">
+                    <div className="leader-project-badge-row">
+                      <Badge tone="success">{(project.status ?? "recruiting").replace(/_/g, " ").toUpperCase()}</Badge>
+                    </div>
+                    <h2>{project.name}</h2>
+                    <p title={project.description}>{project.description}</p>
+                  </div>
+                  <div className="leader-project-top-actions leader-project-menu-container">
+                    <button
+                      className="icon-button"
+                      onClick={() =>
+                        handleDeleteProject(project.id, project.name)
+                      }
+                      title="Archive Project"
+                      aria-label="Archive Project"
+                      disabled={archivingId !== null}
+                      style={{ color: "#d9534f" }}
+                    >
+                      <Trash2 size={16} />
+                    </button>
+
+                    <button
+                      type="button"
+                      className="icon-button"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setOpenMenuId(openMenuId === project.id ? null : project.id)
+                      }}
+                      aria-label="Project settings"
+                      title="Project settings"
                       style={{
-                        background:
-                          project.status === "archived"
-                            ? "#fee2e2"
-                            : project.status === "in_progress"
-                              ? "#e0e7ff"
-                              : "#e0f2fe",
-                        color:
-                          project.status === "archived"
-                            ? "#dc2626"
-                            : project.status === "in_progress"
-                              ? "#4338ca"
-                              : "#0369a1",
-                        fontSize: "11px",
-                        fontWeight: 600,
-                        padding: "3px 8px",
-                        borderRadius: "12px",
-                        textTransform: "capitalize",
+                        background: openMenuId === project.id ? "#f1f5f9" : undefined,
+                        color: openMenuId === project.id ? "#0f172a" : undefined,
                       }}
                     >
-                      {project.status?.replace("_", " ") || "Recruiting"}
-                    </span>
-                    <div className="leader-project-menu-container">
-                      <button type="button" className="btn-icon"
-                        aria-label="Project actions"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          setOpenMenuId(openMenuId === project.id ? null : project.id)
+                      <MoreHorizontal size={20} />
+                    </button>
+
+                    {openMenuId === project.id && (
+                      <div
+                        className="project-actions-dropdown"
+                        style={{
+                          position: "absolute",
+                          top: "calc(100% + 6px)",
+                          right: 0,
+                          width: "190px",
+                          background: "#ffffff",
+                          border: "1px solid #e2e8f0",
+                          borderRadius: "10px",
+                          boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.05)",
+                          padding: "6px",
+                          zIndex: 50,
+                          display: "flex",
+                          flexDirection: "column",
+                          gap: "2px",
                         }}
                       >
-                        <MoreHorizontal size={16} />
-                      </button>
-                      {openMenuId === project.id && (
-                        <div className="leader-project-dropdown-menu">
-                          <Link
-                            to={`/project/${project.id}/edit`}
-                            className="leader-dropdown-item"
-                            onClick={() => setOpenMenuId(null)}
-                          >
-                            <Settings size={14} />
-                            <span>Edit project</span>
-                          </Link>
-                          <Link
-                            to={`/project/${project.id}`}
-                            className="leader-dropdown-item"
-                            onClick={() => setOpenMenuId(null)}
-                          >
-                            <ArrowUpRight size={14} />
-                            <span>View public specs</span>
-                          </Link>
-                          <button
-                            className="leader-dropdown-item text-danger"
-                            onClick={() => {
-                              setOpenMenuId(null)
-                              handleDeleteProject(project.id, project.name)
-                            }}
-                            disabled={archivingId === project.id}
-                          >
-                            <Trash2 size={14} />
-                            <span>{archivingId === project.id ? "Archiving…" : "Archive project"}</span>
-                          </button>
-                        </div>
-                      )}
-                    </div>
+                        <Link
+                          to={`/project/${project.id}/edit`}
+                          onClick={() => setOpenMenuId(null)}
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "8px",
+                            padding: "8px 10px",
+                            borderRadius: "6px",
+                            fontSize: "12px",
+                            fontWeight: 500,
+                            color: "#1e293b",
+                            textDecoration: "none",
+                          }}
+                          className="dropdown-item-hover"
+                        >
+                          <Settings size={14} style={{ color: "#64748b" }} />
+                          <span>Manage project</span>
+                        </Link>
+
+                        <Link
+                          to={`/project/${project.id}`}
+                          onClick={() => setOpenMenuId(null)}
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "8px",
+                            padding: "8px 10px",
+                            borderRadius: "6px",
+                            fontSize: "12px",
+                            fontWeight: 500,
+                            color: "#1e293b",
+                            textDecoration: "none",
+                          }}
+                          className="dropdown-item-hover"
+                        >
+                          <ArrowUpRight size={14} style={{ color: "#64748b" }} />
+                          <span>View public specs</span>
+                        </Link>
+
+                        <Link
+                          to={`/project/${project.id}/applications`}
+                          onClick={() => setOpenMenuId(null)}
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "8px",
+                            padding: "8px 10px",
+                            borderRadius: "6px",
+                            fontSize: "12px",
+                            fontWeight: 500,
+                            color: "#1e293b",
+                            textDecoration: "none",
+                          }}
+                          className="dropdown-item-hover"
+                        >
+                          <Users size={14} style={{ color: "#64748b" }} />
+                          <span>Review applicants</span>
+                        </Link>
+
+                        <div style={{ height: "1px", background: "#f1f5f9", margin: "4px 0" }} />
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setOpenMenuId(null)
+                            handleDeleteProject(project.id, project.name)
+                          }}
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "8px",
+                            padding: "8px 10px",
+                            borderRadius: "6px",
+                            fontSize: "12px",
+                            fontWeight: 500,
+                            color: "#e11d48",
+                            background: "transparent",
+                            border: "none",
+                            width: "100%",
+                            textAlign: "left",
+                            cursor: "pointer",
+                          }}
+                          className="dropdown-item-danger-hover"
+                        >
+                          <Trash2 size={14} />
+                          <span>Archive project</span>
+                        </button>
+                      </div>
+                    )}
                   </div>
-                  <h3>{project.name}</h3>
-                  <p>{project.description}</p>
-                  <div className="leader-project-stats">
-                    <div>
-                      <Clock size={14} />
-                      <span>{project.hours ?? 10} hrs/week</span>
-                    </div>
-                    <div>
-                      <Users size={14} />
-                      <span>
-                        {project.team || 0} / {project.capacity || 5} members
-                      </span>
-                    </div>
-                    <div>
-                      <Code2 size={14} />
-                      <span>{project.openings || 0} openings</span>
-                    </div>
-                  </div>
-                  {project.skills && project.skills.length > 0 && (
-                    <div className="leader-project-skills">
-                      {project.skills.slice(0, 3).map((s: string) => (
-                        <span key={s} className="skill-chip">
-                          {s}
-                        </span>
-                      ))}
-                      {project.skills.length > 3 && (
-                        <span className="skill-chip more">
-                          +{project.skills.length - 3}
-                        </span>
-                      )}
-                    </div>
-                  )}
-                  <div className="card-actions">
-                    <Link
-                      className="btn btn-primary"
-                      to={`/projects/${project.id}/applications`}
-                    >
-                      Applications
-                      {pending > 0 && (
-                        <span className="counter-badge">{pending}</span>
-                      )}
-                    </Link>
-                    <Link
-                      className="btn btn-secondary"
-                      to={`/team/${project.id}`}
-                    >
-                      Team workspace
-                    </Link>
-                  </div>
-                </article>
-              )
-            })}
+                </div>
+                <div className="leader-project-stats">
+                  <span>
+                    <Users size={16} />
+                    <strong>
+                      {project.team} / {project.capacity}
+                    </strong>{" "}
+                    members
+                  </span>
+                  <span>
+                    <Code2 size={16} />
+                    <strong>{project.openings ?? 0}</strong> open
+                    positions
+                  </span>
+                  <Link
+                    to={`/project/${project.id}/applications`}
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: "5px",
+                      color: "inherit",
+                      textDecoration: "none",
+                    }}
+                  >
+                    <Clock size={16} />
+                    <strong>{pendingFor(project.id)}</strong> pending applications
+                  </Link>
+                </div>
+                <div className="leader-project-actions">
+                  <Link to={`/project/${project.id}/applications`} className="btn btn-primary">
+                    Applications <ArrowRight size={15} />
+                  </Link>
+                  <Link to={`/project/${project.id}`} className="btn btn-secondary">
+                    View project
+                  </Link>
+                  <Link
+                    to={`/team/${project.id}`}
+                    className="text-link"
+                  >
+                    Open workspace <ArrowUpRight size={14} />
+                  </Link>
+                </div>
+              </section>
+            ))}
           </div>
+
           {totalPages > 1 && (
-            <div className="pagination-container">
-              <span className="pagination-text">
-                Showing {startIndex + 1}–{startIndex + pageItemsCount} of{" "}
-                {managed.length} projects
-              </span>
-              <div className="pagination-buttons">
+            <div className="leader-pagination">
+              <div className="leader-pagination-info">
+                Showing{" "}
+                <strong>
+                  {startIndex + 1}–
+                  {Math.min(startIndex + PROJECTS_PER_PAGE, managed.length)}
+                </strong>{" "}
+                of <strong>{managed.length}</strong> projects (Page{" "}
+                {currentPage} of {totalPages})
+              </div>
+              <div className="leader-pagination-controls">
                 <button
                   className="btn btn-secondary pagination-btn"
                   onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
@@ -532,6 +611,20 @@ export function LeaderDashboard() {
                   <ChevronLeft size={15} />
                   <span>Previous</span>
                 </button>
+                <div className="pagination-pages">
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map(
+                    (pageNum) => (
+                      <button
+                        key={pageNum}
+                        className={`pagination-page-number ${pageNum === currentPage ? "active" : ""}`}
+                        onClick={() => setCurrentPage(pageNum)}
+                        aria-label={`Go to page ${pageNum}`}
+                      >
+                        {pageNum}
+                      </button>
+                    ),
+                  )}
+                </div>
                 <button
                   className="btn btn-secondary pagination-btn"
                   onClick={() =>
