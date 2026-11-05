@@ -49,7 +49,7 @@ export default function LiveDiscoveryView({
   const [reviewedApplications, setReviewedApplications] = useState<Set<string>>(new Set())
   const scopeKey = `${authUser?.user_id}:${category}:${role}:${skill}`
   const actionScope = useRef(scopeKey); actionScope.current = scopeKey
-  const catalog = useRemoteResource(authUser?.user_id ?? null, loadCatalog)
+  const catalog = useRemoteResource("discovery-catalog", loadCatalog)
   const feed = useDiscoveryFeed({ category: category || undefined, role_id: role || undefined, skill_id: skill || undefined })
   const rawProjects = useMemo(() => feed.items.map(mapDiscoveryCard), [feed.items])
   const projects = useMemo(() => {
@@ -111,7 +111,7 @@ export default function LiveDiscoveryView({
     {!hideHeader && (
       <header className="live-discovery__header">
         <div><span className="live-discovery__pill">INTERACTIVE MATCHING STACK</span><h1>Discover Projects That Fit You</h1><p>Discover your next team. Skip, save, or explore a position before you apply.</p></div>
-        <div className="live-discovery__header-actions"><DiscoverySegmentedControl value="student" options={[{ value: "student", label: "Find Projects" }, { value: "leader", label: "Find Teammates" }]} ariaLabel="Discovery Mode Switcher" onChange={value => { if (value === "leader") navigate("/discover?mode=teammates") }} /><button className="live-discovery__refresh" onClick={refresh}><RefreshCw size={14} />Refresh</button></div>
+        <div className="live-discovery__header-actions"><DiscoverySegmentedControl value="projects" options={[{ value: "projects", label: "Find Projects" }, { value: "teammates", label: "Find Teammates" }]} ariaLabel="Discovery Mode Switcher" onChange={value => { if (value === "teammates") navigate("/discover?mode=teammates") }} /><button className="live-discovery__refresh" onClick={refresh}><RefreshCw size={14} />Refresh</button></div>
       </header>
     )}
     <div className="live-discovery__mobile-tools"><button aria-expanded={filtersOpen} aria-controls="live-discovery-filters" onClick={() => setFiltersOpen(v => !v)}><SlidersHorizontal size={15} />Filters{([category, role, skill].filter(Boolean).length + (minScore > 0 ? 1 : 0)) > 0 && <span>{[category, role, skill].filter(Boolean).length + (minScore > 0 ? 1 : 0)}</span>}<ChevronDown size={14} /></button><button disabled={!active?.ruleMatch} onClick={() => setExplanation(active?.ruleMatch ?? null)}>Match insights</button></div>

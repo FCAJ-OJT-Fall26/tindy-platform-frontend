@@ -12,6 +12,7 @@ import SendInvitationModal from "../../components/candidates/SendInvitationModal
 import RuleMatchPanel from "../../components/discovery/RuleMatchPanel"
 import SwipeCardStack from "../../components/discovery/SwipeCardStack"
 import DiscoverySegmentedControl from "../../components/discovery/DiscoverySegmentedControl"
+import MinMatchScoreSlider from "../../components/discovery/MinMatchScoreSlider"
 import { Modal } from "../../components/ui"
 import {
   getProfessionalRolesApi,
@@ -60,7 +61,7 @@ export default function LiveTeammatesDiscoveryView({
     }),
     [role, skill, hours],
   )
-  const catalog = useRemoteResource(context.key, loadCatalog)
+  const catalog = useRemoteResource("teammates-catalog", loadCatalog)
   const feed = useTeammateDiscovery(project, position, query, !context.blocker)
   const action = useCandidateAction(feed.key, project, position)
   const [active, setActive] = useState<LiveTeammateCard | null>(null)
@@ -74,7 +75,8 @@ export default function LiveTeammatesDiscoveryView({
   }[]>([])
   const [revision, setRevision] = useState(0)
   const [filtersOpen, setFiltersOpen] = useState(false)
-  const cards = useMemo<LiveTeammateCard[]>(
+  const [minScore, setMinScore] = useState(0)
+  const rawCards = useMemo<LiveTeammateCard[]>(
     () =>
       feed.items.map((card) => ({
         ...card,
@@ -84,6 +86,10 @@ export default function LiveTeammatesDiscoveryView({
       })),
     [feed.items],
   )
+  const cards = useMemo(() => {
+    if (minScore <= 0) return rawCards
+    return rawCards.filter((c) => (c.matching?.match_score ?? 0) >= minScore)
+  }, [rawCards, minScore])
   const scope = useRef(feed.key)
   scope.current = feed.key
   useEffect(() => {
@@ -222,8 +228,8 @@ export default function LiveTeammatesDiscoveryView({
         >
           <SlidersHorizontal size={15} />
           Filters
-          {[role, skill, hours].filter(Boolean).length > 0 && (
-            <span>{[role, skill, hours].filter(Boolean).length}</span>
+          {([role, skill, hours].filter(Boolean).length + (minScore > 0 ? 1 : 0)) > 0 && (
+            <span>{[role, skill, hours].filter(Boolean).length + (minScore > 0 ? 1 : 0)}</span>
           )}
           <ChevronDown size={14} />
         </button>
@@ -306,6 +312,13 @@ export default function LiveTeammatesDiscoveryView({
               </select>
             </label>
 
+            <div
+              className="field-group"
+              style={{ textTransform: "none", marginBottom: 22 }}
+            >
+              <MinMatchScoreSlider value={minScore} onChange={setMinScore} />
+            </div>
+
             {Boolean(catalog.error) && (
               <div role="alert" style={{ marginBottom: 16 }}>
                 Filter catalog unavailable.{" "}
@@ -323,6 +336,7 @@ export default function LiveTeammatesDiscoveryView({
                 next.delete("skill_id")
                 next.delete("hours")
                 setParams(next)
+                setMinScore(0)
               }}
             >
               <RefreshCw size={14} />Reset filters

@@ -87,6 +87,7 @@ export default function DiscoverySegmentedControl<T extends string>({
           transform: `translateX(${indicatorStyle.left}px) translateY(${indicatorStyle.top}px)`,
           width: `${indicatorStyle.width}px`,
           height: `${indicatorStyle.height}px`,
+          opacity: indicatorStyle.width > 0 ? 1 : 0,
         }}
         aria-hidden="true"
       />
