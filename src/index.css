@@ -15596,3 +15596,10 @@ button.text-link {
   background: #fff1f2 !important;
   color: #be123c !important;
 }
+/* Day/unread separators span the stream while bubbles keep their readable width. */
+.chat-room .chat-message-row { width: 100%; max-width: 100%; flex-direction: column; align-items: flex-start; }
+.chat-room .chat-message-row.outgoing { align-items: flex-end; }
+.chat-room .chat-message-stack { max-width: 74%; }
+.chat-room .chat-message-row > .chat-day-divider,
+.chat-room .chat-message-row > .chat-unread-divider { width: 100%; align-self: stretch; }
+.chat-send-button:disabled { opacity: .5; cursor: default; }

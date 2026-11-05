@@ -1,22 +1,23 @@
-import { HubConnectionBuilder, LogLevel, type HubConnection } from "@microsoft/signalr"
-import { CheckCheck, MessageCircle, MoreHorizontal, Paperclip, Search, Send, Smile, X } from "lucide-react"
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { MessageCircle, Search, Send, X } from "lucide-react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { useSearchParams } from "react-router"
 import { EmptyState, PageHeader } from "../../components/ui"
-import { apiOrigin } from "../../services/apiConfig"
-import { ApiError, getStoredToken } from "../../services/apiClient"
+import { ApiError } from "../../services/apiClient"
 import {
   createDirectConversation,
-  getChatConversations,
   getChatMessages,
-  mapChatMessage,
   markChatRead,
   searchChatUsers,
-  sendChatMessage,
-  type ChatConversation,
   type ChatMessage,
   type ChatUser,
+  type ChatMessagesPage,
 } from "../../services/chat.service"
+
+import {
+  mergeChatMessages as merge,
+  firstUnreadMessageId as findFirstUnread,
+} from "../../services/chat-state"
+import { useChat, CHAT_MESSAGE, CHAT_RESYNC } from "../../services/ChatContext"
 
 export type { ChatMessage } from "../../services/chat.service"
 
@@ -34,9 +35,10 @@ function initials(name: string) {
 
 function formatMessageTime(value: string) {
   try {
-    return new Intl.DateTimeFormat("vi-VN", { hour: "2-digit", minute: "2-digit" }).format(
-      new Date(value),
-    )
+    return new Intl.DateTimeFormat("vi-VN", {
+      hour: "2-digit",
+      minute: "2-digit",
+    }).format(new Date(value))
   } catch {
     return ""
   }
@@ -46,191 +48,329 @@ export function Messages() {
   const [params, setParams] = useSearchParams()
   const [query, setQuery] = useState("")
   const [users, setUsers] = useState<ChatUser[]>([])
-  const [conversations, setConversations] = useState<ChatConversation[]>([])
+  const {
+    conversations,
+    loading,
+    error: inboxError,
+    refresh,
+    status,
+    send,
+  } = useChat()
   const [messages, setMessages] = useState<ChatMessage[]>([])
-  const [draft, setDraft] = useState("")
-  const [loading, setLoading] = useState(true)
+  const [drafts, setDrafts] = useState<Record<string, string>>({})
   const [error, setError] = useState<string | null>(null)
-
-  const connectionRef = useRef<HubConnection | null>(null)
+  const [page, setPage] = useState<ChatMessagesPage | null>(null)
+  const [messagesLoading, setMessagesLoading] = useState(false)
+  const [olderLoading, setOlderLoading] = useState(false)
+  const [sending, setSending] = useState(false)
+  const [unreadId, setUnreadId] = useState<string | null>(null)
   const messagesContainerRef = useRef<HTMLDivElement | null>(null)
   const firstUnreadRef = useRef<HTMLDivElement | null>(null)
-
   const conversationId = params.get("conversation")
-  const activeConversationIdRef = useRef<string | null>(conversationId)
-  activeConversationIdRef.current = conversationId
-
+  const activeRef = useRef(conversationId)
+  activeRef.current = conversationId
+  const sendingRef = useRef(false)
+  const newestRef = useRef<string | null>(null)
+  const retryRef = useRef(new Map<string, string>())
+  const draft = conversationId ? (drafts[conversationId] ?? "") : ""
+  const setDraft = (value: string) => {
+    if (conversationId)
+      setDrafts((current) => ({ ...current, [conversationId]: value }))
+  }
   const selected = useMemo(
-    () => conversations.find((item) => item.conversationId === conversationId) ?? null,
+    () =>
+      conversations.find((c) => c.conversationId === conversationId) ?? null,
     [conversations, conversationId],
   )
-
-  const refresh = useCallback(async () => {
-    try {
-      const data = await getChatConversations()
-      setConversations(data)
-      if (!activeConversationIdRef.current && data[0]) {
-        setParams({ conversation: data[0].conversationId }, { replace: true })
-      }
-    } catch (err) {
-      console.warn("Could not load conversations:", err)
-      setError("Could not load your conversations.")
-    } finally {
-      setLoading(false)
-    }
-  }, [setParams])
-
-  // Initial load of conversations
+  const selectedRef = useRef(selected)
+  selectedRef.current = selected
+  const scrollRef = useRef<"initial" | "bottom" | null>(null)
+  const loadedRef = useRef<string | null>(null)
   useEffect(() => {
-    void refresh()
-  }, [refresh])
-
-  // Search users debounced
+    newestRef.current = messages.at(-1)?.messageId ?? null
+  }, [messages])
   useEffect(() => {
+    if (!conversationId && conversations[0])
+      setParams({ conversation: conversations[0].conversationId }, {
+        replace: true,
+      })
+  }, [conversations, conversationId, setParams])
+  useEffect(() => {
+    let cancelled = false
     if (query.trim().length < 2) {
       setUsers([])
       return
     }
-    const timer = window.setTimeout(
+    const timer = setTimeout(
       () =>
         void searchChatUsers(query)
-          .then(setUsers)
-          .catch(() => setUsers([])),
+          .then((rows) => {
+            if (!cancelled) setUsers(rows)
+          })
+          .catch(() => {
+            if (!cancelled) setUsers([])
+          }),
       250,
     )
-    return () => window.clearTimeout(timer)
-  }, [query])
-
-  // Load messages when conversationId changes
-  useEffect(() => {
-    if (!conversationId) {
-      setMessages([])
-      return
-    }
-    firstUnreadRef.current = null
-    void getChatMessages(conversationId)
-      .then((page) => {
-        setMessages(page.items)
-      })
-      .catch((err) => {
-        console.warn("Could not load messages:", err)
-        setError("Could not load messages.")
-      })
-  }, [conversationId])
-
-  // Auto-scroll on new messages
-  useEffect(() => {
-    const container = messagesContainerRef.current
-    if (!container) return
-    const frame = window.requestAnimationFrame(() => {
-      container.scrollTo({ top: container.scrollHeight, behavior: "smooth" })
-    })
-    return () => window.cancelAnimationFrame(frame)
-  }, [messages.length, conversationId])
-
-  // SignalR Hub Connection - Lifecycle tied to authentication, NOT conversationId
-  useEffect(() => {
-    const token = getStoredToken()
-    if (!token) return
-
-    let isCancelled = false
-    const hub = new HubConnectionBuilder()
-      .withUrl(`${apiOrigin()}/hubs/chat`, {
-        accessTokenFactory: () => getStoredToken() ?? "",
-      })
-      .withAutomaticReconnect()
-      .configureLogging(LogLevel.Warning)
-      .build()
-
-    connectionRef.current = hub
-
-    hub.on("message.created", (rawMessage: ChatMessage) => {
-      const normalized = mapChatMessage(rawMessage)
-      if (normalized.conversationId === activeConversationIdRef.current) {
-        setMessages((current) =>
-          current.some((item) => item.messageId === normalized.messageId)
-            ? current
-            : [...current, normalized],
-        )
-      }
-      void refresh()
-    })
-
-    hub
-      .start()
-      .then(() => {
-        if (isCancelled) {
-          void hub.stop()
-          return
-        }
-        if (activeConversationIdRef.current) {
-          void hub.invoke("JoinConversation", activeConversationIdRef.current).catch(() => undefined)
-        }
-      })
-      .catch((err) => {
-        if (!isCancelled) {
-          console.warn("SignalR connection error (falling back to REST):", err)
-        }
-      })
-
     return () => {
-      isCancelled = true
-      connectionRef.current = null
-      void hub.stop()
+      cancelled = true
+      clearTimeout(timer)
     }
-  }, [refresh])
-
-  // Join conversation when conversationId changes on existing SignalR connection
+  }, [query])
   useEffect(() => {
-    if (!conversationId || !connectionRef.current) return
-    if (connectionRef.current.state === "Connected") {
-      void connectionRef.current.invoke("JoinConversation", conversationId).catch(() => undefined)
+    const controller = new AbortController()
+    loadedRef.current = null
+    newestRef.current = null
+    setMessages([])
+    setPage(null)
+    setUnreadId(null)
+    setError(null)
+    if (!conversationId || !selectedRef.current) return
+    setMessagesLoading(true)
+    const firstUnreadAt = selectedRef.current?.firstUnreadAt
+    const firstUnreadMessageId = selectedRef.current?.firstUnreadMessageId
+    void (async () => {
+      let result = await getChatMessages(
+        conversationId,
+        null,
+        null,
+        controller.signal,
+      )
+      let rows = result.items
+      while (
+        result.hasMore &&
+        (firstUnreadMessageId
+          ? !rows.some((m) => m.messageId === firstUnreadMessageId)
+          : firstUnreadAt &&
+            rows[0] &&
+            new Date(rows[0].createdAt) >= new Date(firstUnreadAt))
+      ) {
+        result = await getChatMessages(
+          conversationId,
+          result.nextBefore,
+          result.nextBeforeMessageId,
+          controller.signal,
+        )
+        rows = merge(result.items, rows)
+      }
+      if (controller.signal.aborted) return
+      const other = selectedRef.current?.otherParticipant.userId
+      setUnreadId(
+        firstUnreadMessageId ?? findFirstUnread(rows, other, firstUnreadAt),
+      )
+      loadedRef.current = conversationId
+      scrollRef.current = "initial"
+      setPage(result)
+      setMessages((current) => merge(rows, current))
+    })()
+      .catch(() => {
+        if (!controller.signal.aborted)
+          setError(
+            "Could not load messages. Reopen this conversation to retry.",
+          )
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setMessagesLoading(false)
+      })
+    return () => controller.abort()
+  }, [conversationId, selected?.conversationId])
+  useEffect(() => {
+    const controller = new AbortController()
+    let syncing = false
+    const receive = (event: Event) => {
+      const message = (event as CustomEvent<ChatMessage>).detail
+      if (message.conversationId !== conversationId) return
+      const c = messagesContainerRef.current
+      if (c && c.scrollHeight - c.scrollTop - c.clientHeight < 80)
+        scrollRef.current = "bottom"
+      setMessages((current) => merge(current, [message]))
+    }
+    const resync = async () => {
+      if (!conversationId || loadedRef.current !== conversationId || syncing)
+        return
+      syncing = true
+      const newest = newestRef.current
+      try {
+        let result = await getChatMessages(
+          conversationId,
+          null,
+          null,
+          controller.signal,
+        )
+        let rows = result.items
+        while (
+          result.hasMore &&
+          newest &&
+          !rows.some((m) => m.messageId === newest)
+        ) {
+          result = await getChatMessages(
+            conversationId,
+            result.nextBefore,
+            result.nextBeforeMessageId,
+            controller.signal,
+          )
+          rows = merge(result.items, rows)
+        }
+        if (!controller.signal.aborted) {
+          const c = messagesContainerRef.current
+          if (c && c.scrollHeight - c.scrollTop - c.clientHeight < 80)
+            scrollRef.current = "bottom"
+          setMessages((current) => merge(current, rows))
+        }
+      } catch {
+        /* Next foreground/poll/reconnect retries. */
+      } finally {
+        syncing = false
+      }
+    }
+    window.addEventListener(CHAT_MESSAGE, receive)
+    window.addEventListener(CHAT_RESYNC, resync)
+    return () => {
+      controller.abort()
+      window.removeEventListener(CHAT_MESSAGE, receive)
+      window.removeEventListener(CHAT_RESYNC, resync)
     }
   }, [conversationId])
-
+  useEffect(() => {
+    const c = messagesContainerRef.current
+    if (!c || !scrollRef.current || messagesLoading) return
+    if (scrollRef.current === "initial" && firstUnreadRef.current)
+      firstUnreadRef.current.scrollIntoView({ block: "center" })
+    else c.scrollTop = c.scrollHeight
+    scrollRef.current = null
+  }, [messages, messagesLoading])
+  useEffect(() => {
+    const c = messagesContainerRef.current
+    if (!c || !conversationId || messagesLoading) return
+    let timer: ReturnType<typeof setTimeout>
+    let busy = false
+    let lastSent: string | null = null
+    const readVisible = async () => {
+      if (
+        busy ||
+        document.visibilityState !== "visible" ||
+        !document.hasFocus()
+      )
+        return
+      const bounds = c.getBoundingClientRect()
+      const visible = Array.from(
+        c.querySelectorAll<HTMLElement>("[data-message-id]"),
+      ).filter((el) => {
+        const r = el.getBoundingClientRect()
+        return r.bottom > bounds.top && r.bottom <= bounds.bottom
+      })
+      const id = visible.at(-1)?.dataset.messageId
+      if (!id || id === lastSent) return
+      busy = true
+      try {
+        await markChatRead(conversationId, id)
+        lastSent = id
+        await refresh()
+      } catch {
+        /* Retry on next scroll/focus. */
+      } finally {
+        busy = false
+      }
+    }
+    const schedule = () => {
+      clearTimeout(timer)
+      timer = setTimeout(() => void readVisible(), 400)
+    }
+    c.addEventListener("scroll", schedule)
+    document.addEventListener("visibilitychange", schedule)
+    window.addEventListener("focus", schedule)
+    schedule()
+    return () => {
+      clearTimeout(timer)
+      c.removeEventListener("scroll", schedule)
+      document.removeEventListener("visibilitychange", schedule)
+      window.removeEventListener("focus", schedule)
+    }
+  }, [conversationId, messages, messagesLoading, refresh])
   async function selectUser(user: ChatUser) {
     try {
-      const conversation = await createDirectConversation(user.userId)
+      const c = await createDirectConversation(user.userId)
       setQuery("")
       setUsers([])
       await refresh()
-      setParams({ conversation: conversation.conversationId })
+      setParams({ conversation: c.conversationId })
     } catch (reason) {
-      setError(reason instanceof ApiError ? reason.message : "Could not start the conversation.")
+      setError(
+        reason instanceof ApiError
+          ? reason.message
+          : "Could not start conversation.",
+      )
     }
   }
-
   async function submitMessage() {
-    const body = draft.trim()
-    if (!body || !conversationId) return
-    const clientMessageId = crypto.randomUUID()
-    setDraft("")
+    const body = draft.trim(),
+      id = conversationId
+    if (!body || !id || sendingRef.current || messagesLoading) return
+    const attempt = JSON.stringify([id, body])
+    const key = retryRef.current.get(attempt) ?? crypto.randomUUID()
+    retryRef.current.set(attempt, key)
+    sendingRef.current = true
+    setSending(true)
+    setError(null)
     try {
-      if (connectionRef.current?.state === "Connected") {
-        await connectionRef.current.invoke("SendMessage", conversationId, body, clientMessageId)
-      } else {
-        const message = await sendChatMessage(conversationId, body, clientMessageId)
-        setMessages((current) => [...current, message])
-        await refresh()
+      const message = await send(id, body, key)
+      if (activeRef.current === id) {
+        scrollRef.current = "bottom"
+        setMessages((current) => merge(current, [message]))
       }
+      setDrafts((current) =>
+        current[id]?.trim() === body ? { ...current, [id]: "" } : current,
+      )
+      retryRef.current.delete(attempt)
     } catch {
-      setDraft(body)
-      setError("Could not send the message.")
+      setError("Could not confirm delivery. Send again to retry safely.")
+    } finally {
+      sendingRef.current = false
+      setSending(false)
     }
   }
-
-  async function jumpToFirstUnread() {
-    const container = messagesContainerRef.current
-    const target = firstUnreadRef.current
-    if (container && target) {
-      const targetTop =
-        target.getBoundingClientRect().top - container.getBoundingClientRect().top + container.scrollTop
-      container.scrollTo({ top: Math.max(0, targetTop - container.clientHeight / 3), behavior: "smooth" })
+  async function loadOlder() {
+    if (!conversationId || !page?.hasMore || olderLoading) return
+    const id = conversationId,
+      c = messagesContainerRef.current
+    const height = c?.scrollHeight ?? 0,
+      top = c?.scrollTop ?? 0
+    setOlderLoading(true)
+    try {
+      const result = await getChatMessages(
+        id,
+        page.nextBefore,
+        page.nextBeforeMessageId,
+      )
+      if (activeRef.current !== id) return
+      setPage(result)
+      setMessages((current) => merge(result.items, current))
+      requestAnimationFrame(() => {
+        if (c && activeRef.current === id)
+          c.scrollTop = top + c.scrollHeight - height
+      })
+    } catch {
+      if (activeRef.current === id) setError("Could not load older messages.")
+    } finally {
+      setOlderLoading(false)
     }
-    if (conversationId) {
-      await markChatRead(conversationId).catch(() => undefined)
-      await refresh().catch(() => undefined)
-    }
+  }
+  function jumpToFirstUnread() {
+    firstUnreadRef.current?.scrollIntoView({
+      block: "center",
+      behavior: "smooth",
+    })
+  }
+  function dayLabel(value: string) {
+    const date = new Date(value),
+      today = new Date(),
+      yesterday = new Date()
+    yesterday.setDate(today.getDate() - 1)
+    return date.toDateString() === today.toDateString()
+      ? "Today"
+      : date.toDateString() === yesterday.toDateString()
+        ? "Yesterday"
+        : date.toLocaleDateString("vi-VN")
   }
 
   return (
@@ -266,10 +406,14 @@ export function Messages() {
                   key={user.userId}
                   onClick={() => void selectUser(user)}
                 >
-                  <span className="chat-avatar chat-avatar-search">{initials(user.displayName)}</span>
+                  <span className="chat-avatar chat-avatar-search">
+                    {initials(user.displayName)}
+                  </span>
                   <span>
                     <strong>{user.displayName}</strong>
-                    <small>{user.username ? `@${user.username}` : "Tindy account"}</small>
+                    <small>
+                      {user.username ? `@${user.username}` : "Tindy account"}
+                    </small>
                   </span>
                   <MessageCircle size={16} />
                 </button>
@@ -283,18 +427,28 @@ export function Messages() {
             ) : (
               conversations.map((item) => (
                 <button
-                  className={`chat-contact ${item.conversationId === conversationId ? "active" : ""}`}
+                  className={`chat-contact ${
+                    item.conversationId === conversationId ? "active" : ""
+                  }`}
                   key={item.conversationId}
-                  onClick={() => setParams({ conversation: item.conversationId })}
+                  onClick={() =>
+                    setParams({ conversation: item.conversationId })
+                  }
                 >
-                  <span className="chat-avatar">{initials(item.otherParticipant.displayName)}</span>
+                  <span className="chat-avatar">
+                    {initials(item.otherParticipant.displayName)}
+                  </span>
                   <span className="chat-contact-copy">
                     <strong>{item.otherParticipant.displayName}</strong>
                     <small>
-                      {item.lastMessageAt ? "Active conversation" : "Start a conversation"}
+                      {item.lastMessageAt
+                        ? "Active conversation"
+                        : "Start a conversation"}
                     </small>
                   </span>
-                  {item.unreadCount > 0 && <span className="chat-unread">{item.unreadCount}</span>}
+                  {item.unreadCount > 0 && (
+                    <span className="chat-unread">{item.unreadCount}</span>
+                  )}
                 </button>
               ))
             )}
@@ -315,20 +469,24 @@ export function Messages() {
                 </div>
                 <div className="chat-room-identity">
                   <h3>{selected.otherParticipant.displayName}</h3>
-                  <p>
-                    <span className="chat-online-dot" />
-                    Active on Tindy
-                  </p>
+                  <p>Private conversation · {status}</p>
                 </div>
-                <button className="chat-icon-button" type="button" aria-label="More options">
-                  <MoreHorizontal size={20} />
-                </button>
               </header>
-              <div ref={messagesContainerRef} className="chat-messages chat-message-stream">
-                <div className="chat-day-divider">
-                  <span>Today</span>
-                </div>
-                {selected.unreadCount > 0 && (
+              <div
+                ref={messagesContainerRef}
+                className="chat-messages chat-message-stream"
+              >
+                {messagesLoading && <p role="status">Loading messages…</p>}
+                {page?.hasMore && (
+                  <button
+                    type="button"
+                    disabled={olderLoading}
+                    onClick={() => void loadOlder()}
+                  >
+                    {olderLoading ? "Loading…" : "Load older messages"}
+                  </button>
+                )}
+                {unreadId && selected.unreadCount > 0 && (
                   <button
                     className="chat-unread-jump"
                     type="button"
@@ -337,20 +495,28 @@ export function Messages() {
                     Jump to first unread <span>{selected.unreadCount}</span>
                   </button>
                 )}
-                {messages.map((message) => {
-                  const outgoing = message.senderId !== selected.otherParticipant.userId
-                  const isFirstUnread =
-                    !outgoing &&
-                    selected.firstUnreadAt &&
-                    new Date(message.createdAt) >= new Date(selected.firstUnreadAt)
+                {messages.map((message, index) => {
+                  const outgoing =
+                    message.senderId !== selected.otherParticipant.userId
+                  const isFirstUnread = message.messageId === unreadId
                   return (
                     <div
-                      className={`chat-message-row ${outgoing ? "outgoing" : "incoming"} ${
-                        isFirstUnread ? "first-unread" : ""
-                      }`}
+                      className={`chat-message-row ${
+                        outgoing ? "outgoing" : "incoming"
+                      } ${isFirstUnread ? "first-unread" : ""}`}
                       key={message.messageId}
-                      ref={isFirstUnread && !firstUnreadRef.current ? firstUnreadRef : undefined}
+                      data-message-id={message.messageId}
+                      ref={isFirstUnread ? firstUnreadRef : undefined}
                     >
+                      {(index === 0 ||
+                        new Date(
+                          messages[index - 1].createdAt,
+                        ).toDateString() !==
+                          new Date(message.createdAt).toDateString()) && (
+                        <div className="chat-day-divider">
+                          <span>{dayLabel(message.createdAt)}</span>
+                        </div>
+                      )}
                       {isFirstUnread && (
                         <div className="chat-unread-divider">
                           <span>New messages</span>
@@ -360,7 +526,6 @@ export function Messages() {
                         <div className="chat-bubble">{message.body}</div>
                         <div className="chat-message-meta">
                           <span>{formatMessageTime(message.createdAt)}</span>
-                          {outgoing && <CheckCheck size={14} />}
                         </div>
                       </div>
                     </div>
@@ -374,9 +539,6 @@ export function Messages() {
                   void submitMessage()
                 }}
               >
-                <button className="chat-composer-icon" type="button" aria-label="Attach file">
-                  <Paperclip size={19} />
-                </button>
                 <input
                   aria-label="Message"
                   placeholder="Write a message…"
@@ -384,10 +546,12 @@ export function Messages() {
                   value={draft}
                   onChange={(event) => setDraft(event.target.value)}
                 />
-                <button className="chat-composer-icon" type="button" aria-label="Emoji">
-                  <Smile size={19} />
-                </button>
-                <button className="chat-send-button" type="submit" aria-label="Send">
+                <button
+                  className="chat-send-button"
+                  disabled={sending || messagesLoading || !draft.trim()}
+                  type="submit"
+                  aria-label="Send"
+                >
                   <Send size={17} />
                 </button>
               </form>
@@ -398,13 +562,19 @@ export function Messages() {
                 <MessageCircle size={28} />
               </div>
               <h3>Start a conversation</h3>
-              <p>Search for an account on the left to send a private message.</p>
+              <p>
+                Search for an account on the left to send a private message.
+              </p>
             </div>
           )}
-          {error && (
+          {(error || inboxError) && (
             <div className="chat-error" role="alert">
-              <span>{error}</span>
-              <button type="button" aria-label="Dismiss error" onClick={() => setError(null)}>
+              <span>{error ?? "Could not refresh conversations."}</span>
+              <button
+                type="button"
+                aria-label="Dismiss error"
+                onClick={() => setError(null)}
+              >
                 <X size={16} />
               </button>
             </div>

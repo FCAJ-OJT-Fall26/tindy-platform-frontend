@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "vite build",
     "typecheck": "tsc --noEmit",
-    "test": "npm run test:teammates && npm run test:teammates:errors && npm run test:teammates:regression && npm run test:notifications && npm run test:candidates:polish && npm run test:profile",
+    "test": "npm run test:teammates && npm run test:teammates:errors && npm run test:teammates:regression && npm run test:notifications && npm run test:candidates:polish && npm run test:profile && npm run test:chat",
     "test:projects": "node tests/projects.browser.mjs",
     "test:profile": "node tests/profile.browser.mjs",
     "test:profile-media": "node tests/profile-media.browser.mjs",
@@ -24,7 +24,8 @@
     "test:candidates:polish": "node tests/candidates-polish.browser.mjs",
     "test:release:integration": "node tests/release-integration.browser.mjs",
     "preview": "vite preview",
-    "format": "oxfmt"
+    "format": "oxfmt",
+    "test:chat": "node --experimental-strip-types --test tests/chat-state.test.mjs"
   },
   "dependencies": {
     "@microsoft/signalr": "^8.0.29",

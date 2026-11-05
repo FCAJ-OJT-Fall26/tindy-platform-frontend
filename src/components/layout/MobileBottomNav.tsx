@@ -1,22 +1,41 @@
 import { useState, useEffect, useRef, useCallback } from "react"
+
 import { NavLink, useLocation } from "react-router"
+
+import { useChat } from "../../services/ChatContext"
 import { navItems } from "./Sidebar"
 
 export default function MobileBottomNav() {
   const location = useLocation()
+  const { conversations } = useChat()
+  const unread = conversations.reduce((sum, c) => sum + c.unreadCount, 0)
+
   const mobileBottomRef = useRef<HTMLElement>(null)
-  const [mobileIndicator, setMobileIndicator] = useState({ left: 0, width: 0, visible: false })
+
+  const [mobileIndicator, setMobileIndicator] = useState({
+    left: 0,
+    width: 0,
+    visible: false,
+  })
+
   const [isReady, setIsReady] = useState(false)
 
   const updateIndicators = useCallback(() => {
     if (mobileBottomRef.current) {
-      const activeLink = mobileBottomRef.current.querySelector("a.active") as HTMLElement | null
+      const activeLink = mobileBottomRef.current.querySelector(
+        "a.active",
+      ) as HTMLElement | null
+
       if (activeLink) {
         const containerRect = mobileBottomRef.current.getBoundingClientRect()
+
         const linkRect = activeLink.getBoundingClientRect()
+
         setMobileIndicator({
           left: linkRect.left - containerRect.left,
+
           width: linkRect.width,
+
           visible: true,
         })
       } else {
@@ -28,22 +47,29 @@ export default function MobileBottomNav() {
   useEffect(() => {
     const id = requestAnimationFrame(() => {
       updateIndicators()
+
       if (!isReady) {
         requestAnimationFrame(() => setIsReady(true))
       }
     })
+
     return () => cancelAnimationFrame(id)
   }, [location.pathname, updateIndicators, isReady])
 
   useEffect(() => {
     let resizeTimer: number
+
     const handleResize = () => {
       cancelAnimationFrame(resizeTimer)
+
       resizeTimer = requestAnimationFrame(updateIndicators)
     }
+
     window.addEventListener("resize", handleResize, { passive: true })
+
     return () => {
       window.removeEventListener("resize", handleResize)
+
       cancelAnimationFrame(resizeTimer)
     }
   }, [updateIndicators])
@@ -51,11 +77,15 @@ export default function MobileBottomNav() {
   const mobileNavItems = navItems.filter((item) =>
     [
       "Dashboard",
+
       "Discover Projects",
+
       "My Projects",
+
       "Messages",
+
       "Profile",
-    ].includes(item.label)
+    ].includes(item.label),
   )
 
   return (
@@ -64,7 +94,9 @@ export default function MobileBottomNav() {
         className={`mobile-bottom-indicator ${isReady ? "ready" : ""}`}
         style={{
           transform: `translateX(${mobileIndicator.left}px)`,
+
           width: `${mobileIndicator.width}px`,
+
           opacity: mobileIndicator.visible ? 1 : 0,
         }}
         aria-hidden="true"
@@ -77,6 +109,14 @@ export default function MobileBottomNav() {
           onClick={() => requestAnimationFrame(updateIndicators)}
         >
           <item.icon size={19} />
+          {item.label === "Messages" && unread > 0 && (
+            <span
+              className="nav-count"
+              aria-label={`${unread} unread messages`}
+            >
+              {unread}
+            </span>
+          )}
           <span>
             {item.label === "Discover Projects"
               ? "Discover"

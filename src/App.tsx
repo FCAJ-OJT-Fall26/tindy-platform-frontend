@@ -1,5 +1,6 @@
 import { createBrowserRouter, RouterProvider, Navigate } from "react-router"
 import type { ReactNode } from "react"
+import { ChatProvider } from "./services/ChatContext"
 import LiveCandidatesScreen from "./pages/candidates/LiveCandidatesScreen"
 import LiveCandidateDetailScreen from "./pages/candidates/LiveCandidateDetailScreen"
 import { TindyProvider } from "./store"
@@ -29,7 +30,15 @@ import {
 } from "./pages"
 
 function DemoPreview({ children }: { children: ReactNode }) {
-  return <><div className="info-banner" role="note">Demo preview — sample data and interactions. This workflow is not connected to the backend yet.</div>{children}</>
+  return (
+    <>
+      <div className="info-banner" role="note">
+        Demo preview — sample data and interactions. This workflow is not
+        connected to the backend yet.
+      </div>
+      {children}
+    </>
+  )
 }
 
 const router = createBrowserRouter([
@@ -41,8 +50,14 @@ const router = createBrowserRouter([
         children: [
           { index: true, Component: Dashboard },
           { path: "discover", Component: SwipeDiscoveryView },
-          { path: "interests", element: <Navigate to="/projects?tab=Interested" replace /> },
-          { path: "saved", element: <Navigate to="/projects?tab=Saved" replace /> },
+          {
+            path: "interests",
+            element: <Navigate to="/projects?tab=Interested" replace />,
+          },
+          {
+            path: "saved",
+            element: <Navigate to="/projects?tab=Saved" replace />,
+          },
           { path: "projects", Component: MyProjects },
           { path: "candidates", Component: LiveCandidatesScreen },
           { path: "candidate/:id", Component: LiveCandidateDetailScreen },
@@ -54,11 +69,17 @@ const router = createBrowserRouter([
           { path: "leader", Component: LeaderDashboard },
           { path: "create-project", Component: CreateProject },
           { path: "project/:id/edit", Component: CreateProject },
-          { path: "project/:id/applications", Component: ProjectApplicationsScreen },
-          { path: "projects/:id/applications", Component: ProjectApplicationsScreen },
+          {
+            path: "project/:id/applications",
+            Component: ProjectApplicationsScreen,
+          },
+          {
+            path: "projects/:id/applications",
+            Component: ProjectApplicationsScreen,
+          },
           { path: "applications", Component: ProjectApplicationsScreen },
           { path: "leader/applications", Component: ProjectApplicationsScreen },
-          { path: "messages", element: <DemoPreview><Messages /></DemoPreview> },
+          { path: "messages", element: <Messages /> },
           { path: "notifications", Component: Notifications },
           { path: "team", Component: TeamScreen },
           { path: "team/:projectId", Component: TeamScreen },
@@ -66,7 +87,10 @@ const router = createBrowserRouter([
           { path: "components", Component: ComponentLibrary },
         ],
       },
-      { element: <RequireAuth />, children: [{ path: "settings", Component: SettingsScreen }] },
+      {
+        element: <RequireAuth />,
+        children: [{ path: "settings", Component: SettingsScreen }],
+      },
       { path: "privacypolicy", Component: PrivacyPolicy },
       { path: "termsofservice", Component: TermsOfService },
       { path: "*", Component: NotFound },
@@ -75,13 +99,18 @@ const router = createBrowserRouter([
   { path: "login", Component: Auth },
   { path: "register", Component: Auth },
   { path: "auth/oauth/callback", Component: OAuthCallbackScreen },
-  { element: <RequireAuth onboarding />, children: [{ path: "onboarding", Component: Onboarding }] },
+  {
+    element: <RequireAuth onboarding />,
+    children: [{ path: "onboarding", Component: Onboarding }],
+  },
 ])
 
 export default function App() {
   return (
     <TindyProvider>
-      <RouterProvider router={router} />
+      <ChatProvider>
+        <RouterProvider router={router} />
+      </ChatProvider>
     </TindyProvider>
   )
 }
