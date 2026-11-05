@@ -356,16 +356,15 @@ export function DashboardScreen() {
       </section>
       <div className="opportunity-banner">
         <div className="opportunity-banner__content">
-          <div className="opportunity-banner__eyebrow">
-            <span className="opportunity-banner__eyebrow-dot" />
-            <span>SMARTER CONNECTIONS</span>
-          </div>
+          <span className="opportunity-banner__eyebrow">
+            SMARTER CONNECTIONS
+          </span>
           <h2>Your next great project starts with the right fit.</h2>
           <p>Discover where your skills matter — and who you can build with.</p>
         </div>
         <Link to="/discover" className="opportunity-banner__action">
           <span>Find my next project</span>
-          <ArrowRight size={16} />
+          <ArrowRight size={15} />
         </Link>
       </div>
       <div className="dashboard-columns">
