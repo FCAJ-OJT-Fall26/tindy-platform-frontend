@@ -23,7 +23,15 @@ const loadCatalog = async (signal: AbortSignal) => {
   return { roles, skills }
 }
 
-export default function LiveDiscoveryView() {
+export interface LiveDiscoveryViewProps {
+  hideHeader?: boolean
+  refreshTrigger?: number
+}
+
+export default function LiveDiscoveryView({
+  hideHeader = false,
+  refreshTrigger,
+}: LiveDiscoveryViewProps = {}) {
   const { authUser, notify, saved, savedProjects, isProjectSaved, setProjectSaved } = useTindy()
   const navigate = useNavigate()
   const [category, setCategory] = useState("")
@@ -56,6 +64,11 @@ export default function LiveDiscoveryView() {
     if (!feed.loading && !feed.error && feed.hasMore && projects.length - index <= 4) feed.loadMore()
   }, [active, projects, feed.loading, feed.error, feed.hasMore, feed.loadMore])
   const refresh = () => { setActive(null); setReset(v => v + 1); feed.refresh() }
+  useEffect(() => {
+    if (refreshTrigger && refreshTrigger > 0) {
+      refresh()
+    }
+  }, [refreshTrigger])
   const swipe = async (item: DiscoveryProject | DiscoveryCandidate, direction: SwipeDirection) => {
     if (direction === "right") { setApplying(item as DiscoveryProject); return false }
     const owner = actionScope.current
