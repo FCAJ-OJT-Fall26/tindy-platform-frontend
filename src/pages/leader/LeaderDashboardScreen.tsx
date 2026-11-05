@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef } from "react"
-import { Link, useLocation, useSearchParams } from "react-router"
+import { useState, useEffect, useRef, useCallback } from "react"
+import { Link, useLocation } from "react-router"
 import {
   Clock,
   Settings,
@@ -15,24 +15,19 @@ import {
   ChevronLeft,
   ChevronRight,
 } from "lucide-react"
-import { useTindy, Project, initialCandidates } from "../../store"
-import { PageHeader, SectionHeading, Avatar, Badge } from "../../components/ui"
-import { MetricCard, CategoryBreakdown, CapsuleSlots, DonutProgressRing } from "../../components/common/MetricsDashboardCards"
+import { useTindy, Project } from "../../store"
+import { PageHeader, SectionHeading, Badge } from "../../components/ui"
+import { MetricCard, DonutProgressRing } from "../../components/common/MetricsDashboardCards"
 import { SaveSuccessModal } from "../../components/projects/SaveSuccessModal"
 import useMyProjects from "../../hooks/useMyProjects"
 import { projectErrorMessage } from "../../services/projectEditor.service"
 import { deleteProjectApi } from "../../services/projects.service"
+import useRemoteResource from "../../hooks/useRemoteResource"
+import useTeammateSession from "../../hooks/useTeammateSession"
+import { getProjectInvitations, INVITATIONS_CHANGED_EVENT } from "../../services/invitations.service"
 
 export function LeaderDashboard() {
-  const [params] = useSearchParams()
-  const demo = params.get("demo") === "1"
-  const {
-    setProjects,
-    candidateInvites,
-    candidateInterested,
-    dismissed,
-    notify,
-  } = useTindy()
+  const { setProjects, notify } = useTindy()
 
   const location = useLocation()
   const resource = useMyProjects()
@@ -76,6 +71,36 @@ export function LeaderDashboard() {
   const pendingCount = resource.data?.leading_projects.reduce((sum, p) => sum + p.pending_applications_count, 0) ?? 0
   const pendingFor = (id: string) => resource.data?.leading_projects.find(p => p.project_id === id)?.pending_applications_count ?? 0
 
+  const session = useTeammateSession()
+  const projectIds = [...leadingIds].sort().join(",")
+  const loadInvitationCount = useCallback(async (signal: AbortSignal) => {
+    const ids = projectIds ? projectIds.split(",") : []
+    let next = 0, total = 0
+    await Promise.all(Array.from({ length: Math.min(4, ids.length) }, async () => {
+      while (next < ids.length) {
+        const id = ids[next++]
+        const result = await getProjectInvitations(id, { status: "pending", page_size: 1 }, signal)
+        total += result.pagination.total_items
+      }
+    }))
+    return total
+  }, [projectIds])
+  const invitations = useRemoteResource(
+    session.key && resource.data ? `${session.key}:${projectIds}` : null,
+    loadInvitationCount,
+  )
+  useEffect(() => {
+    window.addEventListener(INVITATIONS_CHANGED_EVENT, invitations.reload)
+    window.addEventListener("focus", invitations.reload)
+    return () => {
+      window.removeEventListener(INVITATIONS_CHANGED_EVENT, invitations.reload)
+      window.removeEventListener("focus", invitations.reload)
+    }
+  }, [invitations.reload])
+  const seatsFilled = managed.reduce((total, project) => total + (project.team ?? 0), 0)
+  const totalSeats = managed.reduce((total, project) => total + (project.capacity ?? 0), 0)
+  const metricsReady = Boolean(resource.data) && !resource.error
+
   const totalPages = Math.max(1, Math.ceil(managed.length / PROJECTS_PER_PAGE))
 
   useEffect(() => {
@@ -116,7 +141,6 @@ export function LeaderDashboard() {
 
   return (
     <>
-      {demo && <div className="info-banner">Demo mode — sample candidate profiles and messages below.</div>}
       <PageHeader
         eyebrow="PROJECT LEADER WORKSPACE"
         title="Great teams start here."
@@ -132,74 +156,45 @@ export function LeaderDashboard() {
         <MetricCard
           index={0}
           label="Open positions"
-          value={
-            managed.reduce(
-              (total, project) => total + (project.openings ?? 0),
-              0,
-            ) || 2
-          }
+          value={metricsReady ? managed.reduce((total, project) => total + (project.openings ?? 0), 0) : "—"}
           subtitle="places for new teammates"
-          visual={
-            <CategoryBreakdown
-              items={[
-                {
-                  label: "Backend",
-                  count:
-                    managed.reduce(
-                      (total, project) => total + (project.openings ?? 0),
-                      0,
-                    ) || 2,
-                  pct: 100,
-                  color: "#2563eb",
-                },
-              ]}
-            />
-          }
-          footerLeft={`${managed.filter(p => p.status === 'recruiting' || !p.status).length || 1} project recruiting`}
+          visual={null}
+          footerLeft={`${managed.filter(p => p.status === "recruiting").length} projects recruiting`}
           actionLabel="Manage roles"
-          actionTo="/my-projects"
+          actionTo="/projects?tab=Leading"
         />
-
         <MetricCard
           index={1}
-          label="Interested candidates"
-          value={demo ? candidateInterested.length : (pendingCount > 0 ? pendingCount : 4)}
-          subtitle="people to get to know"
-          visual={
-            <CategoryBreakdown
-              items={[
-                { label: "Backend", count: 2, pct: 100, color: "#0d9488" },
-                { label: "AI", count: 1, pct: 50, color: "#0d9488" },
-              ]}
-            />
-          }
-          footerLeft="+1 more role"
-          actionLabel="Review people"
-          actionTo="/candidates"
+          label="Pending applications"
+          value={metricsReady ? pendingCount : "—"}
+          subtitle="awaiting your review"
+          visual={null}
+          footerLeft="Across your projects"
+          actionLabel="Review applications"
+          actionTo="/projects?tab=Leading"
         />
-
         <MetricCard
           index={2}
           label="Pending invitations"
-          value={demo ? candidateInvites.length : 0}
-          subtitle="no invitations sent yet"
-          visual={<CapsuleSlots variant="faint" />}
-          footerLeft="4 not yet invited"
-          actionLabel="Invite candidates"
-          actionTo="/candidates"
+          value={metricsReady && !invitations.loading && !invitations.error ? invitations.data ?? "—" : "—"}
+          subtitle="awaiting a response"
+          visual={null}
+          footerLeft="Across your projects"
+          actionLabel="Review invitations"
+          actionTo="/candidates?tab=Invited"
         />
-
         <MetricCard
           index={3}
-          label="Team members"
-          value={managed.reduce((total, project) => total + (project.team || 0), 0) || 3}
-          subtitle="of 5 team seats filled"
-          visual={<DonutProgressRing pct={60} strokeColor="#334155" />}
-          footerLeft={`${managed.length || 1} workspace`}
-          actionLabel="Open workspace"
-          actionTo="/team"
+          label="Filled team seats"
+          value={metricsReady ? seatsFilled : "—"}
+          subtitle={metricsReady ? `of ${totalSeats} team seats filled` : "Loading team seats"}
+          visual={metricsReady ? <DonutProgressRing pct={totalSeats ? seatsFilled / totalSeats * 100 : 0} strokeColor="#334155" /> : null}
+          footerLeft={`${managed.length} projects`}
+          actionLabel="Open projects"
+          actionTo="/projects?tab=Leading"
         />
       </section>
+      {Boolean(invitations.error) && <p role="alert">Could not load invitation totals. <button onClick={invitations.reload}>Retry invitations</button></p>}
       <SectionHeading
         title="Your projects"
         description="A clear picture of what’s moving forward."
@@ -431,6 +426,7 @@ export function LeaderDashboard() {
                   </Link>
                 </div>
                 <div className="leader-project-actions">
+                    <><Link to={`/discover?mode=teammates&project_id=${project.id}`} className="btn btn-secondary">Find Teammates</Link><Link to={`/candidates?project_id=${project.id}`} className="btn btn-secondary">Candidate Pipeline</Link></>
                   <Link to={`/project/${project.id}/applications`} className="btn btn-primary">
                     Applications <ArrowRight size={15} />
                   </Link>
@@ -499,61 +495,6 @@ export function LeaderDashboard() {
           )}
         </>
       )}
-      <section aria-label="Candidate and messaging demo preview">
-        <div className="info-banner" role="note">Demo preview — candidate shortlist, invitations and chat below use sample data. {candidateInvites.length} sample invitations · {candidateInterested.length} sample interested candidates.</div>
-        <div className="two-column">
-          <section className="panel">
-            <SectionHeading
-              title="Candidate shortlist"
-              action={
-                <Link className="text-link" to="/candidates">
-                  View pipeline <ArrowRight size={13} />
-                </Link>
-              }
-            />
-            {initialCandidates
-              .filter((candidate) => !dismissed.includes(candidate.name))
-              .slice(0, 3)
-              .map((candidate) => (
-                <Link
-                  className="recent-candidate"
-                  key={candidate.name}
-                  to={`/candidate/${encodeURIComponent(candidate.name)}`}
-                >
-                  <Avatar name={candidate.name} color={candidate.color} />
-                  <div>
-                    <strong>{candidate.name}</strong>
-                    <small>{candidate.role}</small>
-                  </div>
-                  <Badge tone="success">{candidate.match}% match</Badge>
-                </Link>
-              ))}
-          </section>
-          <section className="panel">
-            <SectionHeading title="Keep the conversation going" />
-            <div className="leader-message">
-              <Avatar name="Cao Thanh Nhan" color="teal" />
-              <div>
-                <h3>Cao Thanh Nhan</h3>
-                <p>“I’d love to learn more about the backend architecture.”</p>
-                <Link
-                  className="text-link"
-                  to="/messages?conversation=Cao%20Thanh%20Nhan"
-                >
-                  Reply in chat <ArrowRight size={14} />
-                </Link>
-              </div>
-            </div>
-            <div className="trust-note">
-              <Users size={18} />
-              <span>
-                The best team fit goes beyond a score. Start a conversation about
-                goals, availability, and how you like to work.
-              </span>
-            </div>
-          </section>
-        </div>
-      </section>
       <SaveSuccessModal
         open={showSaveSuccessModal}
         projectName={savedSuccessProjectName}

@@ -16,7 +16,7 @@ const press = async label => {
   await evaluate(`document.querySelector(${JSON.stringify(selector)}).click()`)
 }
 const live = () => waitFor("Boolean(document.querySelector('[data-live-discovery]')) && document.querySelector('[data-server-match-score]')?.textContent==='73%'")
-const teammates = () => waitFor("document.body.innerText.includes('Discover Candidates for Your Team') && !document.querySelector('[data-live-discovery]')")
+const teammates = () => waitFor("Boolean(document.querySelector('[data-live-teammates]')) && !document.querySelector('[data-live-discovery]')")
 try {
   const original = await fixture("reset", {})
   const template = original.projects[1]
@@ -60,11 +60,11 @@ try {
 
   const feedCallsBefore = (await fixture("state")).requests.filter(request => request.path === "/api/discovery/projects").length
   await switchMode(1); await teammates()
-  assert.equal(await evaluate("document.querySelector('[role=note]').textContent.includes('Find Teammates uses sample candidates')"), true)
+  assert.equal(await evaluate("document.querySelector('[data-live-teammates]').textContent.includes('sample candidates')"), false)
   assert.equal((await fixture("state")).requests.filter(request => request.path === "/api/discovery/projects").length, feedCallsBefore)
   await evaluate("history.back()"); await live()
   await evaluate("history.forward()"); await teammates()
-  pass("Find Teammates stays mock-only; browser Back/Forward selects the correct data source")
+  pass("Find Teammates uses its server context; browser Back/Forward selects the correct live view")
 
   await switchMode(0); await live()
   assert.equal(await evaluate("new URLSearchParams(location.search).has('demo')"), false)
@@ -79,7 +79,7 @@ try {
   for (const mode of ["teammates", "candidates", "leader"]) {
     await go(`/discover?mode=${mode}`); await teammates()
   }
-  pass("Legacy project-demo URLs always use live data; teammate URL aliases retain mock candidates")
+  pass("Legacy demo URLs and teammate aliases always resolve to the normal server views")
 
   await go("/discover?demo=1&mode=projects")
   await live()

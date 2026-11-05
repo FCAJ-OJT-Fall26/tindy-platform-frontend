@@ -1,11 +1,14 @@
 import React from 'react';
+import type { LiveTeammateCard } from '../../types/teammate';
+import LiveCandidateCardContent from './LiveCandidateCardContent';
 import { Clock, ArrowUpRight } from 'lucide-react';
 import { DiscoveryCandidate } from '../../types/discovery';
 import AiMatchBadge from '../common/AiMatchBadge';
 import SkillIcon from '../onboarding/SkillIcon';
 
 interface CandidateCardContentProps {
-  candidate: DiscoveryCandidate;
+  candidate: DiscoveryCandidate | LiveTeammateCard;
+  contextLabel?: string;
   isActive?: boolean;
   onWhyMatchesClick: (e: React.MouseEvent) => void;
   onViewDetailsClick: (e: React.MouseEvent) => void;
@@ -16,7 +19,13 @@ export default function CandidateCardContent({
   isActive = true,
   onWhyMatchesClick,
   onViewDetailsClick,
+  contextLabel,
 }: CandidateCardContentProps) {
+  if ("source" in candidate && candidate.source === "live-teammate") return <LiveCandidateCardContent candidate={candidate} isActive={isActive} contextLabel={contextLabel} onWhyMatchesClick={onWhyMatchesClick} onViewDetailsClick={onViewDetailsClick} />;
+  return <DemoCandidateCardContent candidate={candidate as DiscoveryCandidate} isActive={isActive} onWhyMatchesClick={onWhyMatchesClick} onViewDetailsClick={onViewDetailsClick} />;
+}
+
+function DemoCandidateCardContent({ candidate, isActive = true, onWhyMatchesClick, onViewDetailsClick }: Omit<CandidateCardContentProps, "candidate"> & { candidate: DiscoveryCandidate }) {
   const match = candidate.match;
 
   return (

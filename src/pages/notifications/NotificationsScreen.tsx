@@ -1,93 +1,143 @@
-import { useState } from "react"
-import { Link } from "react-router"
-import { CheckCheck, ArrowRight, Bell } from "lucide-react"
-import { useTindy } from "../../store"
+import { useEffect, useState } from "react"
+import { CheckCheck } from "lucide-react"
 import { PageHeader, EmptyState, Button } from "../../components/ui"
-import { INITIAL_NOTIFICATIONS } from "../../data/notifications"
+import useNotifications from "../../hooks/useNotifications"
+import useNotificationNavigation from "../../hooks/useNotificationNavigation"
+import NotificationRow from "../../components/notifications/NotificationRow"
+import type { NotificationFilter } from "../../types/notification"
+import "./notifications.css"
 
 export function Notifications() {
-  const { read, setRead, notify } = useTindy()
-  const [tab, setTab] = useState("All updates")
-
-  const unreadCount = INITIAL_NOTIFICATIONS.filter((n) => !read.includes(n.id)).length
-  const displayed =
-    tab === "Unread"
-      ? INITIAL_NOTIFICATIONS.filter((n) => !read.includes(n.id))
-      : INITIAL_NOTIFICATIONS
-
-  const handleMarkAllRead = () => {
-    setRead(INITIAL_NOTIFICATIONS.map((n) => n.id))
-    notify("All notifications marked as read")
-  }
-
+  const [filter, setFilter] = useState<NotificationFilter>("all")
+  const [page, setPage] = useState(1)
+  const inbox = useNotifications(filter, page)
+  const { open, opening } = useNotificationNavigation()
+  const resource = inbox.resource
+  const loaded = resource && !resource.loading && !resource.error
+  useEffect(() => {
+    if (
+      loaded &&
+      resource.data &&
+      page > Math.max(1, resource.data.pagination.total_pages)
+    )
+      setPage(Math.max(1, resource.data.pagination.total_pages))
+  }, [loaded, resource?.data, page])
   return (
     <>
       <PageHeader
         title="Stay in the loop."
-        description="Your invitations, opportunities, and community updates."
+        description="Your project invitation updates, delivered inside Tindy."
         action={
-          unreadCount > 0 ? (
-            <Button variant="secondary" onClick={handleMarkAllRead}>
-              <CheckCheck size={15} />
-              Mark all as read
-            </Button>
-          ) : undefined
+          <Button
+            variant="secondary"
+            disabled={!!inbox.pending || inbox.count === 0 || !inbox.enabled}
+            onClick={() => void inbox.markAllRead().catch(() => {})}
+          >
+            <CheckCheck size={15} />
+            {inbox.pending === "all" ? "Marking all…" : "Mark all as read"}
+          </Button>
         }
       />
-      <div className="status-tabs">
-        {["All updates", "Unread"].map((item) => (
+      <div
+        className="status-tabs"
+        role="tablist"
+        aria-label="Notification filters"
+      >
+        {(["all", "unread"] as const).map((value) => (
           <button
-            key={item}
-            onClick={() => setTab(item)}
-            className={tab === item ? "active" : ""}
+            key={value}
+            role="tab"
+            aria-selected={filter === value}
+            className={filter === value ? "active" : ""}
+            onClick={() => {
+              setFilter(value)
+              setPage(1)
+            }}
           >
-            {item}
-            {item === "Unread" && <span>{unreadCount}</span>}
+            {value === "all" ? "All Updates" : "Unread"}
+            {value === "unread" && (
+              <span>{inbox.count === null ? "—" : inbox.count}</span>
+            )}
           </button>
         ))}
       </div>
-      <section className="panel notifications-panel">
-        {displayed.length === 0 ? (
-          <EmptyState
-            title={tab === "Unread" ? "You're all caught up." : "No notifications yet"}
-            description="Real invitations, project activity, and team updates will appear here."
-          />
-        ) : (
-          displayed.map((update) => {
-            const isUnread = !read.includes(update.id)
-            return (
-              <div
-                className={`notification-row ${isUnread ? "unread" : ""}`}
-                key={update.id}
-              >
-                <span className={`icon-tile ${update.tone}`}>
-                  {update.icon ? <update.icon size={19} /> : <Bell size={19} />}
-                </span>
-                <div>
-                  <h3>
-                    {update.title}
-                    {isUnread && <i className="unread-dot" />}
-                  </h3>
-                  <p>{update.description}</p>
-                  <small>{update.time}</small>
-                </div>
-                <Link
-                  to={update.path}
-                  className="btn btn-secondary"
-                  onClick={() =>
-                    setRead((old) => Array.from(new Set([...old, update.id])))
-                  }
-                >
-                  View
-                  <ArrowRight size={13} />
-                </Link>
-              </div>
-            )
-          })
+      <section
+        className="panel notifications-panel"
+        aria-label="Notification list"
+        aria-busy={!resource || resource.loading}
+      >
+        {(!resource || resource.loading) && (
+          <p role="status" className="notification-status">
+            Loading notifications…
+          </p>
         )}
+        {resource?.error && (
+          <p role="alert" className="notification-status">
+            {resource.error}{" "}
+            <button className="text-link" onClick={() => void inbox.reload()}>
+              Retry notifications
+            </button>
+          </p>
+        )}
+        {loaded && resource.data?.items.length === 0 && (
+          <EmptyState
+            title={
+              filter === "unread"
+                ? "You're all caught up."
+                : "No notifications yet"
+            }
+            description="Project invitation updates will appear here."
+          />
+        )}
+        {loaded &&
+          resource.data?.items.map((row) => (
+            <NotificationRow
+              key={row.notification_id}
+              row={row}
+              disabled={!!inbox.pending || !!opening}
+              pending={inbox.pending === row.notification_id}
+              opening={opening === row.notification_id}
+              onRead={() =>
+                void inbox.markRead(row.notification_id).catch(() => {})
+              }
+              onView={() => void open(row)}
+            />
+          ))}
       </section>
+      {resource?.data && (
+        <nav
+          className="notification-pagination"
+          aria-label="Notification pages"
+        >
+          <Button
+            variant="secondary"
+            disabled={
+              !!inbox.pending ||
+              resource.loading ||
+              !resource.data.pagination.has_previous
+            }
+            onClick={() => setPage((p) => p - 1)}
+          >
+            Previous notifications
+          </Button>
+          <span>
+            Page {page} of {Math.max(1, resource.data.pagination.total_pages)} ·{" "}
+            {resource.data.pagination.total_items} updates
+          </span>
+          <Button
+            variant="secondary"
+            disabled={
+              !!inbox.pending ||
+              resource.loading ||
+              !resource.data.pagination.has_next
+            }
+            onClick={() => setPage((p) => p + 1)}
+          >
+            Next notifications
+          </Button>
+        </nav>
+      )}
     </>
   )
 }
-
 export default Notifications

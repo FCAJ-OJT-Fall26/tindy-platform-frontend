@@ -1,5 +1,7 @@
 import { createBrowserRouter, RouterProvider, Navigate } from "react-router"
 import type { ReactNode } from "react"
+import LiveCandidatesScreen from "./pages/candidates/LiveCandidatesScreen"
+import LiveCandidateDetailScreen from "./pages/candidates/LiveCandidateDetailScreen"
 import { TindyProvider } from "./store"
 import ProjectApplicationsScreen from "./pages/leader/ProjectApplicationsScreen"
 import { Layout } from "./components/layout"
@@ -20,8 +22,6 @@ import {
   SettingsScreen,
   TeamScreen,
   ComponentLibrary,
-  Candidates,
-  CandidateDetail,
   NotFound,
   SwipeDiscoveryView,
   PrivacyPolicy,
@@ -44,8 +44,8 @@ const router = createBrowserRouter([
           { path: "interests", element: <Navigate to="/projects?tab=Interested" replace /> },
           { path: "saved", element: <Navigate to="/projects?tab=Saved" replace /> },
           { path: "projects", Component: MyProjects },
-          { path: "candidates", element: <DemoPreview><Candidates /></DemoPreview> },
-          { path: "candidate/:id", element: <DemoPreview><CandidateDetail /></DemoPreview> },
+          { path: "candidates", Component: LiveCandidatesScreen },
+          { path: "candidate/:id", Component: LiveCandidateDetailScreen },
           { path: "project/:id", Component: ProjectDetail },
           { path: "profile", Component: ProfileScreen },
           { path: "users/:userId", Component: ProfileScreen },
@@ -56,7 +56,7 @@ const router = createBrowserRouter([
           { path: "project/:id/edit", Component: CreateProject },
           { path: "project/:id/applications", Component: ProjectApplicationsScreen },
           { path: "messages", element: <DemoPreview><Messages /></DemoPreview> },
-          { path: "notifications", element: <DemoPreview><Notifications /></DemoPreview> },
+          { path: "notifications", Component: Notifications },
           { path: "team", Component: TeamScreen },
           { path: "team/:projectId", Component: TeamScreen },
           { path: "project/:id/workspace", Component: TeamScreen },

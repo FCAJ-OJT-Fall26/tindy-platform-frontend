@@ -1,9 +1,15 @@
 import { useEffect, useState } from "react"
+
 import type { RuleMatch } from "../../types/discovery"
+
 import { ArrowUpRight, Check, ChevronDown, CircleHelp } from "lucide-react"
+
 import MatchScoreRing from "./MatchScoreRing"
+
 import SkillIcon from "../onboarding/SkillIcon"
+
 import { getMatchTier } from "../../utils/matchTier"
+
 import "./rule-match.css"
 
 const labels: Record<string, string> = {
@@ -15,18 +21,31 @@ const labels: Record<string, string> = {
 
 function AnimatedFactorRow({
   label,
+
   value,
+
   weight,
+
   variant,
+
   triggerKey,
+
+  contribution,
 }: {
   label: string
+
   value: number | null
+
   weight: number
+
   variant: "sidebar" | "dialog"
+
   triggerKey: string
+
+  contribution: number
 }) {
   const clamped = value === null ? 0 : Math.max(0, Math.min(100, value))
+
   const [animatedPct, setAnimatedPct] = useState(0)
 
   useEffect(() => {
@@ -99,6 +118,7 @@ function AnimatedFactorRow({
   }
 
   const displayScore = Math.round(animatedPct)
+
   const tier = getMatchTier(displayScore)
 
   if (variant === "sidebar") {
@@ -117,7 +137,7 @@ function AnimatedFactorRow({
           aria-label={label}
           aria-valuemin={0}
           aria-valuemax={100}
-          aria-valuenow={displayScore}
+          aria-valuenow={clamped}
           style={{ backgroundColor: tier.trackStroke }}
         >
           <span
@@ -144,7 +164,7 @@ function AnimatedFactorRow({
         aria-label={label}
         aria-valuemin={0}
         aria-valuemax={100}
-        aria-valuenow={displayScore}
+        aria-valuenow={clamped}
         style={{ backgroundColor: tier.trackStroke }}
       >
         <span
@@ -157,7 +177,7 @@ function AnimatedFactorRow({
       </div>
       <div className="rule-match__factor-meta">
         <span>{Number(weight.toFixed(2))}% weight</span>
-        <span>{Number(((animatedPct / 100) * weight).toFixed(2))} points</span>
+        <span>{contribution} points</span>
       </div>
     </div>
   )
@@ -207,16 +227,28 @@ function parseInsights(explanation: string) {
 
 export default function RuleMatchPanel({
   match,
+
   variant = "default",
+
   projectName,
+
   onExplain,
+
   onViewDetails,
+
+  perspective = "project",
 }: {
   match: RuleMatch
+
   variant?: "default" | "discovery" | "sidebar"
+
   projectName?: string
+
   onExplain?: () => void
+
   onViewDetails?: () => void
+
+  perspective?: "project" | "teammate"
 }) {
   const triggerKey = `${match.best_position?.position_id || ''}:${match.match_score}`
 
@@ -229,7 +261,11 @@ export default function RuleMatchPanel({
         <header>
           <div>
             <span className="live-discovery__eyebrow">MATCH INSPECTOR</span>
-            <strong>Your compatibility</strong>
+            <strong>
+              {perspective === "teammate"
+                ? "Position Match"
+                : "Your compatibility"}
+            </strong>
           </div>
           {onExplain && (
             <button type="button" onClick={onExplain}>
@@ -242,22 +278,32 @@ export default function RuleMatchPanel({
           <p>{match.best_position.title}</p>
         </div>
         <div className="live-match-inspector__score">
-          <MatchScoreRing score={match.match_score} compact />
+          <MatchScoreRing
+            score={match.match_score}
+            compact
+            staticValue={perspective === "teammate"}
+          />
           <div>
             <strong>Rule-based match</strong>
-            <span>A fit based on your profile</span>
+            <span>
+              {perspective === "teammate"
+                ? "Candidate fit for this position"
+                : "A fit based on your profile"}
+            </span>
           </div>
         </div>
         <div className="live-match-inspector__factors">
           <span className="live-discovery__eyebrow">SCORING FACTORS</span>
           {match.match_factors.map((factor) => {
             const value = factor.factor === null ? null : Number((factor.factor * 100).toFixed(2))
+
             return (
               <AnimatedFactorRow
                 key={factor.name}
                 label={labels[factor.name] ?? factor.name}
                 value={value}
                 weight={factor.normalized_weight}
+                contribution={factor.contribution}
                 variant="sidebar"
                 triggerKey={triggerKey}
               />
@@ -284,25 +330,32 @@ export default function RuleMatchPanel({
           )}
           {match.data_incomplete && (
             <p className="live-discovery__muted">
-              Some profile data is unknown. View Details for the full explanation.
+              Some profile data is unknown. View Details for the full
+              explanation.
             </p>
           )}
         </div>
-        <p className="live-match-inspector__note">The project leader makes the final decision.</p>
+        <p className="live-match-inspector__note">
+          The project leader makes the final decision.
+        </p>
         {onViewDetails && (
           <button
             type="button"
             className="live-match-inspector__inspect"
             onClick={onViewDetails}
           >
-            Inspect project <ArrowUpRight size={14} />
+            {perspective === "teammate"
+              ? "Inspect candidate"
+              : "Inspect project"}{" "}
+            <ArrowUpRight size={14} />
           </button>
         )}
       </section>
     )
   }
 
-  const insights = parseInsights(match.explanation)
+  const insights =
+    perspective === "teammate" ? [] : parseInsights(match.explanation)
 
   return (
     <section
@@ -311,14 +364,30 @@ export default function RuleMatchPanel({
       data-match-details-score={match.match_score}
     >
       <div className="rule-match__hero">
-        <MatchScoreRing score={match.match_score} large />
+        <MatchScoreRing
+          score={match.match_score}
+          large
+          staticValue={perspective === "teammate"}
+        />
         <div className="rule-match__hero-text">
           <div className="rule-match__hero-meta">
-            <span className="rule-match__eyebrow">RULE-BASED COMPATIBILITY</span>
-            {projectName && <span className="rule-match__project-pill">{projectName}</span>}
+            <span className="rule-match__eyebrow">
+              RULE-BASED COMPATIBILITY
+            </span>
+            {projectName && (
+              <span className="rule-match__project-pill">{projectName}</span>
+            )}
           </div>
-          <h2>Your position match</h2>
-          <p>Algorithmic fit breakdown based on your profile skills and preferences.</p>
+          <h2>
+            {perspective === "teammate"
+              ? "Position Match"
+              : "Your position match"}
+          </h2>
+          <p>
+            {perspective === "teammate"
+              ? "Rule-based Match for this candidate and selected position."
+              : "Algorithmic fit breakdown based on your profile skills and preferences."}
+          </p>
         </div>
       </div>
 
@@ -343,7 +412,8 @@ export default function RuleMatchPanel({
           </div>
           <span className="rule-match__slots">
             {match.best_position.remaining_slots}{" "}
-            {match.best_position.remaining_slots === 1 ? "slot" : "slots"} remaining
+            {match.best_position.remaining_slots === 1 ? "slot" : "slots"}{" "}
+            remaining
           </span>
         </div>
 
@@ -364,7 +434,8 @@ export default function RuleMatchPanel({
         <p role="note" className="rule-match__notice">
           <CircleHelp size={15} />
           <span>
-            Some profile information is missing. Unknown factors are marked below rather than treated as a zero match.
+            Some profile information is missing. Factors below show the server's
+            treatment of missing data.
           </span>
         </p>
       )}
@@ -377,12 +448,14 @@ export default function RuleMatchPanel({
       <div className="rule-match__factors">
         {match.match_factors.map((factor) => {
           const value = factor.factor === null ? null : Number((factor.factor * 100).toFixed(2))
+
           return (
             <AnimatedFactorRow
               key={factor.name}
               label={labels[factor.name] ?? factor.name}
               value={value}
               weight={factor.normalized_weight}
+              contribution={factor.contribution}
               variant="dialog"
               triggerKey={triggerKey}
             />
@@ -428,12 +501,21 @@ export default function RuleMatchPanel({
           About this calculation
           <ChevronDown size={14} />
         </summary>
-        <p>This rule-based score uses the percentages, weights and points shown above.</p>
-        <p>Experience expectation is descriptive. Experiences and certificates do not add match points.</p>
+        <p>
+          This rule-based score uses the percentages, weights and points shown
+          above.
+        </p>
+        <p>
+          Experience expectation is descriptive. Experiences and certificates do
+          not add match points.
+        </p>
       </details>
 
       <div className="rule-match__footer-banner">
-        <span>Compatibility describes your algorithmic fit. The project leader makes the final decision.</span>
+        <span>
+          Compatibility describes your algorithmic fit. The project leader makes
+          the final decision.
+        </span>
       </div>
     </section>
   )
