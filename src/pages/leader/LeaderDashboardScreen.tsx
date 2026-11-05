@@ -25,6 +25,7 @@ import { deleteProjectApi } from "../../services/projects.service"
 import useRemoteResource from "../../hooks/useRemoteResource"
 import useTeammateSession from "../../hooks/useTeammateSession"
 import { getProjectInvitations, INVITATIONS_CHANGED_EVENT } from "../../services/invitations.service"
+import "./leader-dashboard.css"
 
 export function LeaderDashboard() {
   const { setProjects, notify, candidateInterested, candidateInvites, dismissed } = useTindy()
@@ -386,7 +387,7 @@ export function LeaderDashboard() {
         </div>
       ) : (
         <>
-          <div className="leader-project-grid">
+          <div className={`leader-project-grid grid-cols-${Math.min(3, Math.max(1, pageItemsCount))}`}>
             {currentProjects.map((project: Project) => {
               const pending = pendingFor(project.id)
               return (
@@ -420,8 +421,7 @@ export function LeaderDashboard() {
                       {project.status?.replace("_", " ") || "Recruiting"}
                     </span>
                     <div className="leader-project-menu-container">
-                      <button
-                        className="btn-icon"
+                      <button type="button" className="btn-icon"
                         aria-label="Project actions"
                         onClick={(e) => {
                           e.stopPropagation()
@@ -439,6 +439,14 @@ export function LeaderDashboard() {
                           >
                             <Settings size={14} />
                             <span>Edit project</span>
+                          </Link>
+                          <Link
+                            to={`/project/${project.id}`}
+                            className="leader-dropdown-item"
+                            onClick={() => setOpenMenuId(null)}
+                          >
+                            <ArrowUpRight size={14} />
+                            <span>View public specs</span>
                           </Link>
                           <button
                             className="leader-dropdown-item text-danger"
