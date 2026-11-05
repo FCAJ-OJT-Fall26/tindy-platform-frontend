@@ -353,7 +353,7 @@ try {
   await inviteModal()
   await setMessage("  Let's build together.  ")
   await evaluate(
-    "[...document.querySelectorAll('button')].find(b=>b.textContent==='Confirm Send Invitation').click();[...document.querySelectorAll('button')].find(b=>b.textContent==='Confirm Send Invitation')?.click()",
+    "[...document.querySelectorAll('button')].find(b=>b.textContent==='Send invitation').click();[...document.querySelectorAll('button')].find(b=>b.textContent==='Send invitation')?.click()",
   )
   await waitFor("!document.querySelector('[role=dialog]')")
   state = await fixture("state")
@@ -365,7 +365,7 @@ try {
     "Opening Send modal has no POST; double confirm creates one validated Invitation and no local membership",
   )
   await inviteModal(people[0].user_id, second.position_id)
-  await click("Confirm Send Invitation")
+  await click("Send invitation")
   await waitFor("!document.querySelector('[role=dialog]')")
   state = await fixture("state")
   assert.equal(state.invitations.length, 1)
@@ -384,7 +384,7 @@ try {
   })
   await inviteModal()
   await setMessage("Recover a committed request")
-  await click("Confirm Send Invitation")
+  await click("Send invitation")
   await waitFor("!document.querySelector('[role=dialog]')")
   state = await fixture("state")
   assert.equal(state.invitations.length, 2)
@@ -398,7 +398,7 @@ try {
   })
   await inviteModal(people[1].user_id)
   await setMessage("Keep this uncertain draft")
-  await click("Confirm Send Invitation")
+  await click("Send invitation")
   await waitFor(
     "Boolean([...document.querySelectorAll('button')].find(b=>b.textContent==='Check invitation status'))",
   )
@@ -415,7 +415,7 @@ try {
   )
   assert.equal(
     await evaluate(
-      "Boolean([...document.querySelectorAll('button')].find(b=>b.textContent==='Confirm Send Invitation'))",
+      "Boolean([...document.querySelectorAll('button')].find(b=>b.textContent==='Send invitation'))",
     ),
     false,
   )
@@ -482,7 +482,7 @@ try {
   await changeUser(leader, "/candidates")
   await evaluate("sessionStorage.clear()")
   await inviteModal()
-  await click("Confirm Send Invitation")
+  await click("Send invitation")
   await waitFor("!document.querySelector('[role=dialog]')")
   state = await fixture("state")
   const consentOff = state.teammateProfiles.map((p) =>

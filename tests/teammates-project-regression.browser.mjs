@@ -72,7 +72,7 @@ try {
   pass("My Projects Active loads actual server membership after application approval")
   const before = await evaluate("localStorage.getItem('tindy-v3-active')")
   await go("/projects?tab=Invited&demo=1")
-  await waitFor("document.body.innerText.includes('Project Invitations') && document.body.innerText.includes('No invitations')")
+  await waitFor("document.body.innerText.includes('Project invitations') && document.body.innerText.includes('No invitations')")
   assert.equal(await evaluate("Array.from(document.querySelectorAll('[aria-label]')).some(el=>el.getAttribute('aria-label')==='Invitations demo preview')"), false)
   assert.equal(await evaluate("localStorage.getItem('tindy-v3-active')"), before)
   assert.equal((await fixture("state")).projects[0].team_members.length, 2)

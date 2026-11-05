@@ -139,7 +139,7 @@ try {
     )
     await click("Send Invitation")
     await waitFor("Boolean(document.querySelector('[role=dialog]'))")
-    await click("Confirm Send Invitation")
+    await click("Send invitation")
     await waitFor("!document.querySelector('[role=dialog]')")
   }
   await invite(target)

@@ -521,7 +521,7 @@ export default function LiveTeammatesDiscoveryView({
       )}
 
       {detail && (
-        <Modal title="Candidate Profile" wide onClose={() => setDetail(null)}>
+        <Modal title="Candidate profile" wide className="candidate-profile-modal" onClose={() => setDetail(null)}>
           <LiveCandidateDetail userId={detail.id} />
         </Modal>
       )}

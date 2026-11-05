@@ -1,3 +1,12 @@
+import {
+  Send,
+  FolderKanban,
+  Clock3,
+  ArrowUpRight,
+  History,
+  LoaderCircle,
+} from "lucide-react"
+import "./send-invitation.css"
 import { useEffect, useRef, useState } from "react"
 import { Link } from "react-router"
 import { Modal } from "../ui"
@@ -53,7 +62,12 @@ export default function SendInvitationModal({
   const [error, setError] = useState(journal.error)
   const currentSession = useRef(session.key)
   currentSession.current = session.key
-  useEffect(() => { currentSession.current = session.key; return () => { currentSession.current = null } }, [session.key])
+  useEffect(() => {
+    currentSession.current = session.key
+    return () => {
+      currentSession.current = null
+    }
+  }, [session.key])
   const run = async (check: boolean) => {
     if (!session.userId || lock.current) return
     const owner = session.key
@@ -75,7 +89,7 @@ export default function SendInvitationModal({
       if (result) onConfirmed(result)
       else
         setError(
-          "No unique committed result is confirmed yet. The message is retained; check status again. No second invitation will be sent.",
+          "We couldn’t confirm whether the invitation was sent. Your message is saved. Check its status before trying again.",
         )
     } catch (reason) {
       if (currentSession.current === owner)
@@ -95,72 +109,132 @@ export default function SendInvitationModal({
       }
     }
   }
+  const initials = candidateName
+    .split(" ")
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0])
+    .join("")
+    .toUpperCase()
   return (
     <Modal
-      title="Send Project Invitation"
+      title="Project invitation"
       onClose={onClose}
       dismissible={!busy}
+      className="project-invitation-modal"
     >
-      <div className="teammate-dialog">
-        <h2>{candidateName}</h2>
-        <p>
-          {projectName} · {positionName}
-        </p>
-        <p>
-          Invitations expire 7 days after creation. A pending invitation does
-          not reserve a slot.
-        </p>
-        <label className="field">
-          Optional message
+      <div className="invitation-content">
+        <div className="invitation-recipient">
+          <span className="invitation-avatar">{initials || "?"}</span>
+          <div>
+            <span className="invitation-eyebrow">INVITE TO YOUR TEAM</span>
+            <h2>{candidateName}</h2>
+          </div>
+        </div>
+        <div className="invitation-context">
+          <span className="invitation-project-icon">
+            <FolderKanban size={20} strokeWidth={1.6} />
+          </span>
+          <div>
+            <span>PROJECT & POSITION</span>
+            <strong>{projectName}</strong>
+            <p>{positionName}</p>
+          </div>
+        </div>
+        <div className="invitation-notice">
+          <Clock3 size={16} />
+          <p>
+            <strong>They’ll have 7 days to respond.</strong>
+            <span>A pending invitation doesn’t reserve a slot.</span>
+          </p>
+        </div>
+        <label className="invitation-message-field">
+          <span>
+            Your message <small>Optional</small>
+          </span>
           <textarea
             aria-label="Invitation message"
             maxLength={2000}
-            rows={5}
+            rows={4}
             value={message}
             disabled={busy || !!journal.attempt || !!journal.error}
             onChange={(e) => setMessage(e.target.value)}
+            placeholder="Say hello and share why you’d love to have them on your team…"
           />
         </label>
-        <p className="helper-text">{message.length}/2000</p>
-        {blocker && <p role="status">{blocker}</p>}
+        <div className="invitation-message-meta">
+          <span>A personal note goes a long way.</span>
+          <span aria-live="polite">
+            {message.length.toLocaleString("en-US")} / 2,000
+          </span>
+        </div>
+        {blocker && (
+          <p className="invitation-status" role="status">
+            {blocker}
+          </p>
+        )}
         {journal.attempt && (
-          <p role="status">
-            A previous invitation request has an unconfirmed outcome. Check
-            backend history before continuing.
+          <p className="invitation-status" role="status">
+            We’re still confirming your previous invitation. Check its status
+            before sending another.
           </p>
         )}
         {(error || journal.error) && (
-          <p role="alert">{error || journal.error}</p>
+          <p className="invitation-error" role="alert">
+            {error || journal.error}
+          </p>
         )}
-        <div className="teammate-actions">
-          <button className="btn-secondary" disabled={busy} onClick={onClose}>
+      </div>
+      <footer className="invitation-footer">
+        <Link
+          className="invitation-history"
+          to={
+            "/candidates?project_id=" +
+            projectId +
+            "&position_id=" +
+            positionId +
+            "&tab=Invited"
+          }
+        >
+          <History size={14} />
+          Sent invitations
+          <ArrowUpRight size={12} />
+        </Link>
+        <div className="invitation-actions">
+          <button
+            className="invitation-cancel"
+            disabled={busy}
+            onClick={onClose}
+          >
             Close
           </button>
           {journal.attempt ? (
             <button
-              className="btn-primary"
+              className="invitation-send"
               disabled={busy}
               onClick={() => void run(true)}
             >
+              {busy && (
+                <LoaderCircle size={15} className="invitation-spinner" />
+              )}
               {busy ? "Checking…" : "Check invitation status"}
             </button>
           ) : (
             <button
-              className="btn-primary"
+              className="invitation-send"
               disabled={busy || !!blocker || !!journal.error || !session.userId}
               onClick={() => void run(false)}
             >
-              {busy ? "Sending…" : "Confirm Send Invitation"}
+              {busy ? (
+                <LoaderCircle size={15} className="invitation-spinner" />
+              ) : (
+                <Send size={14} />
+              )}
+              {busy ? "Sending…" : "Send invitation"}
             </button>
           )}
         </div>
-        <Link
-          className="text-link"
-          to={`/candidates?project_id=${projectId}&position_id=${positionId}&tab=Invited`}
-        >
-          View sent invitation history
-        </Link>
-      </div>
+      </footer>
     </Modal>
   )
 }

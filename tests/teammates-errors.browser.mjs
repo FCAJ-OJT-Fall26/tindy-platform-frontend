@@ -149,7 +149,7 @@ try {
     ],
   })
   await openSend()
-  await click("Confirm Send Invitation")
+  await click("Send invitation")
   await waitFor(
     "document.querySelector('[role=dialog]')?.textContent.includes('pending application')",
   )
@@ -161,7 +161,7 @@ try {
     ],
   })
   await openSend(project.positions[1].position_id)
-  await click("Confirm Send Invitation")
+  await click("Send invitation")
   await waitFor(
     "document.querySelector('[role=dialog]')?.textContent.includes('7 days after')",
   )
@@ -177,7 +177,7 @@ try {
     })),
   })
   await openSend()
-  await click("Confirm Send Invitation")
+  await click("Send invitation")
   await waitFor(
     "document.querySelector('[role=dialog]')?.textContent.includes('consent is unavailable')",
   )
@@ -194,7 +194,7 @@ try {
     ],
   })
   await openSend()
-  await click("Confirm Send Invitation")
+  await click("Send invitation")
   await waitFor(
     "document.querySelector('[role=dialog]')?.textContent.includes('Too many attempts')",
   )

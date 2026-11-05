@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react"
 import { NavLink, Link, useLocation } from "react-router"
-import { ChevronDown,
+import {
+  ChevronDown,
   LayoutDashboard,
   Compass,
   Bookmark,
@@ -13,18 +14,30 @@ import { ChevronDown,
   Bot,
   X,
   ArrowUpRight,
-  LogOut, } from "lucide-react"
+  LogOut,
+} from "lucide-react"
 import { useNavigate } from "react-router"
 import { Brand } from "../ui"
 import { useTindy } from "../../store"
+import { useChat } from "../../services/ChatContext"
 
 export const navItems = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard, preview: false },
-  { to: "/discover", label: "Discover Projects", icon: Compass, preview: false },
+  {
+    to: "/discover",
+    label: "Discover Projects",
+    icon: Compass,
+    preview: false,
+  },
   { to: "/projects", label: "My Projects", icon: FolderKanban, preview: false },
-  { to: "/applications", label: "Applications", icon: UserCheck, preview: false },
+  {
+    to: "/applications",
+    label: "Applications",
+    icon: UserCheck,
+    preview: false,
+  },
   { to: "/candidates", label: "Candidates", icon: Users, preview: false },
-  { to: "/messages", label: "Messages", icon: MessageSquare, preview: true },
+  { to: "/messages", label: "Messages", icon: MessageSquare, preview: false },
   { to: "/notifications", label: "Notifications", icon: Bell, preview: false },
   { to: "/team", label: "Team Workspace", icon: Users, preview: true },
 ]
@@ -36,16 +49,24 @@ interface SidebarProps {
 
 export default function Sidebar({ mobile, onClose }: SidebarProps) {
   const { notifications, logout, loggingOut } = useTindy()
+  const { conversations, pendingRequests } = useChat()
+  const chatUnread = conversations.reduce((sum, c) => sum + c.unreadCount, 0)
   const location = useLocation()
   const navigate = useNavigate()
 
   const sidebarNavRef = useRef<HTMLDivElement>(null)
-  const [sidebarIndicator, setSidebarIndicator] = useState({ top: 0, height: 0, visible: false })
+  const [sidebarIndicator, setSidebarIndicator] = useState({
+    top: 0,
+    height: 0,
+    visible: false,
+  })
   const [isReady, setIsReady] = useState(false)
 
   const updateIndicator = useCallback(() => {
     if (sidebarNavRef.current) {
-      const activeLink = sidebarNavRef.current.querySelector(".nav-item.active") as HTMLElement | null
+      const activeLink = sidebarNavRef.current.querySelector(
+        ".nav-item.active",
+      ) as HTMLElement | null
       if (activeLink) {
         const containerRect = sidebarNavRef.current.getBoundingClientRect()
         const linkRect = activeLink.getBoundingClientRect()
@@ -135,12 +156,32 @@ export default function Sidebar({ mobile, onClose }: SidebarProps) {
               <item.icon size={18} />
               <span>{item.label}</span>
               {item.preview && <span className="beta">DEMO</span>}
-              {item.label === "Messages" && (
-                <span className="nav-count">2</span>
+              {item.label === "Messages" && chatUnread > 0 && (
+                <span
+                  className="nav-count"
+                  aria-label={`${chatUnread} unread messages`}
+                >
+                  {chatUnread}
+                </span>
               )}
-              {item.label === "Notifications" && notifications.count !== null && notifications.count > 0 && (
-                <span className="nav-dot" aria-label={`${notifications.count} unread notifications${notifications.countError ? ", last confirmed count" : ""}`} />
+              {item.label === "Messages" && pendingRequests > 0 && (
+                <span
+                  className="nav-count"
+                  aria-label={`${pendingRequests} pending chat requests`}
+                >
+                  {pendingRequests} req
+                </span>
               )}
+              {item.label === "Notifications" &&
+                notifications.count !== null &&
+                notifications.count > 0 && (
+                  <span
+                    className="nav-dot"
+                    aria-label={`${notifications.count} unread notifications${
+                      notifications.countError ? ", last confirmed count" : ""
+                    }`}
+                  />
+                )}
             </NavLink>
           ))}
         </nav>
@@ -198,7 +239,7 @@ export default function Sidebar({ mobile, onClose }: SidebarProps) {
           style={{ background: "transparent", border: "none" }}
         >
           <LogOut size={17} />
-          <span>{loggingOut ? 'Signing out…' : 'Sign Out'}</span>
+          <span>{loggingOut ? "Signing out…" : "Sign Out"}</span>
         </button>
       </div>
     </aside>
