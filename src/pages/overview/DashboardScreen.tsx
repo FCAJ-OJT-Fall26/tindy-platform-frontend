@@ -355,18 +355,16 @@ export function DashboardScreen() {
         />
       </section>
       <div className="opportunity-banner">
-        <div className="banner-icon">
-          <Layers size={24} />
-        </div>
-        <div>
-          <Badge tone="blue">
+        <div className="opportunity-banner__content">
+          <span className="opportunity-banner__eyebrow">
             SMARTER CONNECTIONS
-          </Badge>
+          </span>
           <h2>Your next great project starts with the right fit.</h2>
           <p>Discover where your skills matter — and who you can build with.</p>
         </div>
-        <Link to="/discover">
-          Find my next project <ArrowRight size={17} />
+        <Link to="/discover" className="opportunity-banner__action">
+          <span>Find my next project</span>
+          <ArrowRight size={16} />
         </Link>
       </div>
       <div className="dashboard-columns">
