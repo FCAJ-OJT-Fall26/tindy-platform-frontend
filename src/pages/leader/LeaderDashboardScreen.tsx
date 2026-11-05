@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef, useCallback } from "react"
-import { Link, useLocation } from "react-router"
+import { useState, useEffect, useRef, useMemo, useCallback } from "react"
+import { Link, useLocation, useSearchParams } from "react-router"
 import {
   Clock,
   Settings,
@@ -15,9 +15,9 @@ import {
   ChevronLeft,
   ChevronRight,
 } from "lucide-react"
-import { useTindy, Project } from "../../store"
-import { PageHeader, SectionHeading, Badge } from "../../components/ui"
-import { MetricCard, DonutProgressRing } from "../../components/common/MetricsDashboardCards"
+import { useTindy, Project, initialCandidates } from "../../store"
+import { PageHeader, SectionHeading, Avatar, Badge } from "../../components/ui"
+import { MetricCard, CategoryBreakdown, CapsuleSlots, DonutProgressRing } from "../../components/common/MetricsDashboardCards"
 import { SaveSuccessModal } from "../../components/projects/SaveSuccessModal"
 import useMyProjects from "../../hooks/useMyProjects"
 import { projectErrorMessage } from "../../services/projectEditor.service"
@@ -27,7 +27,7 @@ import useTeammateSession from "../../hooks/useTeammateSession"
 import { getProjectInvitations, INVITATIONS_CHANGED_EVENT } from "../../services/invitations.service"
 
 export function LeaderDashboard() {
-  const { setProjects, notify } = useTindy()
+  const { setProjects, notify, candidateInterested, candidateInvites, dismissed } = useTindy()
 
   const location = useLocation()
   const resource = useMyProjects()
@@ -85,10 +85,12 @@ export function LeaderDashboard() {
     }))
     return total
   }, [projectIds])
+
   const invitations = useRemoteResource(
     session.key && resource.data ? `${session.key}:${projectIds}` : null,
     loadInvitationCount,
   )
+
   useEffect(() => {
     window.addEventListener(INVITATIONS_CHANGED_EVENT, invitations.reload)
     window.addEventListener("focus", invitations.reload)
@@ -97,9 +99,57 @@ export function LeaderDashboard() {
       window.removeEventListener("focus", invitations.reload)
     }
   }, [invitations.reload])
-  const seatsFilled = managed.reduce((total, project) => total + (project.team ?? 0), 0)
-  const totalSeats = managed.reduce((total, project) => total + (project.capacity ?? 0), 0)
+
   const metricsReady = Boolean(resource.data) && !resource.error
+
+  const totalOpenings = useMemo(
+    () => managed.reduce((total, project) => total + (project.openings ?? 0), 0),
+    [managed],
+  )
+
+  const openPositionsBreakdown = useMemo(() => {
+    const map = new Map<string, number>()
+    for (const project of managed) {
+      if (project.openPositions && project.openPositions.length > 0) {
+        for (const pos of project.openPositions) {
+          if (pos.count > 0) {
+            map.set(pos.title, (map.get(pos.title) || 0) + pos.count)
+          }
+        }
+      } else if (project.openings && project.openings > 0) {
+        const roleName = project.role || "Developer"
+        map.set(roleName, (map.get(roleName) || 0) + project.openings)
+      }
+    }
+    const total = Array.from(map.values()).reduce((a, b) => a + b, 0)
+    return Array.from(map.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 2)
+      .map(([role, count], idx) => ({
+        label: role.split(" ")[0],
+        count,
+        pct: total > 0 ? Math.round((count / total) * 100) : 0,
+        color: idx === 0 ? "#2563eb" : "#0d9488",
+      }))
+  }, [managed])
+
+  const totalTeamMembers = useMemo(
+    () => managed.reduce((total, project) => total + (project.team || 0), 0),
+    [managed],
+  )
+
+  const totalTeamCapacity = useMemo(
+    () => managed.reduce((total, project) => total + (project.capacity || 0), 0),
+    [managed],
+  )
+
+  const teamFillPct = useMemo(
+    () =>
+      totalTeamCapacity > 0
+        ? Math.min(100, Math.round((totalTeamMembers / totalTeamCapacity) * 100))
+        : 0,
+    [totalTeamMembers, totalTeamCapacity],
+  )
 
   const totalPages = Math.max(1, Math.ceil(managed.length / PROJECTS_PER_PAGE))
 
@@ -156,45 +206,111 @@ export function LeaderDashboard() {
         <MetricCard
           index={0}
           label="Open positions"
-          value={metricsReady ? managed.reduce((total, project) => total + (project.openings ?? 0), 0) : "—"}
+          tooltipTitle="Recruiting Roles Distribution"
+          tooltipDesc="Breakdown of available vacancies across technical roles you are recruiting for."
+          tooltipDetail={
+            totalOpenings > 0
+              ? openPositionsBreakdown.length > 0
+                ? openPositionsBreakdown.map((b: { label: string; count: number }) => `${b.label}: ${b.count}`).join(" • ")
+                : `${totalOpenings} open position${totalOpenings === 1 ? "" : "s"} actively recruiting`
+              : "All positions currently filled across your projects"
+          }
+          value={totalOpenings}
           subtitle="places for new teammates"
-          visual={null}
-          footerLeft={`${managed.filter(p => p.status === "recruiting").length} projects recruiting`}
+          visual={
+            openPositionsBreakdown.length > 0 ? (
+              <CategoryBreakdown items={openPositionsBreakdown} />
+            ) : (
+              <CapsuleSlots variant="faint" />
+            )
+          }
+          footerLeft={
+            totalOpenings > 0
+              ? `${managed.filter((p) => (p.openings ?? 0) > 0).length} project${
+                  managed.filter((p) => (p.openings ?? 0) > 0).length === 1 ? "" : "s"
+                } recruiting`
+              : `${managed.length} workspace${managed.length === 1 ? "" : "s"}`
+          }
           actionLabel="Manage roles"
           actionTo="/projects?tab=Leading"
         />
+
         <MetricCard
           index={1}
-          label="Pending applications"
-          value={metricsReady ? pendingCount : "—"}
-          subtitle="awaiting your review"
-          visual={null}
-          footerLeft="Across your projects"
+          label="Interested candidates"
+          tooltipTitle="Review Queue Pipeline"
+          tooltipDesc="Candidate applications waiting for leader evaluation across your managed projects."
+          tooltipDetail={
+            pendingCount > 0
+              ? `${pendingCount} candidate application${pendingCount === 1 ? "" : "s"} awaiting your decision`
+              : "Review queue is clear • 0 pending applications"
+          }
+          value={pendingCount}
+          subtitle={
+            pendingCount === 1
+              ? "application awaiting review"
+              : "applications awaiting review"
+          }
+          visual={<CapsuleSlots variant="faint" />}
+          footerLeft={pendingCount > 0 ? "Requires action" : "All caught up"}
           actionLabel="Review applications"
-          actionTo="/projects?tab=Leading"
+          actionTo="/applications"
         />
+
         <MetricCard
           index={2}
           label="Pending invitations"
-          value={metricsReady && !invitations.loading && !invitations.error ? invitations.data ?? "—" : "—"}
-          subtitle="awaiting a response"
-          visual={null}
-          footerLeft="Across your projects"
+          tooltipTitle="Direct Invitation Pipeline"
+          tooltipDesc="Track candidate invitations sent directly from your workspace."
+          tooltipDetail={
+            invitations.data && invitations.data > 0
+              ? `${invitations.data} candidate invitation${
+                  invitations.data === 1 ? "" : "s"
+                } awaiting response`
+              : "0 direct invitations active"
+          }
+          value={metricsReady && !invitations.loading && !invitations.error ? (invitations.data ?? 0) : 0}
+          subtitle="invitations sent"
+          visual={<CapsuleSlots variant="faint" />}
+          footerLeft={
+            invitations.data && invitations.data > 0
+              ? `${invitations.data} awaiting response`
+              : "Invite candidates"
+          }
           actionLabel="Review invitations"
           actionTo="/candidates?tab=Invited"
         />
+
         <MetricCard
           index={3}
-          label="Filled team seats"
-          value={metricsReady ? seatsFilled : "—"}
-          subtitle={metricsReady ? `of ${totalSeats} team seats filled` : "Loading team seats"}
-          visual={metricsReady ? <DonutProgressRing pct={totalSeats ? seatsFilled / totalSeats * 100 : 0} strokeColor="#334155" /> : null}
-          footerLeft={`${managed.length} projects`}
-          actionLabel="Open projects"
-          actionTo="/projects?tab=Leading"
+          label="Team members"
+          tooltipTitle="Overall Team Capacity"
+          tooltipDesc="Circular gauge showing filled vs maximum team seats across your managed projects."
+          tooltipDetail={
+            totalTeamCapacity > 0
+              ? `${totalTeamMembers} of ${totalTeamCapacity} team seats filled (${teamFillPct}% capacity)`
+              : `${totalTeamMembers} confirmed team member${totalTeamMembers === 1 ? "" : "s"}`
+          }
+          value={totalTeamMembers}
+          subtitle={
+            totalTeamCapacity > 0
+              ? `of ${totalTeamCapacity} team seats filled`
+              : "confirmed teammates"
+          }
+          visual={<DonutProgressRing pct={teamFillPct} strokeColor="#334155" />}
+          footerLeft={`${managed.length} workspace${managed.length === 1 ? "" : "s"}`}
+          actionLabel="Open workspace"
+          actionTo="/team"
         />
       </section>
-      {Boolean(invitations.error) && <p role="alert">Could not load invitation totals. <button onClick={invitations.reload}>Retry invitations</button></p>}
+
+      {Boolean(invitations.error) && (
+        <p role="alert">
+          Could not load invitation totals.{" "}
+          <button onClick={invitations.reload}>Retry invitations</button>
+        </p>
+      )}
+
       <SectionHeading
         title="Your projects"
         description="A clear picture of what’s moving forward."
@@ -221,241 +337,184 @@ export function LeaderDashboard() {
           style={{
             margin: "22px 0",
             textAlign: "center",
-            padding: "40px 20px",
+            padding: "48px 24px",
+            background: "#ffffff",
+            border: "1px dashed #cbd5e1",
+            borderRadius: "12px",
           }}
         >
-          <p
+          <div
             style={{
-              color: "var(--text-secondary)",
-              marginBottom: "16px",
+              width: "48px",
+              height: "48px",
+              borderRadius: "50%",
+              background: "#f1f5f9",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              margin: "0 auto 16px",
+              color: "#64748b",
             }}
           >
-            No projects currently managed.
+            <FolderKanban size={24} />
+          </div>
+          <h3
+            style={{
+              fontSize: "18px",
+              fontWeight: 600,
+              color: "#0f172a",
+              marginBottom: "8px",
+            }}
+          >
+            No projects yet
+          </h3>
+          <p
+            style={{
+              fontSize: "14px",
+              color: "#64748b",
+              maxWidth: "400px",
+              margin: "0 auto 20px",
+              lineHeight: 1.5,
+            }}
+          >
+            Start your first project to organize your team and find collaborators.
           </p>
-          <Link className="btn btn-primary" to="/create-project">
+          <Link to="/create-project" className="btn btn-primary">
             <Plus size={16} />
-            Create project
+            Create your first project
           </Link>
         </div>
       ) : (
         <>
-          <div
-            className={`leader-projects-grid grid-cols-${pageItemsCount}`}
-            data-count={pageItemsCount}
-          >
-            {currentProjects.map((project) => (
-              <section className="leader-project panel" key={project.id}>
-                <div className="leader-project-top">
-                  <span className={`project-mark ${project.color}`}>
-                    {project.initials}
-                  </span>
-                  <div className="leader-project-info">
-                    <div className="leader-project-badge-row">
-                      <Badge tone="success">{(project.status ?? "recruiting").replace(/_/g, " ").toUpperCase()}</Badge>
-                    </div>
-                    <h2>{project.name}</h2>
-                    <p title={project.description}>{project.description}</p>
-                  </div>
-                  <div className="leader-project-top-actions leader-project-menu-container">
-                    <button
-                      className="icon-button"
-                      onClick={() =>
-                        handleDeleteProject(project.id, project.name)
-                      }
-                      title="Archive Project"
-                      aria-label="Archive Project"
-                      disabled={archivingId !== null}
-                      style={{ color: "#d9534f" }}
-                    >
-                      <Trash2 size={16} />
-                    </button>
-
-                    <button
-                      type="button"
-                      className="icon-button"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        setOpenMenuId(openMenuId === project.id ? null : project.id)
-                      }}
-                      aria-label="Project settings"
-                      title="Project settings"
+          <div className="leader-project-grid">
+            {currentProjects.map((project: Project) => {
+              const pending = pendingFor(project.id)
+              return (
+                <article
+                  key={project.id}
+                  className="leader-project-card panel"
+                >
+                  <div className="card-top">
+                    <span
+                      className="project-badge"
                       style={{
-                        background: openMenuId === project.id ? "#f1f5f9" : undefined,
-                        color: openMenuId === project.id ? "#0f172a" : undefined,
+                        background:
+                          project.status === "archived"
+                            ? "#fee2e2"
+                            : project.status === "in_progress"
+                              ? "#e0e7ff"
+                              : "#e0f2fe",
+                        color:
+                          project.status === "archived"
+                            ? "#dc2626"
+                            : project.status === "in_progress"
+                              ? "#4338ca"
+                              : "#0369a1",
+                        fontSize: "11px",
+                        fontWeight: 600,
+                        padding: "3px 8px",
+                        borderRadius: "12px",
+                        textTransform: "capitalize",
                       }}
                     >
-                      <MoreHorizontal size={20} />
-                    </button>
-
-                    {openMenuId === project.id && (
-                      <div
-                        className="project-actions-dropdown"
-                        style={{
-                          position: "absolute",
-                          top: "calc(100% + 6px)",
-                          right: 0,
-                          width: "190px",
-                          background: "#ffffff",
-                          border: "1px solid #e2e8f0",
-                          borderRadius: "10px",
-                          boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.05)",
-                          padding: "6px",
-                          zIndex: 50,
-                          display: "flex",
-                          flexDirection: "column",
-                          gap: "2px",
+                      {project.status?.replace("_", " ") || "Recruiting"}
+                    </span>
+                    <div className="leader-project-menu-container">
+                      <button
+                        className="btn-icon"
+                        aria-label="Project actions"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setOpenMenuId(openMenuId === project.id ? null : project.id)
                         }}
                       >
-                        <Link
-                          to={`/project/${project.id}/edit`}
-                          onClick={() => setOpenMenuId(null)}
-                          style={{
-                            display: "flex",
-                            alignItems: "center",
-                            gap: "8px",
-                            padding: "8px 10px",
-                            borderRadius: "6px",
-                            fontSize: "12px",
-                            fontWeight: 500,
-                            color: "#1e293b",
-                            textDecoration: "none",
-                          }}
-                          className="dropdown-item-hover"
-                        >
-                          <Settings size={14} style={{ color: "#64748b" }} />
-                          <span>Manage project</span>
-                        </Link>
-
-                        <Link
-                          to={`/project/${project.id}`}
-                          onClick={() => setOpenMenuId(null)}
-                          style={{
-                            display: "flex",
-                            alignItems: "center",
-                            gap: "8px",
-                            padding: "8px 10px",
-                            borderRadius: "6px",
-                            fontSize: "12px",
-                            fontWeight: 500,
-                            color: "#1e293b",
-                            textDecoration: "none",
-                          }}
-                          className="dropdown-item-hover"
-                        >
-                          <ArrowUpRight size={14} style={{ color: "#64748b" }} />
-                          <span>View public specs</span>
-                        </Link>
-
-                        <Link
-                          to={`/project/${project.id}/applications`}
-                          onClick={() => setOpenMenuId(null)}
-                          style={{
-                            display: "flex",
-                            alignItems: "center",
-                            gap: "8px",
-                            padding: "8px 10px",
-                            borderRadius: "6px",
-                            fontSize: "12px",
-                            fontWeight: 500,
-                            color: "#1e293b",
-                            textDecoration: "none",
-                          }}
-                          className="dropdown-item-hover"
-                        >
-                          <Users size={14} style={{ color: "#64748b" }} />
-                          <span>Review applicants</span>
-                        </Link>
-
-                        <div style={{ height: "1px", background: "#f1f5f9", margin: "4px 0" }} />
-
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setOpenMenuId(null)
-                            handleDeleteProject(project.id, project.name)
-                          }}
-                          style={{
-                            display: "flex",
-                            alignItems: "center",
-                            gap: "8px",
-                            padding: "8px 10px",
-                            borderRadius: "6px",
-                            fontSize: "12px",
-                            fontWeight: 500,
-                            color: "#e11d48",
-                            background: "transparent",
-                            border: "none",
-                            width: "100%",
-                            textAlign: "left",
-                            cursor: "pointer",
-                          }}
-                          className="dropdown-item-danger-hover"
-                        >
-                          <Trash2 size={14} />
-                          <span>Archive project</span>
-                        </button>
-                      </div>
-                    )}
+                        <MoreHorizontal size={16} />
+                      </button>
+                      {openMenuId === project.id && (
+                        <div className="leader-project-dropdown-menu">
+                          <Link
+                            to={`/project/${project.id}/edit`}
+                            className="leader-dropdown-item"
+                            onClick={() => setOpenMenuId(null)}
+                          >
+                            <Settings size={14} />
+                            <span>Edit project</span>
+                          </Link>
+                          <button
+                            className="leader-dropdown-item text-danger"
+                            onClick={() => {
+                              setOpenMenuId(null)
+                              handleDeleteProject(project.id, project.name)
+                            }}
+                            disabled={archivingId === project.id}
+                          >
+                            <Trash2 size={14} />
+                            <span>{archivingId === project.id ? "Archiving…" : "Archive project"}</span>
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   </div>
-                </div>
-                <div className="leader-project-stats">
-                  <span>
-                    <Users size={16} />
-                    <strong>
-                      {project.team} / {project.capacity}
-                    </strong>{" "}
-                    members
-                  </span>
-                  <span>
-                    <Code2 size={16} />
-                    <strong>{project.openings ?? 0}</strong> open
-                    positions
-                  </span>
-                  <Link
-                    to={`/project/${project.id}/applications`}
-                    style={{
-                      display: "inline-flex",
-                      alignItems: "center",
-                      gap: "5px",
-                      color: "inherit",
-                      textDecoration: "none",
-                    }}
-                  >
-                    <Clock size={16} />
-                    <strong>{pendingFor(project.id)}</strong> pending applications
-                  </Link>
-                </div>
-                <div className="leader-project-actions">
-                    <><Link to={`/discover?mode=teammates&project_id=${project.id}`} className="btn btn-secondary">Find Teammates</Link><Link to={`/candidates?project_id=${project.id}`} className="btn btn-secondary">Candidate Pipeline</Link></>
-                  <Link to={`/project/${project.id}/applications`} className="btn btn-primary">
-                    Applications <ArrowRight size={15} />
-                  </Link>
-                  <Link to={`/project/${project.id}`} className="btn btn-secondary">
-                    View project
-                  </Link>
-                  <Link
-                    to={`/team/${project.id}`}
-                    className="text-link"
-                  >
-                    Open workspace <ArrowUpRight size={14} />
-                  </Link>
-                </div>
-              </section>
-            ))}
+                  <h3>{project.name}</h3>
+                  <p>{project.description}</p>
+                  <div className="leader-project-stats">
+                    <div>
+                      <Clock size={14} />
+                      <span>{project.hours ?? 10} hrs/week</span>
+                    </div>
+                    <div>
+                      <Users size={14} />
+                      <span>
+                        {project.team || 0} / {project.capacity || 5} members
+                      </span>
+                    </div>
+                    <div>
+                      <Code2 size={14} />
+                      <span>{project.openings || 0} openings</span>
+                    </div>
+                  </div>
+                  {project.skills && project.skills.length > 0 && (
+                    <div className="leader-project-skills">
+                      {project.skills.slice(0, 3).map((s: string) => (
+                        <span key={s} className="skill-chip">
+                          {s}
+                        </span>
+                      ))}
+                      {project.skills.length > 3 && (
+                        <span className="skill-chip more">
+                          +{project.skills.length - 3}
+                        </span>
+                      )}
+                    </div>
+                  )}
+                  <div className="card-actions">
+                    <Link
+                      className="btn btn-primary"
+                      to={`/projects/${project.id}/applications`}
+                    >
+                      Applications
+                      {pending > 0 && (
+                        <span className="counter-badge">{pending}</span>
+                      )}
+                    </Link>
+                    <Link
+                      className="btn btn-secondary"
+                      to={`/team/${project.id}`}
+                    >
+                      Team workspace
+                    </Link>
+                  </div>
+                </article>
+              )
+            })}
           </div>
-
           {totalPages > 1 && (
-            <div className="leader-pagination">
-              <div className="leader-pagination-info">
-                Showing{" "}
-                <strong>
-                  {startIndex + 1}–
-                  {Math.min(startIndex + PROJECTS_PER_PAGE, managed.length)}
-                </strong>{" "}
-                of <strong>{managed.length}</strong> projects (Page{" "}
-                {currentPage} of {totalPages})
-              </div>
-              <div className="leader-pagination-controls">
+            <div className="pagination-container">
+              <span className="pagination-text">
+                Showing {startIndex + 1}–{startIndex + pageItemsCount} of{" "}
+                {managed.length} projects
+              </span>
+              <div className="pagination-buttons">
                 <button
                   className="btn btn-secondary pagination-btn"
                   onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
@@ -465,20 +524,6 @@ export function LeaderDashboard() {
                   <ChevronLeft size={15} />
                   <span>Previous</span>
                 </button>
-                <div className="pagination-pages">
-                  {Array.from({ length: totalPages }, (_, i) => i + 1).map(
-                    (pageNum) => (
-                      <button
-                        key={pageNum}
-                        className={`pagination-page-number ${pageNum === currentPage ? "active" : ""}`}
-                        onClick={() => setCurrentPage(pageNum)}
-                        aria-label={`Go to page ${pageNum}`}
-                      >
-                        {pageNum}
-                      </button>
-                    ),
-                  )}
-                </div>
                 <button
                   className="btn btn-secondary pagination-btn"
                   onClick={() =>
@@ -495,6 +540,61 @@ export function LeaderDashboard() {
           )}
         </>
       )}
+      <section aria-label="Candidate and messaging demo preview">
+        <div className="info-banner" role="note">Demo preview — candidate shortlist, invitations and chat below use sample data. {candidateInvites.length} sample invitations · {candidateInterested.length} sample interested candidates.</div>
+        <div className="two-column">
+          <section className="panel">
+            <SectionHeading
+              title="Candidate shortlist"
+              action={
+                <Link className="text-link" to="/applications">
+                  View all applications <ArrowRight size={13} />
+                </Link>
+              }
+            />
+            {initialCandidates
+              .filter((candidate) => !dismissed.includes(candidate.name))
+              .slice(0, 3)
+              .map((candidate) => (
+                <Link
+                  className="recent-candidate"
+                  key={candidate.name}
+                  to={`/candidate/${encodeURIComponent(candidate.name)}`}
+                >
+                  <Avatar name={candidate.name} color={candidate.color} />
+                  <div>
+                    <strong>{candidate.name}</strong>
+                    <small>{candidate.role}</small>
+                  </div>
+                  <Badge tone="success">{candidate.match}% match</Badge>
+                </Link>
+              ))}
+          </section>
+          <section className="panel">
+            <SectionHeading title="Keep the conversation going" />
+            <div className="leader-message">
+              <Avatar name="Cao Thanh Nhan" color="teal" />
+              <div>
+                <h3>Cao Thanh Nhan</h3>
+                <p>“I’d love to learn more about the backend architecture.”</p>
+                <Link
+                  className="text-link"
+                  to="/messages?conversation=Cao%20Thanh%20Nhan"
+                >
+                  Reply in chat <ArrowRight size={14} />
+                </Link>
+              </div>
+            </div>
+            <div className="trust-note">
+              <Users size={18} />
+              <span>
+                The best team fit goes beyond a score. Start a conversation about
+                goals, availability, and how you like to work.
+              </span>
+            </div>
+          </section>
+        </div>
+      </section>
       <SaveSuccessModal
         open={showSaveSuccessModal}
         projectName={savedSuccessProjectName}

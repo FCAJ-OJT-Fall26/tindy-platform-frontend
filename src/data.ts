@@ -48,13 +48,20 @@ export const factors = [
   { name: "Availability", weight: 10 },
 ]
 
-export const score = (project: Project) =>
-  Math.round(
-    project.factors.reduce(
-      (total, value, index) => total + (value * factors[index].weight) / 100,
-      0,
-    ),
-  )
+export const score = (project: Project): number => {
+  if (typeof project.serverMatch?.match_score === "number") {
+    return Math.round(project.serverMatch.match_score);
+  }
+  if (Array.isArray(project.factors) && project.factors.length > 0) {
+    return Math.round(
+      project.factors.reduce(
+        (total, value, index) => total + (value * (factors[index]?.weight ?? 0)) / 100,
+        0,
+      ),
+    );
+  }
+  return 0;
+};
 
 // Production data must come from the authenticated API. These arrays intentionally
 // remain empty so a missing API response can never display demo records.

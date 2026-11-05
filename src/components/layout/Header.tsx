@@ -156,9 +156,9 @@ export default function Header({ title, onOpenMobileMenu }: HeaderProps) {
         >
           <Menu size={20} />
         </button>
-        <span>{currentCategory}</span>
-        <ChevronRight size={12} />
-        <strong>{currentTitle}</strong>
+        <span className="breadcrumb-category">{currentCategory}</span>
+        <ChevronRight size={12} className="breadcrumb-separator" />
+        <strong className="breadcrumb-title">{currentTitle}</strong>
       </div>
       <div className="topbar-actions">
         {/* Notification Bell with Dropdown Popover */}

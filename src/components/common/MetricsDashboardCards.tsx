@@ -89,32 +89,122 @@ export function AnimatedMetricValue({ value }: { value: React.ReactNode }) {
 
 /* --- Shared Micro Visual Components --- */
 
+export interface SparklineBarItem {
+  label?: string
+  value?: number
+  sublabel?: string
+  height?: number
+  color?: string
+  tooltip?: string
+  date?: string
+}
+
+export interface SparklineBarsProps {
+  bars?: SparklineBarItem[]
+  caption?: string
+  ariaLabel?: string
+}
+
 export function SparklineBars({
-  bars = [
-    { height: 26, color: "#1e40af" },
-    { height: 32, color: "#2563eb" },
-    { height: 22, color: "#93c5fd" },
-    { height: 25, color: "#bfdbfe" },
-    { height: 20, color: "#c7d2fe" },
-    { height: 28, color: "#bfdbfe" },
-    { height: 23, color: "#dbeafe" },
-  ],
-}: {
-  bars?: Array<{ height: number; color: string }>
-}) {
+  bars,
+  caption,
+  ariaLabel = "Activity trend chart",
+}: SparklineBarsProps) {
+  // Default to a 7-day timeline (past 6 days + today) if nothing is provided
+  const items: SparklineBarItem[] = React.useMemo(() => {
+    if (bars && bars.length > 0) return bars
+
+    const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
+    const monthNames = [
+      "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+      "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+    ]
+    const today = new Date()
+    return Array.from({ length: 7 }).map((_, idx) => {
+      const offset = 6 - idx
+      const d = new Date()
+      d.setDate(today.getDate() - offset)
+      const isToday = offset === 0
+      const dayName = isToday ? "Today" : dayNames[d.getDay()]
+      const monthStr = monthNames[d.getMonth()]
+      const dateNum = d.getDate()
+      return {
+        label: isToday ? "Now" : dayNames[d.getDay()],
+        value: isToday ? 1 : 0,
+        tooltip: `${isToday ? "Today" : `${dayName} (${monthStr} ${dateNum})`}: ${
+          isToday ? "1 new application" : "0 applications"
+        }`,
+      }
+    })
+  }, [bars])
+
+  const maxVal = React.useMemo(() => {
+    return Math.max(1, ...items.map((it) => it.value ?? 0))
+  }, [items])
+
   return (
-    <div className="metric-bars-wrap" aria-hidden="true">
-      {bars.map((bar, i) => (
-        <span
-          key={i}
-          className="metric-bar-pill"
-          style={{
-            height: `${bar.height}px`,
-            backgroundColor: bar.color,
-            animationDelay: `${i * 50 + 100}ms`,
-          }}
-        />
-      ))}
+    <div className="metric-sparkline-group" role="group" aria-label={ariaLabel}>
+      <div className="metric-sparkline-track">
+        {items.map((item, i) => {
+          const val = item.value ?? 0
+          const hasExplicitHeight = item.height !== undefined
+          const isZero = val === 0 && !hasExplicitHeight
+
+          // Height logic:
+          // Zero: 5px subtle base pill (clearly signifies 0 activity)
+          // > 0: Dynamic rise from 14px to 32px based on maxVal
+          const barHeight = hasExplicitHeight
+            ? item.height
+            : isZero
+            ? 5
+            : Math.round(14 + (val / maxVal) * 18)
+
+          // Color logic:
+          // Zero: Neutral light slate (#e2e8f0)
+          // > 0: Primary brand blue (#2563eb) or custom color
+          const barColor =
+            item.color !== undefined
+              ? item.color
+              : isZero
+              ? "#e2e8f0"
+              : "#2563eb"
+
+          const tooltipText =
+            item.tooltip ||
+            `${item.label || "Period"}: ${val} ${item.sublabel || "items"}`
+
+          return (
+            <div
+              key={i}
+              className={`metric-sparkline-col ${isZero ? "is-zero" : "is-active"}`}
+              tabIndex={0}
+              role="figure"
+              aria-label={tooltipText}
+            >
+              <div className="metric-sparkline-bar-slot">
+                <span
+                  className="metric-sparkline-pill"
+                  style={{
+                    height: `${barHeight}px`,
+                    backgroundColor: barColor,
+                    animationDelay: `${i * 45 + 80}ms`,
+                  }}
+                />
+              </div>
+
+              {item.label && (
+                <span className="metric-sparkline-label">{item.label}</span>
+              )}
+
+              {/* GitHub-style individual bar popover */}
+              <div className="metric-bar-popover" role="tooltip">
+                <span className="popover-text">{tooltipText}</span>
+              </div>
+            </div>
+          )
+        })}
+      </div>
+      {caption && <span className="metric-sparkline-caption">{caption}</span>}
     </div>
   )
 }
@@ -138,7 +228,7 @@ export function CategoryBreakdown({
             <div
               className="metric-breakdown-fill"
               style={{
-                width: `${Math.max(8, Math.min(100, item.pct))}%`,
+                width: item.count === 0 || item.pct <= 0 ? "0%" : `${Math.max(8, Math.min(100, item.pct))}%`,
                 backgroundColor: item.color || "#0d9488",
                 animationDelay: `${i * 100 + 150}ms`,
               }}
@@ -258,8 +348,12 @@ export interface MetricCardProps {
   visual: React.ReactNode
   footerLeft: string
   actionLabel: string
-  actionTo: string
+  actionTo?: string
+  actionOnClick?: () => void
   index?: number
+  tooltipTitle?: string
+  tooltipDesc?: string
+  tooltipDetail?: string
 }
 
 export function MetricCard({
@@ -269,9 +363,72 @@ export function MetricCard({
   visual,
   footerLeft,
   actionLabel,
-  actionTo,
+  actionTo = "#",
+  actionOnClick,
   index = 0,
+  tooltipTitle,
+  tooltipDesc,
+  tooltipDetail,
 }: MetricCardProps) {
+  // Smart default tooltips based on card label if custom ones aren't provided
+  const title =
+    tooltipTitle ||
+    (label.toLowerCase().includes("total")
+      ? "Application Activity Trend"
+      : label.toLowerCase().includes("pending review")
+      ? "Review Queue Status"
+      : label.toLowerCase().includes("pending invitation")
+      ? "Direct Invitation Slots"
+      : label.toLowerCase().includes("accepted")
+      ? "Team Roster Filling Rate"
+      : label.toLowerCase().includes("team")
+      ? "Team Capacity Progress"
+      : label.toLowerCase().includes("open position")
+      ? "Vacancies by Role"
+      : label.toLowerCase().includes("interested")
+      ? "Applicant Pipeline"
+      : label.toLowerCase().includes("recommended")
+      ? "Project Match Distribution"
+      : label.toLowerCase().includes("saved")
+      ? "Shortlist Categories"
+      : label.toLowerCase().includes("active project")
+      ? "Active Team Workspaces"
+      : label.toLowerCase().includes("completeness")
+      ? "Profile Readiness Gauge"
+      : `${label} Overview`)
+
+  const desc =
+    tooltipDesc ||
+    (label.toLowerCase().includes("total")
+      ? "Shows submission volume trend across all open project positions."
+      : label.toLowerCase().includes("pending review")
+      ? "Candidate applications waiting for review before recruitment deadline."
+      : label.toLowerCase().includes("pending invitation")
+      ? "Direct invitations sent to prospective student candidates."
+      : label.toLowerCase().includes("accepted")
+      ? "Percentage of total project seats filled by accepted candidates."
+      : label.toLowerCase().includes("team")
+      ? "Filled seats vs total capacity across your collaborative teams."
+      : label.toLowerCase().includes("open position")
+      ? "Available slots and remaining capacity per position role."
+      : label.toLowerCase().includes("interested")
+      ? "Candidate profile interest categorized by technical domain."
+      : label.toLowerCase().includes("recommended")
+      ? "Projects tailored to your skills, availability, and preferences."
+      : label.toLowerCase().includes("saved")
+      ? "Saved projects grouped by development category."
+      : label.toLowerCase().includes("active project")
+      ? "Active member seat utilization in your workspaces."
+      : label.toLowerCase().includes("completeness")
+      ? "Readiness score based on bio, skills, and verified certificates."
+      : `Visual representation of ${label.toLowerCase()}.`)
+
+  const detail =
+    tooltipDetail ||
+    (typeof value === "number" || typeof value === "string"
+      ? `Current metric value: ${value}`
+      : undefined)
+
   return (
     <article
       className="metric-card"
@@ -285,13 +442,44 @@ export function MetricCard({
           </div>
           <div className="metric-card-subtitle">{subtitle}</div>
         </div>
-        <div className="metric-card-visual">{visual}</div>
+        <div className="metric-card-visual">
+          <div
+            className="metric-visual-container"
+            tabIndex={0}
+            role="region"
+            aria-label={title}
+          >
+            {visual}
+            <div className="metric-chart-tooltip" role="tooltip">
+              <div className="metric-tooltip-title">{title}</div>
+              <p className="metric-tooltip-desc">{desc}</p>
+              {detail && <div className="metric-tooltip-detail">{detail}</div>}
+            </div>
+          </div>
+        </div>
       </div>
       <div className="metric-card-footer">
         <span className="metric-footer-text">{footerLeft}</span>
-        <Link to={actionTo} className="metric-footer-action">
-          {actionLabel}
-        </Link>
+        {actionOnClick ? (
+          <button
+            type="button"
+            onClick={actionOnClick}
+            className="metric-footer-action"
+            style={{
+              background: "none",
+              border: "none",
+              padding: 0,
+              font: "inherit",
+              cursor: "pointer",
+            }}
+          >
+            {actionLabel}
+          </button>
+        ) : (
+          <Link to={actionTo} className="metric-footer-action">
+            {actionLabel}
+          </Link>
+        )}
       </div>
     </article>
   )
