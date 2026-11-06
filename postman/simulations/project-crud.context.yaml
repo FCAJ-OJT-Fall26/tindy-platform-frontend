@@ -2,6 +2,20 @@ purpose:
   stands_in_for: Local Tindy backend Project, Position, Skill, Catalog, session-read, Teammates, Invitation and owner-consent contracts
   unblocks: Frontend HTTP contract checks without production or PostgreSQL access; real PostgreSQL smoke uses a separate Testcontainers host
 assumptions:
+  - id: member-profile-search-2026-11-06
+    status: supported
+    claim: Header search uses GET /api/users to look up members by name or username and opens the existing member profile route.
+    reason: The real React app ran through the local Postman HTTP stand-in; the production query and authorization were checked separately with disposable PostgreSQL.
+    verification: On 2026-11-06, test:member-search passed four browser groups covering debounce, short queries, keyboard/Escape, mobile layout, empty results, stale responses, retry and navigation. Request events were present in the simulation log. A separate backend run passed 185 tests including three MemberSearchHttpTests and existing Profile tests; the PostgreSQL checks verified literal wildcard escaping, eligibility, pagination, response field whitelist, auth/onboarding and query bounds. Typecheck and frontend production build passed. Existing test fixtures do not model SignalR, so their negotiation logs are unrelated to search. The running application backend was not restarted by these tests.
+    source: tests/member-search.browser.mjs; src/components/layout/MemberSearch.tsx; src/services/members.service.ts; sibling tests/Tindy.Tests/Integration/MemberSearchHttpTests.cs; sibling src/Tindy.Infrastructure/Repositories/ProfileRepository.cs
+    updated_at: "2026-11-06"
+  - id: project-github-link-2026-11-06
+    status: supported
+    claim: The optional github_url is retained through the exercised frontend create, draft refresh, detail, update and clear flows.
+    reason: The real React app called the existing local Postman HTTP stand-in; backend behavior was checked separately through production controllers and a disposable PostgreSQL database.
+    verification: On 2026-11-06, test:project-github passed five browser groups with request events in .tmp-project-results/simulation.ndjson; desktop/mobile screenshots were inspected. The targeted backend run passed 60 tests including URL validation and create/list/detail/update/clear HTTP contracts, and PostgreSQL migration plus demo seed/backfill preservation. Typecheck and production frontend build passed. The older test:projects suite stops at its pre-existing single-panel assertion because the current wizard renders three sliding panels; it was not reported as passing. Postman status is unsupported by the installed CLI; the local simulation itself ran successfully outside the Windows sandbox.
+    source: tests/project-github.browser.mjs; src/services/projectGithub.ts; src/components/projects/ProjectForm.tsx; postman/mocks/tindy-project/handler.js; sibling tests/Tindy.Tests/Projects/ProjectHttpContractTests.cs; sibling tests/Tindy.Tests/Integration/DevelopmentSeedingTests.cs
+    updated_at: "2026-11-06"
   - id: release-verification-2026-11-05
     status: supported
     claim: The exercised V1 frontend contracts also work with the real sibling ASP.NET Core backend and disposable PostgreSQL, independently of this simulation.

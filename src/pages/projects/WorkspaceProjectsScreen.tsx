@@ -68,6 +68,7 @@ export default function WorkspaceProjectsScreen({
         if (controller.signal.aborted) return;
         setHasNext(res.pagination.has_next);
         setProjectList(res.items.map(dto => ({
+          githubUrl: dto.github_url,
           id: dto.project_id, name: dto.name, sub: dto.tagline || dto.category,
           type: dto.category, desc: dto.description, tags: dto.open_positions.flatMap(position => position.required_skills),
           role: dto.open_positions[0]?.title || 'No open positions', color: dto.color_theme || 'default',

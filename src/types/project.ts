@@ -64,6 +64,7 @@ export interface RecruitmentDeadlineDto {
 export interface ProjectSummaryDto extends RecruitmentDeadlineDto {
   project_id: string
   name: string
+  github_url?: string | null
   tagline?: string | null
   description: string
   category: string
@@ -97,6 +98,7 @@ export interface PagedProjectsResponse {
 export interface ProjectDetailDto extends RecruitmentDeadlineDto {
   project_id: string
   name: string
+  github_url?: string | null
   tagline?: string | null
   description: string
   category: string
@@ -132,6 +134,7 @@ export interface CreateProjectPositionInput {
 
 export interface CreateProjectRequest {
   name: string
+  github_url?: string | null
   tagline?: string
   description: string
   category: string
@@ -150,6 +153,7 @@ export interface CreateProjectResponse extends RecruitmentDeadlineDto {
   closing_days_left: number
   project_id: string
   name: string
+  github_url?: string | null
   tagline?: string | null
   category: string
   status: ProjectStatus
@@ -163,6 +167,7 @@ export interface CreateProjectResponse extends RecruitmentDeadlineDto {
 export interface UpdateProjectRequest {
   recruitment_closing_date?: string
   name: string
+  github_url?: string | null
   tagline?: string
   description: string
   category: string

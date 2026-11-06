@@ -1,3 +1,4 @@
+import ProjectGithubLink from "../../components/projects/ProjectGithubLink"
 import { useCallback, useEffect, useState } from "react"
 import { Link, useLocation, useNavigate, useParams } from "react-router"
 import {
@@ -206,6 +207,7 @@ export function ProjectDetailScreen() {
             <p>
               {project.description}
             </p>
+            <ProjectGithubLink url={remoteDetail.github_url} />
             <h3>Project goals</h3>
             <ul className="goal-list">
               {project.goals.map((goal) => (

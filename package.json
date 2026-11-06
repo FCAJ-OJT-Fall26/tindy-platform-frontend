@@ -9,6 +9,8 @@
     "typecheck": "tsc --noEmit",
     "test": "npm run test:teammates && npm run test:teammates:errors && npm run test:teammates:regression && npm run test:notifications && npm run test:candidates:polish && npm run test:profile && npm run test:chat",
     "test:projects": "node tests/projects.browser.mjs",
+    "test:member-search": "node tests/member-search.browser.mjs",
+    "test:project-github": "node tests/project-github.browser.mjs",
     "test:profile": "node tests/profile.browser.mjs",
     "test:profile-media": "node tests/profile-media.browser.mjs",
     "test:onboarding": "node tests/onboarding.browser.mjs",

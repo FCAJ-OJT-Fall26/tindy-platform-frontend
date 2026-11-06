@@ -15,7 +15,7 @@ const deadline = (date = defaultClosingDate()) => ({ recruitment_closing_date: d
 const user = { user_id: userId, display_name: "Project Leader", university: "FPT", email: "fixture@example.com", username: "fixture", status: "active", roles: ["Member"], is_onboarding_completed: true };
 const roles = [{ professional_role_id: roleId, name: "Backend Developer", description: null, display_order: 1 }];
 const skills = [{ skill_id: skillId, name: ".NET" }, { skill_id: extraSkillId, name: "PostgreSQL" }];
-const base = { ...deadline(), name: "Persisted Project", tagline: "Build the real project API", description: "Develop a collaborative project platform using real APIs.", category: "Web Application", difficulty_level: "intermediate", expected_commitment_hours: 10, duration: "3 months", max_team_capacity: 5, color_theme: "indigo", goals: ["Ship the API"] };
+const base = { github_url: null, ...deadline(), name: "Persisted Project", tagline: "Build the real project API", description: "Develop a collaborative project platform using real APIs.", category: "Web Application", difficulty_level: "intermediate", expected_commitment_hours: 10, duration: "3 months", max_team_capacity: 5, color_theme: "indigo", goals: ["Ship the API"] };
 const leader = { user_id: userId, display_name: user.display_name, avatar_url: null, initials: "PL" };
 const makePosition = (body, id = randomUUID(), parent = projectId) => ({ position_id: id, project_id: parent, role_id: body.role_id, title: body.title.trim(), description: body.description?.trim() ?? null, required_count: body.required_count, filled_count: 0, experience_level: body.experience_level, status: "open", skills: (body.skills || []).map(s => ({ ...s, name: skills.find(k => k.skill_id === s.skill_id)?.name })) });
 const seedProject = (id = projectId, owner = leader) => ({ ...base, project_id: id, status: "recruiting", current_team_size: 1, leader: owner, created_at: "2026-10-29T00:00:00Z", closing_days_left: 14, team_members: [{ user_id: owner.user_id, display_name: owner.display_name, role_title: "Project Lead", position_id: null, is_leader: true, initials: "PL", joined_at: "2026-10-29T00:00:00Z" }], positions: [makePosition({ role_id: roleId, title: "Backend Developer", required_count: 1, experience_level: "intermediate", description: "Develop REST APIs", skills: [{ skill_id: skillId, is_required: true }] }, positionId, id)] });
@@ -61,6 +61,14 @@ async function handle(req, res, bodyPromise) {
   if (path.startsWith("/api/me/notifications")) {
     const handled = await notificationRoutes(req, url, state, send, fail, save, caller, loseCreateResponse);
     if (handled !== false) return;
+  }
+  if (path === "/api/users" && req.method === "GET") {
+    const q = (url.searchParams.get("q") || "").trim().toLowerCase();
+    const page = Number(url.searchParams.get("page") || 1), size = Number(url.searchParams.get("page_size") || 10);
+    if (q.length > 100 || !Number.isInteger(page) || page < 1 || page > 1000 || !Number.isInteger(size) || size < 1 || size > 20) return fail(400, "Invalid member search");
+    const people = state.memberSearchItems || [{ user_id: "99999999-9999-4999-8999-999999999999", display_name: "Browser Applicant", username: "browser-applicant", university: "FPT University", headline: "Frontend developer" }];
+    const matches = q.length < 2 ? [] : people.filter(p => p.display_name.toLowerCase().includes(q) || (p.username || "").toLowerCase().includes(q)).sort((a,b) => a.display_name.localeCompare(b.display_name) || a.user_id.localeCompare(b.user_id));
+    return send(200, { items: matches.slice((page-1)*size, page*size).map(p => ({user_id:p.user_id,username:p.username,display_name:p.display_name,university:p.university,headline:p.headline})), page, page_size:size, has_more:matches.length>page*size });
   }
   if (path === "/api/me") return send(200, caller);
   if (state.teammatesEnabled) {
@@ -114,7 +122,7 @@ async function handle(req, res, bodyPromise) {
   if (path === "/api/projects" && req.method === "POST") {
     if (body.initial_team_size !== 1 || body.max_team_capacity < 1 || !body.positions?.length || body.positions.some(p => p.role_id !== roleId || p.skills.some(s => !skills.some(k => k.skill_id === s.skill_id)))) return fail(400, "Invalid project request");
     if (body.recruitment_closing_date && body.recruitment_closing_date <= vietnamToday()) return fail(400, "Closing date must be in the future");
-    const project = { ...seedProject(), ...body, ...deadline(body.recruitment_closing_date), project_id: randomUUID(), initial_team_size: 1 };
+    const project = { ...seedProject(), ...body, github_url: body.github_url?.trim() || null, ...deadline(body.recruitment_closing_date), project_id: randomUUID(), initial_team_size: 1 };
     project.positions = body.positions.map(pos => makePosition(pos, randomUUID(), project.project_id));
     state.projects.push(project); await save();
     if (loseCreateResponse) return req.socket.destroy();
@@ -127,7 +135,7 @@ async function handle(req, res, bodyPromise) {
     if (req.method !== "GET" && project.leader.user_id !== userId) return fail(403, "Only the project leader can modify this project", "PROJECT_ACCESS_DENIED");
     if (!path.includes("/positions")) {
       if (req.method === "GET") return send(200, project);
-      if (req.method === "PUT") { if (body.recruitment_closing_date && body.recruitment_closing_date <= vietnamToday()) return fail(400, "Closing date must be in the future"); Object.assign(project, body, body.recruitment_closing_date ? deadline(body.recruitment_closing_date) : {}); await save(); return send(200, project); }
+      if (req.method === "PUT") { if (body.recruitment_closing_date && body.recruitment_closing_date <= vietnamToday()) return fail(400, "Closing date must be in the future"); Object.assign(project, body, { github_url: body.github_url?.trim() || null }, body.recruitment_closing_date ? deadline(body.recruitment_closing_date) : {}); await save(); return send(200, project); }
       if (req.method === "DELETE") { project.status = "archived"; project.positions.forEach(p => p.status = "closed"); await save(); return send(200, { project_id: project.project_id, status: "archived" }); }
     }
     if (!match[2]) {

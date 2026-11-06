@@ -1,6 +1,7 @@
 import { FolderKanban } from "lucide-react"
 
 export interface ProjectItem {
+  githubUrl?: string | null
   id: string
   name: string
   sub: string

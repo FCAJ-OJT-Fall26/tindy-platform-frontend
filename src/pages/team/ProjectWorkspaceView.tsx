@@ -1,3 +1,4 @@
+import { safeProjectGithubUrl } from "../../services/projectGithub"
 import { useState, useEffect, useMemo, useCallback } from "react"
 import { Link, useNavigate, useParams } from "react-router"
 import {
@@ -107,22 +108,11 @@ export function ProjectWorkspaceView({ projectId: propProjectId }: ProjectWorksp
   const [updates, setUpdates] = useState<WorkspaceUpdate[]>([])
 
   // Attachments
-  const [attachments, setAttachments] = useState<WorkspaceAttachment[]>([
-    {
-      id: "att-1",
-      name: "GitHub Repository (main)",
-      type: "repo",
-      url: "https://github.com",
-      size: "Active branch",
-    },
-    {
-      id: "att-2",
-      name: "Architecture & API Contract",
-      type: "doc",
-      url: "#",
-      size: "PDF document",
-    },
-  ])
+  const repositoryUrl = safeProjectGithubUrl(projectDetail?.github_url)
+  const attachments: WorkspaceAttachment[] = repositoryUrl ? [{
+    id: "project-repository", name: "GitHub Repository", type: "repo",
+    url: repositoryUrl, size: "Project link",
+  }] : []
 
   // Invite Modal
   const [showInviteModal, setShowInviteModal] = useState(false)

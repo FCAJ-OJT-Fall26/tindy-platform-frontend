@@ -18,6 +18,7 @@ import { Avatar } from "../ui"
 import { useTindy } from "../../store"
 import { navItems } from "./Sidebar"
 import ProfileMediaImage from "../profile/ProfileMediaImage"
+import MemberSearch from "./MemberSearch"
 import useNotifications from "../../hooks/useNotifications"
 import useNotificationNavigation from "../../hooks/useNotificationNavigation"
 import NotificationRow from "../notifications/NotificationRow"
@@ -147,7 +148,7 @@ export default function Header({ title, onOpenMobileMenu }: HeaderProps) {
   }
 
   return (
-    <><header className="topbar">
+    <><header className={`topbar ${authUser?.is_onboarding_completed && !loggingOut ? "has-member-search" : ""}`}>
       <div className="breadcrumb">
         <button
           className="icon-button mobile-menu"
@@ -160,6 +161,7 @@ export default function Header({ title, onOpenMobileMenu }: HeaderProps) {
         <ChevronRight size={12} className="breadcrumb-separator" />
         <strong className="breadcrumb-title">{currentTitle}</strong>
       </div>
+      {authUser?.is_onboarding_completed && !loggingOut && <MemberSearch key={`${authUser.user_id}:${location.pathname}`} />}
       <div className="topbar-actions">
         {/* Notification Bell with Dropdown Popover */}
         <div className="topbar-notif-container" ref={notifRef}>

@@ -9,6 +9,7 @@ import {
 } from "lucide-react"
 import type { SelectedSkill } from "../../types/catalog"
 import SkillIcon from "../onboarding/SkillIcon"
+import ProjectGithubLink from "./ProjectGithubLink"
 
 export interface FullPreviewPosition {
   id: string
@@ -24,6 +25,7 @@ export interface FullPreviewPosition {
 export interface FullPreviewDialogProps {
   isOpen: boolean
   mode: "create" | "edit"
+  githubUrl?: string
   projectName: string
   tagline: string
   description: string
@@ -42,6 +44,7 @@ export interface FullPreviewDialogProps {
 
 export default function FullPreviewDialog({
   isOpen,
+  githubUrl,
   projectName,
   tagline,
   description,
@@ -162,6 +165,8 @@ export default function FullPreviewDialog({
           </div>
 
           <div className="light-preview-divider" />
+
+          <ProjectGithubLink url={githubUrl} />
 
           {/* What we're building */}
           <div className="light-preview-section">
