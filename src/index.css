@@ -15822,3 +15822,15 @@ button.text-link {
 
 /* Reuse Invited's shared empty-state presentation across My Projects tabs. */
 .live-teammates.my-project-empty { width: 100%; margin: 0; padding: 0; }
+
+/* Optional repository link shared by project forms and detail views. */
+.project-github-field { padding: 20px; border: 1px solid #c7d2fe; border-radius: 14px; background: #f8f9ff; }
+.project-github-field .field-label { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.project-github-optional { color: #64748b; background: #eef2ff; border-radius: 5px; padding: 2px 7px; font-size: 11px; font-weight: 500; }
+.project-github-link { display: flex; align-items: center; gap: 10px; min-width: 0; padding: 12px; margin: 12px 0; border: 1px solid #e0e7ff; border-radius: 10px; color: #4338ca; background: #f8f9ff; text-decoration: none; }
+.project-github-link:hover { background: #eef2ff; }
+.project-github-link:focus-visible { outline: 2px solid #4f46e5; outline-offset: 3px; }
+.project-github-link > svg { flex-shrink: 0; }
+.project-github-link > span { min-width: 0; flex: 1; }
+.project-github-link strong { display: block; font-size: 13px; }
+.project-github-link small { display: block; margin-top: 3px; color: #64748b; font-size: 11px; overflow-wrap: anywhere; }

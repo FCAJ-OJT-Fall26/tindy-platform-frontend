@@ -36,6 +36,9 @@ import {
 import type { CatalogSkill, ProfessionalRole, SelectedSkill } from "../../types/catalog"
 import SkillPickerDialog from "./SkillPickerDialog"
 import SkillIcon from "../onboarding/SkillIcon"
+import ProjectGithubLink from "./ProjectGithubLink"
+import { projectGithubError } from "../../services/projectGithub"
+import { GitBranch } from "lucide-react"
 import AiWritingDialog from "./AiWritingDialog"
 import FullPreviewDialog from "./FullPreviewDialog"
 import { UnsavedChangesDialog } from "./UnsavedChangesDialog"
@@ -52,7 +55,7 @@ export interface ProjectFormProps {
 
 type FormSection = "big-picture" | "people-skills" | "commitment"
 const FORM_STEPS: FormSection[] = ["big-picture", "people-skills", "commitment"]
-type StepErrors = Partial<Record<"name" | "tagline" | "description" | "goals" | "category" | "positions" | "capacity" | "role" | "title" | "count" | "skills" | "hours" | "duration" | "deadline", string>>
+type StepErrors = Partial<Record<"name" | "tagline" | "description" | "githubUrl" | "goals" | "category" | "positions" | "capacity" | "role" | "title" | "count" | "skills" | "hours" | "duration" | "deadline", string>>
 
 const PROJECT_TYPES = [
   "AI & Machine Learning",
@@ -77,6 +80,7 @@ const EXPERIENCE_LEVELS = [
 ]
 
 interface DraftFields {
+  githubUrl?: string
   name?: string
   tagline?: string
   jd?: string
@@ -102,6 +106,7 @@ function hasDraftChanges(
   if (!draft || !detail) return false
   if ((draft.name ?? '').trim() !== (detail.name ?? '').trim()) return true
   if ((draft.tagline ?? '').trim() !== (detail.tagline ?? '').trim()) return true
+  if (draft.githubUrl !== undefined && draft.githubUrl.trim() !== (detail.github_url ?? '').trim()) return true
   if ((draft.jd ?? '').trim() !== (detail.description ?? '').trim()) return true
   if (draft.type && draft.type !== detail.category) return true
   if (typeof draft.hours === 'number' && draft.hours !== detail.expected_commitment_hours) return true
@@ -152,7 +157,7 @@ export function ProjectForm({ mode, initialProject, initialDetail }: ProjectForm
   const { setProjects, profile, authUser, notify } = useTindy()
   const draftKey = `tindy-project-draft:${authUser?.user_id}:${initialProject?.id ?? "new"}`
   const [restored] = useState(() => {
-    try { return JSON.parse(sessionStorage.getItem(draftKey) || "null") as { fields: { name: string; tagline: string; jd: string; goals: string; type: string; hours: number; durationMonths: number; durationEdited?: boolean; capacity: number; difficulty: ProjectDifficultyLevel; positionsList: FormPositionItem[]; wizardStep?: FormSection; deadlineMode?: DeadlineMode; deadlineDate?: string; deadlineEdited?: boolean }; progress: ProjectSaveProgress } | null } catch { return null }
+    try { return JSON.parse(sessionStorage.getItem(draftKey) || "null") as { fields: { githubUrl?: string; name: string; tagline: string; jd: string; goals: string; type: string; hours: number; durationMonths: number; durationEdited?: boolean; capacity: number; difficulty: ProjectDifficultyLevel; positionsList: FormPositionItem[]; wizardStep?: FormSection; deadlineMode?: DeadlineMode; deadlineDate?: string; deadlineEdited?: boolean }; progress: ProjectSaveProgress } | null } catch { return null }
   })
   const [activeSection, setActiveSection] = useState<FormSection>(
     isWizard && restored?.fields.wizardStep && FORM_STEPS.includes(restored.fields.wizardStep)
@@ -160,6 +165,8 @@ export function ProjectForm({ mode, initialProject, initialDetail }: ProjectForm
   )
   const stepIndex = FORM_STEPS.indexOf(activeSection)
   const [stepErrors, setStepErrors] = useState<StepErrors>({})
+
+  const [githubUrl, setGithubUrl] = useState(restored?.fields.githubUrl ?? initialDetail?.github_url ?? initialProject?.githubUrl ?? "")
 
   // Form fields
   const [name, setName] = useState(restored?.fields.name ?? initialDetail?.name ?? initialProject?.name ?? "")
@@ -213,9 +220,9 @@ export function ProjectForm({ mode, initialProject, initialDetail }: ProjectForm
   const persistDraft = () => {
     if (savedRef.current) return
     if (mode === "edit" && !isDirtyRef.current) return
-    try { sessionStorage.setItem(draftKey, JSON.stringify({ fields: { name, tagline, jd, goals, type, hours, durationMonths, durationEdited: durationChanged, capacity, difficulty, positionsList, wizardStep: activeSection, deadlineMode, deadlineDate, deadlineEdited }, progress: progressRef.current })) } catch {}
+    try { sessionStorage.setItem(draftKey, JSON.stringify({ fields: { githubUrl, name, tagline, jd, goals, type, hours, durationMonths, durationEdited: durationChanged, capacity, difficulty, positionsList, wizardStep: activeSection, deadlineMode, deadlineDate, deadlineEdited }, progress: progressRef.current })) } catch {}
   }
-  useEffect(() => { persistDraft() }, [name, tagline, jd, goals, type, hours, durationMonths, durationChanged, capacity, difficulty, positionsList, activeSection, deadlineMode, deadlineDate, deadlineEdited, today])
+  useEffect(() => { persistDraft() }, [githubUrl, name, tagline, jd, goals, type, hours, durationMonths, durationChanged, capacity, difficulty, positionsList, activeSection, deadlineMode, deadlineDate, deadlineEdited, today])
 
   // Active position tab index
   const [activePosIndex, setActivePosIndex] = useState<number>(0)
@@ -245,7 +252,7 @@ export function ProjectForm({ mode, initialProject, initialDetail }: ProjectForm
   // Tracking dirty state
   const [isDirty, setIsDirty] = useState(() => {
     if (mode === "create") {
-      return Boolean(restored?.fields.name || restored?.fields.jd || restored?.fields.positionsList?.length)
+      return Boolean(restored?.fields.githubUrl || restored?.fields.name || restored?.fields.jd || restored?.fields.positionsList?.length)
     }
     const hasChanges = hasDraftChanges(restored?.fields, initialDetail, initialProject)
     if (!hasChanges && restored) {
@@ -285,6 +292,7 @@ export function ProjectForm({ mode, initialProject, initialDetail }: ProjectForm
   // Create initial snapshot once
   useEffect(() => {
     const currentData = JSON.stringify({
+      githubUrl,
       name,
       tagline,
       jd,
@@ -583,7 +591,7 @@ export function ProjectForm({ mode, initialProject, initialDetail }: ProjectForm
       totalSteps,
       percentage: Math.round((completedSteps / totalSteps) * 100),
     }
-  }, [name, tagline, jd, goals, positionsList, hours, durationMonths, confirmed])
+  }, [githubUrl, name, tagline, jd, goals, positionsList, hours, durationMonths, confirmed])
 
   const validateWizardStep = (section: FormSection) => {
     const errors: StepErrors = {}
@@ -591,6 +599,8 @@ export function ProjectForm({ mode, initialProject, initialDetail }: ProjectForm
     if (section === "big-picture") {
       if (name.trim().length < 3 || name.trim().length > 150) errors.name = "Enter a project name between 3 and 150 characters."
       if (tagline.trim().length > 255) errors.tagline = "Keep the tagline within 255 characters."
+      const githubError = projectGithubError(githubUrl)
+      if (githubError) errors.githubUrl = githubError
       if (jd.trim().length < 20) errors.description = "Describe your project in at least 20 characters."
       if (!goals.split("\n").some(goal => goal.trim())) errors.goals = "Add at least one goal for your team."
       if (!type.trim()) errors.category = "Choose a project type."
@@ -749,6 +759,11 @@ export function ProjectForm({ mode, initialProject, initialDetail }: ProjectForm
       return
     }
     if (saveBlocked) { setSaveError(selectionError || catalogError || "Wait for the catalog to finish loading."); return }
+    const githubError = projectGithubError(githubUrl)
+    if (githubError) {
+      showStepErrors("big-picture", { errors: { githubUrl: githubError }, positionIndex: undefined })
+      return
+    }
     if (!name.trim() || name.trim().length < 3 || name.trim().length > 150) {
       notify("Project name must be between 3 and 150 characters.")
       scrollTo("section-big-picture")
@@ -825,6 +840,7 @@ export function ProjectForm({ mode, initialProject, initialDetail }: ProjectForm
     setShowSaveConfirmDialog(false)
     const request: UpdateProjectRequest = {
       ...(deadlineChanged ? { recruitment_closing_date: closingDate } : {}),
+      github_url: githubUrl.trim() || null,
       name: name.trim(), tagline: tagline.trim(), description: jd.trim(), category: type,
       difficulty_level: difficulty, expected_commitment_hours: hours, duration: durationString,
       max_team_capacity: capacity, color_theme: initialDetail?.color_theme ?? "indigo",
@@ -1174,6 +1190,19 @@ export function ProjectForm({ mode, initialProject, initialDetail }: ProjectForm
                       <span>Help me write</span>
                     </button>
                   </div>
+                </div>
+
+                <div className="field-group project-github-field">
+                  <label className="field-label" htmlFor="project-github-input">
+                    <GitBranch size={18} aria-hidden="true" /> GitHub repository <span className="project-github-optional">Optional</span>
+                  </label>
+                  <span className="field-helper">Share your code so teammates can explore the project.</span>
+                  <input id="project-github-input" className="field-input" type="url" maxLength={1000}
+                    {...validationProps("githubUrl")} aria-describedby={stepErrors.githubUrl ? "project-error-githubUrl project-github-help" : "project-github-help"}
+                    placeholder="https://github.com/your-team/your-project" value={githubUrl}
+                    onChange={event => { setGithubUrl(event.target.value); handleFieldChange() }} />
+                  {fieldError("githubUrl")}
+                  <span className="field-helper" id="project-github-help">Paste a repository or organization link. You can add or update it later.</span>
                 </div>
 
                 {/* What will your team achieve? (Goals) */}
@@ -1937,6 +1966,8 @@ export function ProjectForm({ mode, initialProject, initialDetail }: ProjectForm
                   <span className="preview-meta-pill dur-pill">{durationString}</span>
                 </div>
 
+                <ProjectGithubLink url={githubUrl} />
+
                 <div className="preview-positions-section">
                   <div className="preview-section-title">
                     Open positions ({totalOpenings})
@@ -2140,6 +2171,7 @@ export function ProjectForm({ mode, initialProject, initialDetail }: ProjectForm
       <FullPreviewDialog
         isOpen={showPreviewDialog}
         mode={mode}
+        githubUrl={githubUrl}
         projectName={name.trim() || "Untitled Project"}
         tagline={tagline.trim() || "No tagline provided yet."}
         description={jd.trim() || "No detailed description provided yet."}

@@ -1,4 +1,5 @@
 export type Project = {
+  githubUrl?: string | null
   recruitmentClosingDate?: string
   recruitmentClosesAt?: string
   isRecruitmentOpen?: boolean

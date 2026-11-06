@@ -1,3 +1,4 @@
+import ProjectGithubLink from "./ProjectGithubLink"
 import React, { useState } from 'react';
 import {
   X,
@@ -5,11 +6,9 @@ import {
   Heart,
   MessageCircle,
   FolderKanban,
-  ExternalLink,
   Users,
   CheckCircle2,
   Clock,
-  GitBranch,
   ArrowRight
 } from 'lucide-react';
 import { ProjectItem } from '../../data/projectsData';
@@ -174,16 +173,7 @@ export default function WorkspaceProjectDetailModal({
                 ))}
               </div>
 
-              <a
-                href={`https://github.com/fcaj-community/${detail.name.toLowerCase().replace(/\s+/g, '')}`}
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex items-center gap-1.5 text-xs text-indigo-600 hover:text-indigo-800 font-medium hover:underline"
-              >
-                <GitBranch size={13} />
-                <span>GitHub Repository</span>
-                <ExternalLink size={11} />
-              </a>
+              <ProjectGithubLink url={detail.githubUrl} />
             </div>
           </div>
 

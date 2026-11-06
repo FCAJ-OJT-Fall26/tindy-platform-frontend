@@ -80,6 +80,7 @@ const positionSkills = (position: ProjectDraftPosition) => [
 
 function matchesProject(project: ProjectDetailDto, request: UpdateProjectRequest): boolean {
   return (request.recruitment_closing_date === undefined || project.recruitment_closing_date === request.recruitment_closing_date) &&
+    text(project.github_url) === text(request.github_url) &&
     project.name === text(request.name) && text(project.tagline) === text(request.tagline) &&
     project.description === text(request.description) && project.category === text(request.category) &&
     project.difficulty_level === request.difficulty_level && project.expected_commitment_hours === request.expected_commitment_hours &&
