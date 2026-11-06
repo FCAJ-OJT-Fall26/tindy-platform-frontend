@@ -480,7 +480,7 @@ export function ProjectWorkspaceView({ projectId: propProjectId }: ProjectWorksp
             )}
 
             <Link
-              to="/messages"
+              to={"/messages?project=" + projectId}
               className="btn btn-secondary"
               style={{ gap: "6px" }}
             >

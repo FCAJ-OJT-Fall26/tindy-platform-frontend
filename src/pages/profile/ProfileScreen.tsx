@@ -3,6 +3,8 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from "react"
 import { Link, useParams, useSearchParams } from "react-router"
 import {
   ArrowUpRight,
+  UserRound,
+  Award,
   BriefcaseBusiness,
   Camera,
   GraduationCap,
@@ -198,6 +200,12 @@ type Deletion = {
   id: string
   title: string
 }
+const profileSections = [
+  { id: "about", label: "About", icon: UserRound },
+  { id: "experiences", label: "Experiences", icon: BriefcaseBusiness },
+  { id: "certificate", label: "Certificate", icon: Award },
+] as const
+
 function ProfileView({ userId }: { userId?: string }) {
   const owner = !userId
   const { authUser, ownerProfile, saveOwnerProfile, notify } = useTindy()
@@ -240,6 +248,12 @@ function ProfileView({ userId }: { userId?: string }) {
   }, [owner, ownerProfile.reload])
   const [editing, setEditing] = useState(false)
   const [search, setSearch] = useSearchParams()
+  const activeTab = profileSections.find(section => section.id === search.get("tab"))?.id ?? "about"
+  const changeTab = (tab: typeof profileSections[number]["id"]) => {
+    const next = new URLSearchParams(search)
+    next.set("tab", tab)
+    setSearch(next, { replace: true })
+  }
   const [focusInvitations, setFocusInvitations] = useState(false)
   useEffect(() => {
     if (owner && search.get("edit") === "team-invitations") {
@@ -438,23 +452,52 @@ function ProfileView({ userId }: { userId?: string }) {
         </>
       )}
       {profile && !editing && (
-        <div className="profile-layout">
+        <>
+        <div className="profile-section-tabs" role="tablist" aria-label="Profile sections">
+          {profileSections.map(({ id, label, icon: Icon }, index) => (
+            <button
+              key={id}
+              type="button"
+              role="tab"
+              id={"profile-tab-" + id}
+              aria-controls={"profile-panel-" + id}
+              aria-selected={activeTab === id}
+              tabIndex={activeTab === id ? 0 : -1}
+              onClick={() => changeTab(id)}
+              onKeyDown={(event) => {
+                const next = event.key === "ArrowRight" ? (index + 1) % profileSections.length
+                  : event.key === "ArrowLeft" ? (index + profileSections.length - 1) % profileSections.length
+                  : event.key === "Home" ? 0 : event.key === "End" ? profileSections.length - 1 : null
+                if (next === null) return
+                event.preventDefault()
+                const tab = profileSections[next].id
+                changeTab(tab)
+                document.getElementById("profile-tab-" + tab)?.focus()
+              }}
+            >
+              <Icon size={15} aria-hidden="true" />{label}
+            </button>
+          ))}
+        </div>
+        <div className={"profile-layout" + (activeTab !== "about" ? " profile-layout--collection" : "")}>
           <div>
-            {profile && <About profile={profile} />}
-            <section className="panel" aria-label="Experiences">
+            <div className="profile-tab-panel" role="tabpanel" id="profile-panel-about" aria-labelledby="profile-tab-about" hidden={activeTab !== "about"} tabIndex={0}>
+              <About profile={profile} />
+            </div>
+            <section className="panel profile-tab-panel" aria-label="Experiences" role="tabpanel" id="profile-panel-experiences" aria-labelledby="profile-tab-experiences" hidden={activeTab !== "experiences"} tabIndex={0}>
               <SectionHeading
                 title="Experiences"
                 action={
                   owner && (
                     <button
                       type="button"
-                      className="text-link"
+                      className="profile-add-button"
                       disabled={experiences.loading || !profile}
                       onClick={() =>
                         setEditor({ kind: "experience", item: null })
                       }
                     >
-                      <Plus size={14} />
+                      <Plus size={14} strokeWidth={1.8} aria-hidden="true" />
                       Add experience
                     </button>
                   )
@@ -510,7 +553,7 @@ function ProfileView({ userId }: { userId?: string }) {
                 </article>
               ))}
             </section>
-            <section className="panel" aria-label="Certificates">
+            <section className="panel profile-tab-panel" aria-label="Certificates" role="tabpanel" id="profile-panel-certificate" aria-labelledby="profile-tab-certificate" hidden={activeTab !== "certificate"} tabIndex={0}>
               <SectionHeading
                 title="Certificates"
                 description="Certificate details are provided by the member."
@@ -518,13 +561,13 @@ function ProfileView({ userId }: { userId?: string }) {
                   owner && (
                     <button
                       type="button"
-                      className="text-link"
+                      className="profile-add-button"
                       disabled={certificates.loading || !profile}
                       onClick={() =>
                         setEditor({ kind: "certificate", item: null })
                       }
                     >
-                      <Plus size={14} />
+                      <Plus size={14} strokeWidth={1.8} aria-hidden="true" />
                       Add certificate
                     </button>
                   )
@@ -590,10 +633,11 @@ function ProfileView({ userId }: { userId?: string }) {
               ))}
             </section>
           </div>
-          <aside>
+          <aside hidden={activeTab !== "about"}>
             {profile && <ProfileDetails profile={profile} owner={owner} />}
           </aside>
         </div>
+        </>
       )}
       {owner && editor && (
         <Modal

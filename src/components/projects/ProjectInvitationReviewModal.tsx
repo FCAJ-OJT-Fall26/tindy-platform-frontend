@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from "react"
 import { Link } from "react-router"
+import { BriefcaseBusiness, CalendarDays, Clock3, Mail, MessageSquareQuote, ShieldCheck } from "lucide-react"
+import "./project-invitation-review.css"
 import { Modal } from "../ui"
 import useTeammateSession from "../../hooks/useTeammateSession"
 import { useTindy } from "../../store"
@@ -95,36 +97,56 @@ export default function ProjectInvitationReviewModal({
       }
     }
   }
+  const dateLabel = (value: string) => new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric" }).format(new Date(value))
+  const timeLabel = (value: string) => new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit" }).format(new Date(value))
+  const personInitials = personName.split(" ").filter(Boolean).slice(-2).map(part => part[0]).join("").toUpperCase()
   return (
     <Modal
       title={
         mode === "leader" ? "Sent Invitation" : "Review Project Invitation"
       }
       onClose={onClose}
+      className="project-invitation-review"
       dismissible={!busy}
     >
-      <div className="teammate-dialog">
-        <h2>{projectName}</h2>
-        <p>Position: {positionName}</p>
-        <p>
-          {mode === "leader" ? "Invited member" : "Leader"}: {personName}
-        </p>
-        <span className="teammate-status">{invitation.status}</span>
-        <p style={{ whiteSpace: "pre-wrap" }}>
-          {invitation.message ?? "No message included."}
-        </p>
-        <p>Created: {new Date(invitation.created_at).toLocaleString()}</p>
-        <p>Expires: {new Date(invitation.expires_at).toLocaleString()}</p>
-        {invitation.responded_at && (
-          <p>Responded: {new Date(invitation.responded_at).toLocaleString()}</p>
-        )}
-        <p className="helper-text">Invitation ID: {invitation.invitation_id}</p>
+      <div className="teammate-dialog invitation-review-body">
+        <div className="invitation-review-summary">
+          <div className="invitation-review-topline">
+            <span className="invitation-review-kicker"><Mail size={14} aria-hidden="true" /> PROJECT INVITATION</span>
+            <span className="teammate-status invitation-review-status" data-status={invitation.status}>
+              <span aria-hidden="true" />{invitation.status}
+            </span>
+          </div>
+          <h2>{projectName}</h2>
+          <div className="invitation-review-position"><BriefcaseBusiness size={16} aria-hidden="true" />{positionName}</div>
+          <div className="invitation-review-person">
+            <span className="invitation-review-avatar" aria-hidden="true">{personInitials || "?"}</span>
+            <div><span>{mode === "leader" ? "Invited member" : "Invited by"}</span><strong>{personName}</strong></div>
+          </div>
+        </div>
+        <section className="invitation-review-message" aria-label="Invitation message">
+          <h3><MessageSquareQuote size={15} aria-hidden="true" />A personal note</h3>
+          <p>{invitation.message?.trim() || "No message included."}</p>
+        </section>
+        <dl className="invitation-review-dates">
+          <div>
+            <dt><CalendarDays size={15} aria-hidden="true" />Sent</dt>
+            <dd><time dateTime={invitation.created_at}>{dateLabel(invitation.created_at)}<small>{timeLabel(invitation.created_at)}</small></time></dd>
+          </div>
+          <div>
+            <dt><Clock3 size={15} aria-hidden="true" />{invitation.status === "pending" ? "Respond by" : "Expiration"}</dt>
+            <dd><time dateTime={invitation.expires_at}>{dateLabel(invitation.expires_at)}<small>{timeLabel(invitation.expires_at)}</small></time></dd>
+          </div>
+          {invitation.responded_at && <div>
+            <dt><CalendarDays size={15} aria-hidden="true" />Responded</dt>
+            <dd><time dateTime={invitation.responded_at}>{dateLabel(invitation.responded_at)}<small>{timeLabel(invitation.responded_at)}</small></time></dd>
+          </div>}
+        </dl>
         {mode === "member" && invitation.status === "pending" && (
-          <p>
-            Acceptance requires your explicit consent and an available position.
-            An unexpired invitation may be accepted after the recruitment
-            deadline.
-          </p>
+          <div className="invitation-review-note">
+            <ShieldCheck size={18} aria-hidden="true" />
+            <p>Accept to join this project. The position must still be available.<span>You can respond until this invitation expires, even if recruitment has closed.</span></p>
+          </div>
         )}
         {optedOut && (
           <p role="status">
@@ -137,8 +159,7 @@ export default function ProjectInvitationReviewModal({
         )}
         {expired && invitation.status === "pending" && (
           <p role="status">
-            The recorded expiration time has passed. Refresh to read its Backend
-            status.
+            This invitation has expired. Refresh to see its latest status.
           </p>
         )}
         {invitation.status === "declined" && invitation.responded_at && (
@@ -161,7 +182,7 @@ export default function ProjectInvitationReviewModal({
             another action.
           </p>
         )}
-        <div className="teammate-actions">
+        <div className="teammate-actions invitation-review-actions">
           <button className="btn-secondary" disabled={busy} onClick={onClose}>
             Close
           </button>

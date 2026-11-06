@@ -1,0 +1,66 @@
+.modal.project-invitation-review {
+  width: min(540px, calc(100vw - 32px));
+  padding: 0;
+  border: 1px solid #e5eaf3;
+  border-radius: 20px;
+  box-shadow: 0 24px 80px #17255426;
+}
+.project-invitation-review > .modal-heading {
+  margin: 0;
+  padding: 18px 24px;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 500;
+  border-color: #edf0f6;
+}
+.project-invitation-review > .modal-heading .icon-button {
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
+  color: #94a3b8;
+}
+.project-invitation-review > .modal-heading .icon-button:hover { background: #f1f5f9; color: #334155; }
+.project-invitation-review .invitation-review-body { padding: 24px; gap: 22px; }
+.invitation-review-topline { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.invitation-review-kicker { display: inline-flex; align-items: center; gap: 7px; color: #6366f1; font-size: 10px; font-weight: 700; letter-spacing: 1px; }
+.project-invitation-review .invitation-review-status { display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; border: 1px solid #fde8b3; background: #fffbeb; color: #a16207; font-size: 11px; line-height: 1.4; }
+.invitation-review-status > span { width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
+.project-invitation-review .invitation-review-status[data-status="accepted"] { background: #ecfdf5; color: #047857; border-color: #d1fae5; }
+.project-invitation-review .invitation-review-status:is([data-status="declined"], [data-status="cancelled"], [data-status="expired"]) { background: #f8fafc; color: #64748b; border-color: #e2e8f0; }
+.project-invitation-review .invitation-review-summary h2 { margin: 16px 0 10px; color: #1e293b; font-size: 24px; font-weight: 750; letter-spacing: -.8px; line-height: 1.3; overflow-wrap: anywhere; }
+.invitation-review-position { display: flex; align-items: center; gap: 8px; color: #64748b; font-size: 13px; line-height: 1.5; }
+.invitation-review-position svg { flex-shrink: 0; color: #94a3b8; }
+.invitation-review-person { display: flex; align-items: center; gap: 10px; margin-top: 22px; }
+.invitation-review-avatar { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 12px; background: #eef2ff; color: #6366f1; font-size: 12px; font-weight: 700; flex-shrink: 0; }
+.invitation-review-person > div { display: grid; gap: 2px; }
+.invitation-review-person > div > span { font-size: 10px; color: #94a3b8; }
+.invitation-review-person strong { font-size: 12px; font-weight: 600; color: #334155; }
+.invitation-review-message { padding: 16px 18px; border: 1px solid #e9edf5; border-radius: 12px; background: #f8fafc; min-width: 0; }
+.invitation-review-message h3 { display: flex; align-items: center; gap: 7px; color: #94a3b8; font-size: 11px; font-weight: 500; margin: 0 0 9px; }
+.invitation-review-message p { margin: 0; color: #475569; font-size: 13px; line-height: 1.7; white-space: pre-wrap; overflow-wrap: anywhere; max-height: 180px; overflow-y: auto; }
+.invitation-review-dates { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin: 0; }
+.invitation-review-dates > div { min-width: 0; }
+.invitation-review-dates dt { display: flex; align-items: center; gap: 7px; color: #94a3b8; font-size: 11px; margin-bottom: 7px; }
+.invitation-review-dates dd { margin: 0; padding-left: 22px; color: #475569; font-size: 12px; font-weight: 600; }
+.invitation-review-dates small { display: block; margin-top: 3px; color: #94a3b8; font-size: 11px; font-weight: 400; }
+.invitation-review-note { display: flex; align-items: flex-start; gap: 10px; padding: 14px; border-radius: 10px; background: #f0f4ff; color: #818cf8; }
+.invitation-review-note > svg { flex-shrink: 0; margin-top: 2px; }
+.invitation-review-note p { margin: 0; color: #526180; font-size: 11px; line-height: 1.7; }
+.invitation-review-note p span { display: block; color: #7b89a4; margin-top: 3px; }
+.project-invitation-review .invitation-review-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 10px; margin: 0 -24px -24px; padding: 18px 24px; border-top: 1px solid #edf0f6; background: #fcfdff; }
+.project-invitation-review .invitation-review-actions button { min-height: 40px; border-radius: 9px; font-size: 12px; font-weight: 600; padding: 10px 16px; }
+.project-invitation-review .invitation-review-actions button:first-child { margin-right: auto; background: transparent; border-color: transparent; color: #94a3b8; box-shadow: none; }
+.project-invitation-review .invitation-review-actions button:first-child:hover { background: #f1f5f9; color: #475569; }
+.project-invitation-review .invitation-review-actions .btn-primary { background: #4f46e5; border-color: #4f46e5; color: #fff; box-shadow: 0 3px 8px #4f46e51c; }
+.project-invitation-review .invitation-review-actions .btn-primary:hover:not(:disabled) { background: #4338ca; }
+.project-invitation-review .invitation-review-actions button:focus-visible { outline: 2px solid #818cf8; outline-offset: 3px; }
+.project-invitation-review .invitation-review-body > [role="alert"] { padding: 12px; background: #fff1f2; border-radius: 10px; color: #be123c; font-size: 12px; }
+.project-invitation-review .invitation-review-body > [role="status"], .project-invitation-review .helper-text, .project-invitation-review .teammate-unknown { font-size: 12px; line-height: 1.65; }
+@media (max-width: 540px) {
+  .modal.project-invitation-review { border-radius: 16px; max-height: 90dvh; }
+  .project-invitation-review > .modal-heading { padding: 14px 18px; }
+  .project-invitation-review .invitation-review-body { padding: 20px 18px; gap: 18px; }
+  .project-invitation-review .invitation-review-summary h2 { font-size: 21px; }
+  .project-invitation-review .invitation-review-actions { margin: 0 -18px -20px; padding: 16px 18px; gap: 8px; }
+  .project-invitation-review .invitation-review-actions button { padding: 10px 12px; font-size: 11px; }
+}

@@ -15783,3 +15783,42 @@ button.text-link {
 @media(max-width:900px) { .message-requests { grid-template-columns:1fr; } .request-sidebar { display:grid; grid-template-columns:1fr 1fr; align-items:start; gap:16px; } }
 @media(max-width:540px) { .messages-navigation { width:100%; } .messages-navigation button { flex:1; justify-content:center; padding:9px; font-size:12px; } .request-sidebar { grid-template-columns:1fr; } .request-inbox-heading { padding:20px 16px; gap:10px; } .request-inbox-heading h2 { font-size:16px; } .request-inbox-heading p { font-size:10px; } .request-inbox-controls { padding:0 16px; gap:10px; } .request-direction { gap:14px; } .request-direction button { font-size:11px; } .message-requests .request-filter { max-width:135px; font-size:10px; padding-left:8px; padding-right:20px; } .request-empty { min-height:330px; padding:38px 22px; } .request-empty h3 { font-size:19px; } .request-list { padding:0 16px; } .request-item-footer { align-items:flex-start; flex-direction:column; } .request-person-copy h3 { font-size:12px; } }
 @media(prefers-reduced-motion:reduce) { .request-spinning { animation:none; } }
+
+/* My Projects uses the same segmented navigation as the candidate pipeline. */
+.status-tabs.my-project-tabs {
+  width: fit-content;
+  max-width: 100%;
+  gap: 4px;
+  padding: 6px;
+  flex-wrap: wrap;
+  overflow: visible;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  background: #fff;
+}
+.status-tabs.my-project-tabs button {
+  justify-content: center;
+  min-height: 38px;
+  padding: 8px 16px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  color: #64748b;
+  background: transparent;
+  font-size: 13px;
+  font-weight: 550;
+  transform: none;
+  transition: background .15s ease, color .15s ease;
+}
+.status-tabs.my-project-tabs button:hover { background: #f8fafc; color: #334acb; transform: none; }
+.status-tabs.my-project-tabs button.active { background: #eef2ff; color: #334acb !important; border-color: transparent; border-bottom-color: transparent !important; font-weight: 650; }
+.status-tabs.my-project-tabs button > span { background: #f1f5f9; color: #8290a6; }
+.status-tabs.my-project-tabs button.active > span { background: #e0e7ff !important; color: #4f63c9 !important; transform: none; }
+.status-tabs.my-project-tabs button:focus-visible { outline: 2px solid #4f63c9; outline-offset: 2px; }
+@media (max-width: 700px) {
+  .status-tabs.my-project-tabs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); width: 100%; }
+  .status-tabs.my-project-tabs button { min-width: 0; gap: 5px; padding: 8px 6px; font-size: 12px; }
+}
+@media (prefers-reduced-motion: reduce) { .status-tabs.my-project-tabs button { transition: none; } }
+
+/* Reuse Invited's shared empty-state presentation across My Projects tabs. */
+.live-teammates.my-project-empty { width: 100%; margin: 0; padding: 0; }

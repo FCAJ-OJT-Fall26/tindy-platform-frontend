@@ -25,7 +25,8 @@
     "test:release:integration": "node tests/release-integration.browser.mjs",
     "preview": "vite preview",
     "format": "oxfmt",
-    "test:chat": "node --experimental-strip-types --test tests/chat-state.test.mjs"
+    "test:chat": "node --experimental-strip-types --test tests/chat-state.test.mjs",
+    "test:chat-sections": "node tests/chat-sections.browser.mjs"
   },
   "dependencies": {
     "@microsoft/signalr": "^8.0.29",

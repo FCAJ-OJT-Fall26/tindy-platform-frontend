@@ -6,9 +6,23 @@ type ApiChatUser = {
   username?: string | null
   avatar_url?: string | null
 }
+
 type ApiChatConversation = {
   conversation_id: string
-  other_participant: ApiChatUser
+  other_participant: ApiChatUser | null
+  type?: "direct" | "project"
+  project_id?: string | null
+  name?: string | null
+  can_send?: boolean
+  left_at?: string | null
+  participants?: {
+    user_id: string
+    display_name: string
+    avatar_url?: string | null
+    is_leader: boolean
+    is_active: boolean
+    left_at?: string | null
+  }[]
   last_message_at?: string | null
   unread_count: number
   first_unread_at?: string | null
@@ -16,7 +30,9 @@ type ApiChatConversation = {
   blocked_by_me?: boolean
   first_unread_message_id?: string | null
 }
+
 type ApiChatMessage = {
+  message_type?: "text" | "system"
   message_id: string
   conversation_id: string
   sender_id: string
@@ -37,7 +53,13 @@ export type ChatUser = {
 
 export type ChatConversation = {
   conversationId: string
-  otherParticipant: ChatUser
+  otherParticipant: ChatUser | null
+  type: "direct" | "project"
+  projectId?: string | null
+  name?: string | null
+  canSend: boolean
+  leftAt?: string | null
+  participants: ChatGroupMember[]
   lastMessageAt?: string | null
   unreadCount: number
   isBlocked?: boolean
@@ -46,7 +68,17 @@ export type ChatConversation = {
   firstUnreadAt?: string | null
 }
 
+export type ChatGroupMember = {
+  userId: string
+  displayName: string
+  avatarUrl?: string | null
+  isLeader: boolean
+  isActive: boolean
+  leftAt?: string | null
+}
+
 export type ChatMessage = {
+  messageType?: "text" | "system"
   messageId: string
   conversationId: string
   senderId: string
@@ -72,12 +104,28 @@ function mapUser(user: ApiChatUser): ChatUser {
     username: user.username,
     avatarUrl: user.avatar_url,
   }
+
 }
 
 function mapConversation(item: ApiChatConversation): ChatConversation {
   return {
     conversationId: item.conversation_id,
-    otherParticipant: mapUser(item.other_participant),
+    otherParticipant: item.other_participant
+      ? mapUser(item.other_participant)
+      : null,
+    type: item.type ?? "direct",
+    projectId: item.project_id,
+    name: item.name,
+    canSend: item.can_send ?? true,
+    leftAt: item.left_at,
+    participants: (item.participants ?? []).map((p) => ({
+      userId: p.user_id,
+      displayName: p.display_name,
+      avatarUrl: p.avatar_url,
+      isLeader: p.is_leader,
+      isActive: p.is_active,
+      leftAt: p.left_at,
+    })),
     lastMessageAt: item.last_message_at,
     unreadCount: item.unread_count,
     isBlocked: item.is_blocked,
@@ -85,6 +133,7 @@ function mapConversation(item: ApiChatConversation): ChatConversation {
     firstUnreadAt: item.first_unread_at,
     firstUnreadMessageId: item.first_unread_message_id,
   }
+
 }
 
 export function mapChatMessage(
@@ -93,6 +142,7 @@ export function mapChatMessage(
   const value = item as ApiChatMessage & ChatMessage
   return {
     messageId: value.message_id ?? value.messageId,
+    messageType: value.message_type ?? value.messageType ?? "text",
     conversationId: value.conversation_id ?? value.conversationId,
     senderId: value.sender_id ?? value.senderId,
     body: value.body,
@@ -103,6 +153,7 @@ export function mapChatMessage(
       value.context_position_title ?? value.contextPositionTitle,
     clientMessageId: value.client_message_id ?? value.clientMessageId,
   }
+
 }
 
 export async function searchChatUsers(query: string) {
@@ -112,11 +163,13 @@ export async function searchChatUsers(query: string) {
     )
   ).data.map(mapUser)
 }
+
 export async function getChatConversations() {
   return (
     await apiRequest<ApiChatConversation[]>("/api/chat/conversations")
   ).data.map(mapConversation)
 }
+
 export async function createDirectConversation(userId: string) {
   return mapConversation(
     (
@@ -127,6 +180,7 @@ export async function createDirectConversation(userId: string) {
     ).data,
   )
 }
+
 export async function getChatMessages(
   conversationId: string,
   before?: string | null,
@@ -154,7 +208,9 @@ export async function getChatMessages(
     nextBefore: page.next_before,
     nextBeforeMessageId: page.next_before_message_id,
   }
+
 }
+
 export async function sendChatMessage(
   conversationId: string,
   body: string,
@@ -172,6 +228,7 @@ export async function sendChatMessage(
     ).data,
   )
 }
+
 export async function markChatRead(
   conversationId: string,
   lastReadMessageId: string,
@@ -179,5 +236,33 @@ export async function markChatRead(
   await apiRequest(`/api/chat/conversations/${conversationId}/read`, {
     method: "POST",
     body: JSON.stringify({ last_read_message_id: lastReadMessageId }),
+  })
+}
+
+export function chatConversationName(room: ChatConversation) {
+  return room.type === "project"
+    ? (room.name ?? "Project chat")
+    : (room.otherParticipant?.displayName ?? "User")
+}
+
+export async function getProjectChat(projectId: string) {
+  return mapConversation(
+    (await apiRequest<ApiChatConversation>("/api/chat/projects/" + projectId))
+      .data,
+  )
+}
+
+export async function leaveChatProject(projectId: string) {
+  await apiRequest("/api/chat/projects/" + projectId + "/leave", {
+    method: "POST",
+  })
+}
+
+export async function removeChatProjectMember(
+  projectId: string,
+  userId: string,
+) {
+  await apiRequest("/api/chat/projects/" + projectId + "/members/" + userId, {
+    method: "DELETE",
   })
 }
