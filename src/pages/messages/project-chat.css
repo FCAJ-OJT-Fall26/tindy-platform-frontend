@@ -75,3 +75,20 @@
 .chat-workspace .chat-results { flex: 0 1 auto; min-height: 0; overflow-y: auto; }
 .chat-room .chat-room-header, .chat-room .project-chat-members, .chat-room > .info-banner, .chat-room .chat-composer { flex-shrink: 0; }
 @media (min-width: 761px) { .messaging.chat-workspace { grid-template-rows: minmax(0, 1fr); } }
+
+/* Share the Requests panel's page alignment and surface treatment. */
+.messaging.chat-workspace {
+  width: 100%;
+  max-width: none;
+  margin-inline: 0;
+  border-color: #e2e8f0;
+  border-radius: 20px;
+  box-shadow: 0 4px 20px #28436804;
+}
+.chat-workspace .chat-inbox-heading h3 { font-size: 18px; font-weight: 650; letter-spacing: -.45px; }
+@media (min-width: 761px) {
+  .messaging.chat-workspace {
+    grid-template-columns: clamp(260px, 24%, 320px) minmax(0, 1fr);
+    height: clamp(540px, calc(100dvh - 300px), 680px);
+  }
+}
