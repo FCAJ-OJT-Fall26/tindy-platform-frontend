@@ -9,9 +9,11 @@ import {
   Check,
   Crown,
   FolderKanban,
+  Send,
+  Users,
 } from "lucide-react"
 
-import { EmptyState, PageHeader, ProjectCard } from "../../components/ui"
+import { PageHeader, ProjectCard } from "../../components/ui"
 
 import type { Project } from "../../data"
 
@@ -39,6 +41,7 @@ import { useMemo } from "react"
 
 
 import MyProjectInvitationsView from "./MyProjectInvitationsView"
+import PipelineState from "../../components/candidates/PipelineState"
 
 
 function Cards({
@@ -241,10 +244,12 @@ export function MyProjectsScreen() {
         }
       />
 
-      <div className="status-tabs">
+      <div className="status-tabs my-project-tabs" aria-label="Project filters">
         {Object.entries(statuses).map(([status, items]) => (
           <button
             key={status}
+            type="button"
+            aria-pressed={tab === status}
             onClick={() => setParams({ tab: status })}
             className={tab === status ? "active" : ""}
           >
@@ -332,49 +337,48 @@ export function MyProjectsScreen() {
             />
           </>
         ) : (
-          <EmptyState
-            title={
-              tab === "Saved"
-                ? "You haven't saved any projects yet."
-                : tab === "Interested"
-                ? "No applications or interest sent yet."
-                : tab === "Invited"
-                ? "No pending team invitations."
-                : tab === "Active"
-                ? "No active projects yet."
-                : tab === "Leading"
-                ? "No projects led by you yet."
-                : "No completed projects yet."
-            }
-            description={
-              tab === "Saved"
-                ? "Save standout projects that catch your eye during discovery. You can always come back to review them."
-                : tab === "Interested"
-                ? "Explore projects matching your skills on the Discovery feed and swipe right to submit interest."
-                : tab === "Invited"
-                ? "When a project leader invites you to their team, the invitation and role commitment will appear here."
-                : tab === "Active"
-                ? "Once your application is approved or you accept an invitation, your active team projects will show here."
-                : tab === "Leading"
-                ? "Ready to launch your own venture? Create a project in Leader Workspace to assemble teammates."
-                : "Finished projects will be preserved here as part of your team track record."
-            }
-            action={
-              tab === "Leading" ? (
-                <Link to="/leader" className="btn btn-primary">
-                  Leader workspace <ArrowRight size={15} />
-                </Link>
-              ) : tab === "Active" ? (
-                <Link to="/discover" className="btn btn-primary">
-                  Find teams to join <ArrowRight size={15} />
-                </Link>
-              ) : (
-                <Link to="/discover" className="btn btn-primary">
-                  Discover projects <ArrowRight size={15} />
-                </Link>
-              )
-            }
-          />
+          <div className="live-teammates my-project-empty">
+            <PipelineState
+              icon={tab === "Saved" ? Bookmark : tab === "Interested" ? Send : tab === "Active" ? Users : tab === "Leading" ? Crown : FolderKanban}
+              title={
+                tab === "Saved"
+                  ? "You haven't saved any projects yet."
+                  : tab === "Interested"
+                  ? "No applications or interest sent yet."
+                  : tab === "Active"
+                  ? "No active projects yet."
+                  : tab === "Leading"
+                  ? "No projects led by you yet."
+                  : "No completed projects yet."
+              }
+              description={
+                tab === "Saved"
+                  ? "Save standout projects that catch your eye during discovery. You can always come back to review them."
+                  : tab === "Interested"
+                  ? "Explore projects matching your skills on the Discovery feed and swipe right to submit interest."
+                  : tab === "Active"
+                  ? "Once your application is approved or you accept an invitation, your active team projects will show here."
+                  : tab === "Leading"
+                  ? "Ready to launch your own venture? Create a project in Leader Workspace to assemble teammates."
+                  : "Finished projects will be preserved here as part of your team track record."
+              }
+            >
+              {tab === "Leading" ? (
+                  <Link to="/leader" className="btn-secondary">
+                    Leader workspace <ArrowRight size={15} />
+                  </Link>
+                ) : tab === "Active" ? (
+                  <Link to="/discover" className="btn-secondary">
+                    Find teams to join <ArrowRight size={15} />
+                  </Link>
+                ) : (
+                  <Link to="/discover" className="btn-secondary">
+                    Discover projects <ArrowRight size={15} />
+                  </Link>
+                )
+              }
+            </PipelineState>
+          </div>
         )}
       </div>
     </>

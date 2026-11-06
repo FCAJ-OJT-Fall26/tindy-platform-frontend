@@ -109,6 +109,7 @@ try {
   const origin = vite.resolvedUrls.local[0].replace(/\/$/, "")
   browser = await openBrowser(origin)
   const { evaluate, waitFor, go, click, input, send, screenshot } = browser
+  const selectSection = (label) => click(label, ".profile-section-tabs button")
   const check = async (expression, description) => {
     assert.ok(await evaluate(expression), description)
     pass(description)
@@ -133,6 +134,9 @@ try {
   const last = (method) =>
     [...calls].reverse().find((call) => call.method === method)
   const clickLabel = async (label) => {
+    const panel = await evaluate("document.querySelector(" + JSON.stringify('[aria-label="' + label + '"]') + ")?.closest('.profile-tab-panel')?.id")
+    if (panel === "profile-panel-experiences") await selectSection("Experiences")
+    if (panel === "profile-panel-certificate") await selectSection("Certificate")
     await evaluate(
       `document.querySelector(${JSON.stringify(`[aria-label="${label}"]`)}).click()`,
     )
@@ -149,8 +153,26 @@ try {
   )
   await go("/profile")
   await ready()
+  await selectSection("Experiences")
+  await waitFor(text("No experiences yet"))
+  await selectSection("Certificate")
+  await waitFor(text("No certificates yet"))
+  await selectSection("About")
   await check(
-    `${text("No experiences yet")} && ${text("No certificates yet")} && !${text("RAG Knowledge Chatbot")} && !${text("Leaked local mock")}`,
+    'document.querySelectorAll(".profile-section-tabs [role=tab]").length===3 && [...document.querySelectorAll(".profile-tab-panel")].filter(p=>!p.hidden).length===1',
+    "Profile has three sections and only the selected panel is visible",
+  )
+  await evaluate('document.getElementById("profile-tab-about").focus()')
+  await send("Input.dispatchKeyEvent", { type: "keyDown", key: "ArrowRight", code: "ArrowRight", windowsVirtualKeyCode: 39 })
+  await waitFor('document.getElementById("profile-tab-experiences").getAttribute("aria-selected")==="true"')
+  await send("Input.dispatchKeyEvent", { type: "keyDown", key: "End", code: "End", windowsVirtualKeyCode: 35 })
+  await waitFor('document.getElementById("profile-tab-certificate").getAttribute("aria-selected")==="true"')
+  await send("Input.dispatchKeyEvent", { type: "keyDown", key: "Home", code: "Home", windowsVirtualKeyCode: 36 })
+  await waitFor('document.getElementById("profile-tab-about").getAttribute("aria-selected")==="true"')
+  pass("Profile tabs support arrow keys, Home and End")
+  await screenshot("about-desktop.png")
+  await check(
+    'document.getElementById("profile-panel-experiences").textContent.includes("No experiences yet") && document.getElementById("profile-panel-certificate").textContent.includes("No certificates yet") && !document.body.innerText.includes("Leaked local mock")',
     "Empty collections use API state; legacy localStorage and demo cards are ignored",
   )
   await check(
@@ -246,6 +268,7 @@ try {
   await click("Save profile")
   await waitFor("!document.querySelector('.profile-edit')")
 
+  await selectSection("Experiences")
   await click("Add experience")
   await input("project_name", "Profile API integration")
   await input("role_title", "Frontend Developer")
@@ -288,6 +311,7 @@ try {
     "Experience PUT is full replacement and maps response technologies to request skill_ids (200)",
   )
 
+  await selectSection("Certificate")
   await click("Add certificate")
   await input("title", "Cloud Foundations")
   await input("issuer", "Learning Institute")
@@ -319,7 +343,6 @@ try {
 
   await go(`/users/${memberId}`)
   await waitFor(text("Another Member"))
-  await waitFor(text("Cloud Foundations"))
   await check(
     `!${text("private-phone-123")} && !${text("private-resume")} && !${text("private-login@example.test")} && ${text("public-contact@example.test")}`,
     "Member view exposes only public contact data",
@@ -336,6 +359,8 @@ try {
     ),
   )
   pass("Member view calls its three dedicated endpoints")
+  await selectSection("Certificate")
+  await waitFor(text("Cloud Foundations"))
   await screenshot("member-desktop.png")
   await go(`/users/${ownerId}`)
   await waitFor(text("Updated Student"))
@@ -362,6 +387,7 @@ try {
     "document.documentElement.scrollWidth <= innerWidth + 1",
     "Owner profile fits a mobile viewport",
   )
+  await selectSection("Experiences")
   await click("Add experience")
   await screenshot("experience-mobile.png")
   await check(
@@ -402,14 +428,16 @@ try {
   await click("Cancel")
   await waitFor("!document.querySelector('[role=dialog]')")
   await fault("GET", `${ownerPath}/certificates`, { status: 500 })
-  await go("/profile")
+  await go("/profile?tab=certificate")
   await waitFor(text("Retry certificates"))
+  await selectSection("Experiences")
   await waitFor(`${text("Profile API integration")} && ${text("Updated Student")}`)
   await check(
     `${text("Profile API integration")} && ${text("Updated Student")}`,
     "A failed certificate GET does not hide the profile or experiences",
   )
   await fault("GET", `${ownerPath}/certificates`, null)
+  await selectSection("Certificate")
   await click("Retry certificates")
   await waitFor(text("Cloud Foundations"))
   pass("A failed collection recovers through its own retry action")
@@ -458,7 +486,7 @@ try {
     "AI Studio demo generation does not mutate the server-backed profile",
   )
   await fault("GET", `${ownerPath}/experiences`, { disconnect: true })
-  await go("/profile")
+  await go("/profile?tab=experiences")
   await waitFor(text("Retry experiences"))
   pass("A disconnected HTTP dependency produces a recoverable resource error")
   await fault("GET", `${ownerPath}/experiences`, {
