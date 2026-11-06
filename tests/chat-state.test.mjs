@@ -42,3 +42,13 @@ test("chooses exactly one incoming unread boundary at database precision", () =>
   )
   assert.equal(firstUnreadMessageId(rows, "other", null), null)
 })
+
+test("group unread boundary includes every other sender and preserves timestamp precision", () => {
+  const rows = [
+    message("a", "2026-11-05T10:00:00.1000000Z", "self"),
+    message("b", "2026-11-05T10:00:00.1Z", "member-two"),
+    message("c", "2026-11-05T10:00:00.1000001Z", "member-three"),
+  ]
+  assert.equal(firstUnreadMessageId(rows, undefined, "2026-11-05T10:00:00.1000000Z", "self"), "b")
+  assert.equal(firstUnreadMessageId(rows, undefined, "2026-11-05T10:00:00.1000001Z", "self"), "c")
+})

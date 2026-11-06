@@ -55,11 +55,11 @@ try {
   await leader.send("Emulation.setDeviceMetricsOverride", {width:1440,height:1080,deviceScaleFactor:1,mobile:false})
   const detail = await leader.evaluate('fetch("/api/projects/" + ' + JSON.stringify(process.env.TINDY_CHAT_PROJECT) + ', {headers:{Authorization:"Bearer " + localStorage.getItem("tindy_access_token")}}).then(r=>r.json()).then(r=>r.data)')
   await leader.go("/discover?mode=teammates&project_id=" + process.env.TINDY_CHAT_PROJECT + "&position_id=" + detail.positions[0].position_id)
-  await leader.waitFor('document.querySelectorAll(".teammate-filters select").length === 3 && !document.querySelectorAll(".teammate-filters select")[2].disabled')
-  await leader.evaluate('(() => { const el=document.querySelectorAll(".teammate-filters select")[2]; Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype,"value").set.call(el,"1"); el.dispatchEvent(new Event("change",{bubbles:true})); })()')
+  await leader.waitFor('document.querySelectorAll(".live-discovery__filters select").length === 3 && !document.querySelectorAll(".live-discovery__filters select")[2].disabled')
+  await leader.evaluate('(() => { const el=document.querySelectorAll(".live-discovery__filters select")[2]; Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype,"value").set.call(el,"1"); el.dispatchEvent(new Event("change",{bubbles:true})); })()')
   await leader.waitFor('new URLSearchParams(location.search).get("hours") === "1"')
   await leader.click("Reset filters")
-  await leader.waitFor('!new URLSearchParams(location.search).has("hours") && Boolean(document.querySelector(".teammate-card"))')
+  await leader.waitFor('!new URLSearchParams(location.search).has("hours") && Boolean(document.querySelector(".live-discovery__card-frame"))')
   assert.equal(await leader.evaluate('new URLSearchParams(location.search).get("project_id")'), process.env.TINDY_CHAT_PROJECT)
   assert.equal(await leader.evaluate('new URLSearchParams(location.search).get("position_id")'), detail.positions[0].position_id)
   await leader.screenshot("teammate-discovery-desktop.png")
@@ -68,8 +68,8 @@ try {
   await leader.screenshot("teammate-discovery-mobile-filters.png")
   assert.equal(await leader.evaluate('document.documentElement.scrollWidth <= innerWidth + 1'), true)
   await leader.send("Emulation.setDeviceMetricsOverride", {width:1440,height:1080,deviceScaleFactor:1,mobile:false})
-  await leader.waitFor('Boolean(document.querySelector(".teammate-invite")) && !document.querySelector(".teammate-invite").disabled')
-  await leader.evaluate('document.querySelector(".teammate-invite").click()')
+  await leader.waitFor('Boolean(document.querySelector(".teammate-invite-btn")) && !document.querySelector(".teammate-invite-btn").disabled')
+  await leader.evaluate('document.querySelector(".teammate-invite-btn").click()')
   await leader.waitFor('Boolean(document.querySelector(".project-invitation-modal"))')
   await fill(leader, "Invitation message", "Hi! Your experience looks like a great fit for our team. I’d love to build this project together.")
   await leader.screenshot("project-invitation-desktop.png")
@@ -119,14 +119,14 @@ try {
   assert.equal(await member.evaluate("Boolean(window.bad)"), false)
   assert.equal(
     await member.evaluate(
-      'Boolean(document.querySelector("input[aria-label=Message]"))',
+      'Boolean(document.querySelector("textarea[aria-label=Message]"))',
     ),
     false,
   )
   await member.screenshot("received.png")
   await member.click("Accept request")
   await member.waitFor(
-    'Boolean(document.querySelector("input[aria-label=Message]"))',
+    'Boolean(document.querySelector("textarea[aria-label=Message]"))',
   )
   // Accepted request appears in the sender's history without reloading the page.
   await leader.evaluate(
@@ -134,7 +134,7 @@ try {
   )
   await leader.click("Open conversation", "a")
   await leader.waitFor(
-    'Boolean(document.querySelector("input[aria-label=Message]"))',
+    'Boolean(document.querySelector("textarea[aria-label=Message]"))',
   )
   await leader.waitFor('document.body.innerText.includes("Connected")')
   await member.waitFor('document.body.innerText.includes("Connected")')
@@ -151,7 +151,7 @@ try {
   await member.screenshot("accepted-chat.png")
   await member.click("Block")
   await leader.waitFor(
-    'document.querySelector("input[aria-label=Message]")?.disabled === true',
+    'document.querySelector("textarea[aria-label=Message]")?.disabled === true',
   )
   await member.go("/messages?tab=requests")
   await member.waitFor(
@@ -160,7 +160,7 @@ try {
   await member.screenshot("requests-empty-blocked.png")
   await member.click("Unblock")
   await leader.waitFor(
-    'document.querySelector("input[aria-label=Message]")?.disabled === false',
+    'document.querySelector("textarea[aria-label=Message]")?.disabled === false',
   )
   await leader.send("Emulation.setDeviceMetricsOverride", {
     width: 390,
@@ -189,7 +189,7 @@ try {
   await member.click("Close")
   await member.waitFor('!document.querySelector(".chat-request-dialog")')
   await member.click("Message leader")
-  await member.waitFor('location.pathname === "/messages" && Boolean(document.querySelector("input[aria-label=Message]"))')
+  await member.waitFor('location.pathname === "/messages" && Boolean(document.querySelector("textarea[aria-label=Message]"))')
   await leader.send("Emulation.setDeviceMetricsOverride", {width:1440,height:1080,deviceScaleFactor:1,mobile:false})
   await leader.go("/projects?tab=Invited")
   await leader.waitFor('Boolean(document.querySelector(".member-invitation-heading")) && document.body.innerText.includes("No invitations")')

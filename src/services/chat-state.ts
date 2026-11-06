@@ -30,11 +30,12 @@ export function firstUnreadMessageId(
   rows: ChatMessage[],
   senderId?: string,
   firstUnreadAt?: string | null,
+  currentUserId?: string,
 ) {
   return (
     rows.find(
       (m) =>
-        m.senderId === senderId &&
+        (currentUserId ? m.senderId !== currentUserId : m.senderId === senderId) &&
         firstUnreadAt &&
         timestamp(m.createdAt) >= timestamp(firstUnreadAt),
     )?.messageId ?? null

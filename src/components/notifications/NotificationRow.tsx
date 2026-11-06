@@ -62,12 +62,12 @@ export default function NotificationRow({
           {!row.is_read && (
             <button
               type="button"
-              className="text-link"
+              className="notification-read-button"
               disabled={disabled}
               onClick={onRead}
               aria-label={`Mark notification as read: ${text.title}`}
             >
-              <Check size={13} />
+              <Check size={13} aria-hidden="true" />
               {pending ? "Marking…" : "Mark as read"}
             </button>
           )}

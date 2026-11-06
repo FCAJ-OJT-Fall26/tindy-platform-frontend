@@ -232,7 +232,7 @@ export default function ChatRequestButton({
   const [open, setOpen] = useState(false)
   const { conversations } = useChat()
   const navigate = useNavigate()
-  const room = conversations.find((c) => c.otherParticipant.userId === userId)
+  const room = conversations.find((c) => c.otherParticipant?.userId === userId)
   return (
     <div
       className={

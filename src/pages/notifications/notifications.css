@@ -1,5 +1,5 @@
 .notification-body { min-width: 0; }
-.notification-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 10px; }
+.notification-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
 .notification-actions button { font-size: 12px; }
 .notification-actions .notification-view-button {
   display: inline-flex;
@@ -30,3 +30,32 @@
 .notif-popover-item .notif-item-title { margin: 0; }
 .notif-popover-item { cursor: default; }
 @media (max-width: 600px) { .notification-row { align-items: flex-start; } .notification-actions { gap: 10px; } .notification-pagination { gap: 10px; } }
+
+.notification-actions .notification-read-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-height: 30px;
+  padding: 5px 9px;
+  border: 1px solid #dce5ed;
+  border-radius: 6px;
+  background: #ffffffb3;
+  color: #64748b;
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.5;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: color .15s ease, background-color .15s ease, border-color .15s ease;
+}
+.notification-actions .notification-read-button svg { flex-shrink: 0; color: #5b8d8a; }
+.notification-actions .notification-read-button:hover:not(:disabled) {
+  color: #0f766e;
+  background: #f0fdfa;
+  border-color: #99d5ca;
+}
+.notification-actions .notification-read-button:focus-visible { outline: 2px solid #5b8d8a; outline-offset: 2px; }
+.notif-popover-item .notification-actions { gap: 7px; }
+.notif-popover-item .notification-actions .notification-view-button { padding-inline: 9px; font-size: 11px; }
