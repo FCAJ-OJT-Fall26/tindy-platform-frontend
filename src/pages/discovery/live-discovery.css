@@ -330,3 +330,14 @@
   flex-direction: column;
   gap: 24px;
 }
+
+
+.spin-icon {
+  animation: discovery-spin 1s linear infinite;
+}
+
+@keyframes discovery-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

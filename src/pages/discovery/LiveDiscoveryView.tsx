@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { Link, useNavigate } from "react-router"
-import { ArrowUpRight, Bookmark, ChevronDown, RefreshCw, SlidersHorizontal } from "lucide-react"
+import { ArrowUpRight, Bookmark, ChevronDown, RefreshCw, RotateCcw, SlidersHorizontal } from "lucide-react"
 import useDiscoveryFeed from "../../hooks/useDiscoveryFeed"
 import useRemoteResource from "../../hooks/useRemoteResource"
 import { useTindy } from "../../store"
@@ -12,6 +12,7 @@ import SwipeCardStack from "../../components/discovery/SwipeCardStack"
 import DiscoverySegmentedControl from "../../components/discovery/DiscoverySegmentedControl"
 import RuleMatchPanel from "../../components/discovery/RuleMatchPanel"
 import { Modal } from "../../components/ui"
+import { getAllMyApplications } from "../../services/applications.service"
 import ApplyModal from "../../components/projects/ApplyModal"
 import ProjectDetailModal from "../../components/projects/ProjectDetailModal"
 import MinMatchScoreSlider from "../../components/discovery/MinMatchScoreSlider"
@@ -32,7 +33,7 @@ export default function LiveDiscoveryView({
   hideHeader = false,
   refreshTrigger,
 }: LiveDiscoveryViewProps = {}) {
-  const { authUser, notify, saved, savedProjects, isProjectSaved, setProjectSaved } = useTindy()
+  const { authUser, notify, saved, savedProjects, isProjectSaved, setProjectSaved, skipped, setSkipped } = useTindy()
   const navigate = useNavigate()
   const [category, setCategory] = useState("")
   const [role, setRole] = useState("")
@@ -75,7 +76,10 @@ export default function LiveDiscoveryView({
     setActionError("")
     const wasSaved = isProjectSaved(item.id, (item as DiscoveryProject).is_saved)
     try {
-      if (direction === "left") await setDiscoveryFlag(item.id, "skipped", true)
+      if (direction === "left") {
+        await setDiscoveryFlag(item.id, "skipped", true)
+        setSkipped(prev => (prev.includes(item.id) ? prev : [...prev, item.id]))
+      }
       else await setProjectSaved(item.id, true)
       if (actionScope.current !== owner) return false
       setHistory(old => [...old, { id: item.id, direction, wasSaved }])
@@ -88,13 +92,69 @@ export default function LiveDiscoveryView({
     if (!previous) return false
     const owner = actionScope.current
     try {
-      if (previous.direction === "left") await setDiscoveryFlag(previous.id, "skipped", false)
+      if (previous.direction === "left") {
+        await setDiscoveryFlag(previous.id, "skipped", false)
+        setSkipped(prev => prev.filter(id => id !== previous.id))
+      }
       else await setProjectSaved(previous.id, previous.wasSaved)
       if (actionScope.current !== owner) return false
       setHistory(old => old.slice(0, -1)); setActionError(""); notify("Last discovery action undone.")
       return true
     } catch (error) { if (actionScope.current === owner) setActionError(projectErrorMessage(error)); return false }
   }
+    const [restoringSkipped, setRestoringSkipped] = useState(false)
+
+  const handleRestoreSkipped = async () => {
+    setRestoringSkipped(true)
+    setActionError("")
+    try {
+      // 1. Gather all applied projects (pending or accepted) so they are NEVER un-skipped
+      const appliedProjectIds = new Set<string>()
+      try {
+        const apps = await getAllMyApplications()
+        for (const app of apps) {
+          if (app.status === "pending" || app.status === "accepted") {
+            appliedProjectIds.add(app.project_id)
+          }
+        }
+      } catch (err) {
+        console.warn("Could not query server applications; falling back to local state", err)
+      }
+      for (const id of reviewedApplications) {
+        appliedProjectIds.add(id)
+      }
+
+      // 2. Identify all skipped project IDs (session history + stored skipped)
+      const sessionSkipped = history.filter(h => h.direction === "left").map(h => h.id)
+      const allSkipped = Array.from(new Set([...(skipped ?? []), ...sessionSkipped]))
+
+      // 3. Exclude applied projects
+      const toRestore = allSkipped.filter(id => !appliedProjectIds.has(id))
+
+      if (toRestore.length === 0) {
+        notify("No skipped projects to restore.")
+        refresh()
+        return
+      }
+
+      // 4. Send un-skip requests for all eligible projects
+      await Promise.allSettled(
+        toRestore.map(id => setDiscoveryFlag(id, "skipped", false))
+      )
+
+      // 5. Update local store and history
+      setSkipped(prev => prev.filter(id => !toRestore.includes(id)))
+      setHistory(prev => prev.filter(h => !(h.direction === "left" && toRestore.includes(h.id))))
+
+      notify(`Restored ${toRestore.length} skipped project${toRestore.length > 1 ? "s" : ""}.`)
+      refresh()
+    } catch (error) {
+      setActionError(projectErrorMessage(error))
+    } finally {
+      setRestoringSkipped(false)
+    }
+  }
+
   const filters = <aside className="live-discovery__filters" aria-label="Discovery filters">
     <div className="live-discovery__filter-heading"><span className="live-discovery__eyebrow">YOUR NEXT OPPORTUNITY</span><h2>Find your fit</h2><p>A few filters. A better place to start.</p></div>
     <label className="field-group">Category<select className="field-select" aria-label="Category" value={category} onChange={e => setCategory(e.target.value)}><option value="">All categories</option>{categories.map(value => <option key={value}>{value}</option>)}</select></label>
@@ -125,7 +185,42 @@ export default function LiveDiscoveryView({
           onSwipe={swipe} onUndo={undo} canUndo={history.length > 0} onCardTap={item => setPreviewProject(item as DiscoveryProject)}
           onWhyMatchesClick={item => setExplanation((item as DiscoveryProject).ruleMatch ?? null)} activeItemChanged={activeChanged}
           onResetStack={refresh} />}
-        {!feed.loading && !feed.error && projects.length === 0 && <section className="panel text-center"><h2>No eligible projects right now</h2><p>Refresh or adjust the filters to find more projects.</p><button className="btn btn-primary" onClick={refresh}>Refresh feed</button></section>}
+        {!feed.loading && !feed.error && projects.length === 0 && (
+          <section className="panel text-center">
+            <h2>No eligible projects right now</h2>
+            <p>Refresh or adjust the filters to find more projects.</p>
+            <div
+              className="live-discovery__empty-actions"
+              style={{
+                display: "flex",
+                gap: "10px",
+                justifyContent: "center",
+                marginTop: "16px",
+                flexWrap: "wrap",
+              }}
+            >
+              <button
+                className="btn btn-primary"
+                onClick={refresh}
+                disabled={restoringSkipped}
+              >
+                <RefreshCw size={14} /> Refresh feed
+              </button>
+              <button
+                className="btn btn-secondary"
+                onClick={handleRestoreSkipped}
+                disabled={restoringSkipped}
+                title="Restore projects you previously skipped (excluding applied projects)"
+              >
+                <RotateCcw
+                  size={14}
+                  className={restoringSkipped ? "spin-icon" : ""}
+                />
+                {restoringSkipped ? "Restoring…" : "Restore skipped projects"}
+              </button>
+            </div>
+          </section>
+        )}
       </section>
       <aside className="live-discovery__inspector">{active?.ruleMatch ? <RuleMatchPanel variant="discovery" match={active.ruleMatch} projectName={active.name} onExplain={() => setExplanation(active.ruleMatch ?? null)} onViewDetails={viewActiveProject} /> : <section className="live-discovery__inspector-empty"><h2>A closer look at your fit</h2><p>Select a project to see how its position matches your profile.</p></section>}</aside>
     </div>
@@ -158,7 +253,7 @@ export default function LiveDiscoveryView({
     {applying && <ApplyModal key={applying.id} projectId={applying.id} preferredPositionId={applying.ruleMatch?.best_position.position_id} onClose={() => setApplying(null)} onConfirmed={application => {
       setApplying(null)
       if (application.status === "pending" || application.status === "accepted") {
-        setReviewedApplications(old => new Set([...old, application.application_id]))
+        setReviewedApplications(old => new Set([...old, application.project_id]))
         feed.remove(application.project_id)
       }
       notify(`Application confirmed: ${application.status}.`)
