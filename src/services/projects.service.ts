@@ -4,6 +4,7 @@ import type {
   AddPositionSkillRequest,
   AddPositionSkillResponse,
   CreatePositionRequest,
+  CreateProjectGoalRequest,
   CreateProjectRequest,
   CreateProjectResponse,
   DeleteProjectResponse,
@@ -12,10 +13,14 @@ import type {
   PagedProjectsResponse,
   ProjectDetailDto,
   ProjectDifficultyLevel,
+  ProjectGoalDto,
   ProjectPositionDto,
+  ProjectResourceLink,
   ProjectSummaryDto,
+  ToggleProjectGoalRequest,
   UpdatePositionRequest,
   UpdateProjectRequest,
+  UpdateProjectResourcesRequest,
 } from "../types/project"
 
 /**
@@ -412,4 +417,107 @@ export async function removePositionSkillApi(
       signal,
     },
   )
+}
+
+/**
+ * GET /api/projects/{project_id}/goals — Lấy danh sách mục tiêu dự án
+ */
+export async function getProjectGoalsApi(
+  projectId: string,
+  signal?: AbortSignal,
+): Promise<ProjectGoalDto[]> {
+  requireProjectId(projectId, "Project")
+  const res = await apiRequest<ProjectGoalDto[]>(
+    `${projectsBase}/${encodeURIComponent(projectId)}/goals`,
+    {
+      method: "GET",
+      headers: optionalAuthHeaders(),
+      signal,
+    },
+  )
+  return res.data ?? []
+}
+
+/**
+ * POST /api/projects/{project_id}/goals — Tạo mục tiêu mới cho dự án
+ */
+export async function createProjectGoalApi(
+  projectId: string,
+  payload: CreateProjectGoalRequest,
+  signal?: AbortSignal,
+): Promise<ProjectGoalDto> {
+  requireProjectId(projectId, "Project")
+  const res = await apiRequest<ProjectGoalDto>(
+    `${projectsBase}/${encodeURIComponent(projectId)}/goals`,
+    {
+      method: "POST",
+      requiresAuth: true,
+      body: JSON.stringify(payload),
+      signal,
+    },
+  )
+  return res.data
+}
+
+/**
+ * PATCH /api/projects/{project_id}/goals/{goal_id}/toggle — Đổi trạng thái hoàn thành của goal
+ */
+export async function toggleProjectGoalApi(
+  projectId: string,
+  goalId: string,
+  isCompleted?: boolean,
+  signal?: AbortSignal,
+): Promise<ProjectGoalDto> {
+  requireProjectId(projectId, "Project")
+  requireProjectId(goalId, "Goal")
+  const res = await apiRequest<ProjectGoalDto>(
+    `${projectsBase}/${encodeURIComponent(projectId)}/goals/${encodeURIComponent(goalId)}/toggle`,
+    {
+      method: "PATCH",
+      requiresAuth: true,
+      body: JSON.stringify({ is_completed: isCompleted }),
+      signal,
+    },
+  )
+  return res.data
+}
+
+/**
+ * PUT /api/projects/{project_id}/resources — Cập nhật danh sách resource links
+ */
+export async function updateProjectResourcesApi(
+  projectId: string,
+  resources: ProjectResourceLink[],
+  signal?: AbortSignal,
+): Promise<ProjectResourceLink[]> {
+  requireProjectId(projectId, "Project")
+  const res = await apiRequest<ProjectResourceLink[]>(
+    `${projectsBase}/${encodeURIComponent(projectId)}/resources`,
+    {
+      method: "PUT",
+      requiresAuth: true,
+      body: JSON.stringify({ resources }),
+      signal,
+    },
+  )
+  return res.data ?? []
+}
+
+/**
+ * POST /api/projects/{project_id}/complete — Leader đánh dấu dự án hoàn thành
+ */
+export async function completeProjectApi(
+  projectId: string,
+  signal?: AbortSignal,
+): Promise<ProjectDetailDto> {
+  requireProjectId(projectId, "Project")
+  const res = await apiRequest<ProjectDetailDto>(
+    `${projectsBase}/${encodeURIComponent(projectId)}/complete`,
+    {
+      method: "POST",
+      requiresAuth: true,
+      signal,
+    },
+  )
+  return res.data
 }

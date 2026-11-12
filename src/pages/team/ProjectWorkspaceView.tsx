@@ -26,16 +26,31 @@ import {
   Sparkles,
   Briefcase,
   XCircle,
+  Rocket,
+  Globe,
+  Link2,
+  Code2,
+  Edit3,
+  Trash2,
 } from "lucide-react"
 import { useTindy, Project } from "../../store"
 import { Chips, PageHeader, Avatar, Badge, Button } from "../../components/ui"
-import { getProjectByIdApi, mapProjectDetailToUiProject } from "../../services/projects.service"
+import {
+  getProjectByIdApi,
+  mapProjectDetailToUiProject,
+  getProjectGoalsApi,
+  createProjectGoalApi,
+  toggleProjectGoalApi,
+  updateProjectResourcesApi,
+  completeProjectApi,
+} from "../../services/projects.service"
+import { createDirectConversation } from "../../services/chat.service"
 import {
   getProjectApplications,
   decideApplication,
   applicationErrorMessage,
 } from "../../services/applications.service"
-import type { ProjectDetailDto } from "../../types/project"
+import type { ProjectDetailDto, ProjectResourceLink, ProjectGoalDto } from "../../types/project"
 import type { ApplicationReviewDto } from "../../types/application"
 
 interface WorkspaceGoal {
@@ -68,6 +83,53 @@ interface WorkspaceAttachment {
   size?: string
 }
 
+function getResourceIcon(type: string) {
+  const normalized = (type || "").toLowerCase()
+  switch (normalized) {
+    case "github":
+      return (
+        <span className="w-8 h-8 rounded-lg bg-slate-900 text-white flex items-center justify-center shrink-0">
+          <Code2 size={16} />
+        </span>
+      )
+    case "figma":
+      return (
+        <span className="w-8 h-8 rounded-lg bg-purple-100 text-purple-700 border border-purple-200 flex items-center justify-center shrink-0 font-bold text-xs">
+          Fig
+        </span>
+      )
+    case "drive":
+    case "docs":
+    case "doc":
+      return (
+        <span className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 border border-blue-200 flex items-center justify-center shrink-0">
+          <FileText size={16} />
+        </span>
+      )
+    case "jira":
+    case "linear":
+    case "trello":
+      return (
+        <span className="w-8 h-8 rounded-lg bg-sky-50 text-sky-600 border border-sky-200 flex items-center justify-center shrink-0">
+          <Layers size={16} />
+        </span>
+      )
+    case "demo":
+    case "website":
+      return (
+        <span className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 border border-emerald-200 flex items-center justify-center shrink-0">
+          <Globe size={16} />
+        </span>
+      )
+    default:
+      return (
+        <span className="w-8 h-8 rounded-lg bg-slate-100 text-slate-600 border border-slate-200 flex items-center justify-center shrink-0">
+          <Link2 size={16} />
+        </span>
+      )
+  }
+}
+
 interface ProjectWorkspaceViewProps {
   projectId?: string
 }
@@ -95,10 +157,12 @@ export function ProjectWorkspaceView({ projectId: propProjectId }: ProjectWorksp
   const [isCompleted, setIsCompleted] = useState(false)
   const [activeTab, setActiveTab] = useState<"comments" | "candidates" | "details" | "attachments">("comments")
 
-  // Goals
+  // Goals from Backend API
   const [goals, setGoals] = useState<WorkspaceGoal[]>([])
+  const [loadingGoals, setLoadingGoals] = useState(false)
   const [showCompletedGoals, setShowCompletedGoals] = useState(true)
   const [isAddingGoal, setIsAddingGoal] = useState(false)
+  const [isSavingGoal, setIsSavingGoal] = useState(false)
   const [newGoalTitle, setNewGoalTitle] = useState("")
   const [newGoalTag, setNewGoalTag] = useState("Milestone")
   const [newGoalDueDate, setNewGoalDueDate] = useState("Sprint 1")
@@ -106,6 +170,19 @@ export function ProjectWorkspaceView({ projectId: propProjectId }: ProjectWorksp
   // Feed / Comments
   const [newUpdate, setNewUpdate] = useState("")
   const [updates, setUpdates] = useState<WorkspaceUpdate[]>([])
+
+  // Project Resource Links
+  const [resources, setResources] = useState<ProjectResourceLink[]>([])
+  const [showResourceModal, setShowResourceModal] = useState(false)
+  const [editingResources, setEditingResources] = useState<ProjectResourceLink[]>([])
+  const [savingResources, setSavingResources] = useState(false)
+
+  // Ship / Complete Project State
+  const [showCompleteDialog, setShowCompleteDialog] = useState(false)
+  const [completingProject, setCompletingProject] = useState(false)
+
+  // Direct 1-1 Message State
+  const [messagingUserId, setMessagingUserId] = useState<string | null>(null)
 
   // Attachments
   const repositoryUrl = safeProjectGithubUrl(projectDetail?.github_url)
@@ -117,6 +194,56 @@ export function ProjectWorkspaceView({ projectId: propProjectId }: ProjectWorksp
   // Invite Modal
   const [showInviteModal, setShowInviteModal] = useState(false)
   const [inviteEmail, setInviteEmail] = useState("")
+
+  const loadGoals = useCallback((projId: string, fallbackGoals?: string[]) => {
+    setLoadingGoals(true)
+    getProjectGoalsApi(projId)
+      .then((dtos) => {
+        if (dtos && dtos.length > 0) {
+          setGoals(
+            dtos.map((g) => ({
+              id: g.id,
+              tag: g.tag || "Milestone",
+              title: g.title,
+              assignees: ["Team"],
+              dueDate: g.due_date || "Sprint 1",
+              completed: g.is_completed,
+            }))
+          )
+        } else if (fallbackGoals && fallbackGoals.length > 0) {
+          setGoals(
+            fallbackGoals.map((g, idx) => ({
+              id: `legacy-${idx + 1}`,
+              tag: "Milestone",
+              title: g,
+              assignees: ["PL"],
+              dueDate: "Sprint 1",
+              completed: false,
+            }))
+          )
+        } else {
+          setGoals([])
+        }
+      })
+      .catch((err) => {
+        console.warn("Could not load project goals from API", err)
+        if (fallbackGoals && fallbackGoals.length > 0) {
+          setGoals(
+            fallbackGoals.map((g, idx) => ({
+              id: `legacy-${idx + 1}`,
+              tag: "Milestone",
+              title: g,
+              assignees: ["PL"],
+              dueDate: "Sprint 1",
+              completed: false,
+            }))
+          )
+        }
+      })
+      .finally(() => {
+        setLoadingGoals(false)
+      })
+  }, [])
 
   const loadApplications = useCallback((projId: string) => {
     setLoadingApplications(true)
@@ -138,24 +265,14 @@ export function ProjectWorkspaceView({ projectId: propProjectId }: ProjectWorksp
       .then((detail) => {
         setProjectDetail(detail)
         setProject(mapProjectDetailToUiProject(detail))
-        if (detail.goals && detail.goals.length > 0) {
-          setGoals((prev) => {
-            if (prev.length > 0) return prev
-            return detail.goals.map((g, idx) => ({
-              id: `g-${idx + 1}`,
-              tag: "Milestone",
-              title: g,
-              assignees: [detail.leader.initials || "PL"],
-              dueDate: "Sprint 1",
-              completed: false,
-            }))
-          })
-        }
+        setIsCompleted(detail.status === "completed")
+        setResources(detail.resource_links || [])
+        loadGoals(projId, detail.goals)
       })
       .catch((err) => {
         console.warn("Could not reload project detail", err)
       })
-  }, [])
+  }, [loadGoals])
 
   useEffect(() => {
     if (!projectId) return
@@ -167,19 +284,9 @@ export function ProjectWorkspaceView({ projectId: propProjectId }: ProjectWorksp
         if (!active) return
         setProjectDetail(detail)
         setProject(mapProjectDetailToUiProject(detail))
-
-        if (detail.goals && detail.goals.length > 0) {
-          setGoals(
-            detail.goals.map((g, idx) => ({
-              id: `g-${idx + 1}`,
-              tag: "Milestone",
-              title: g,
-              assignees: [detail.leader.initials || "PL"],
-              dueDate: "Sprint 1",
-              completed: false,
-            }))
-          )
-        }
+        setIsCompleted(detail.status === "completed")
+        setResources(detail.resource_links || [])
+        loadGoals(projectId, detail.goals)
 
         // Set initial welcome update based on real leader
         setUpdates([
@@ -208,7 +315,7 @@ export function ProjectWorkspaceView({ projectId: propProjectId }: ProjectWorksp
     return () => {
       active = false
     }
-  }, [projectId, projects, loadApplications])
+  }, [projectId, projects, loadApplications, loadGoals])
 
   // Fallback project if loading
   const activeProject = useMemo<Project>(() => {
@@ -266,9 +373,11 @@ export function ProjectWorkspaceView({ projectId: propProjectId }: ProjectWorksp
           name: m.display_name,
           role: m.is_leader ? `Project lead · ${m.role_title}` : m.role_title,
           initials,
+          avatarUrl: m.avatar_url,
           isYou,
           color: m.is_leader ? "bg-blue-50 text-blue-700 border border-blue-200" : "bg-slate-100 text-slate-700 border border-slate-200",
           isLeader: m.is_leader,
+          committedHours: activeProject.hours || 10,
         }
       })
     }
@@ -295,9 +404,11 @@ export function ProjectWorkspaceView({ projectId: propProjectId }: ProjectWorksp
         name: leaderName,
         role: isCurrentLeader ? `Project lead · ${myRole}` : "Project lead",
         initials: leaderInitials,
+        avatarUrl: projectDetail?.leader?.avatar_url,
         isYou: isCurrentLeader,
         color: "bg-blue-50 text-blue-700 border border-blue-200",
         isLeader: true,
+        committedHours: activeProject.hours || 10,
       },
     ]
   }, [projectDetail, activeProject, profile.name, profile.role, authUser])
@@ -311,6 +422,84 @@ export function ProjectWorkspaceView({ projectId: propProjectId }: ProjectWorksp
     () => applications.filter((a) => a.application.status === "accepted"),
     [applications],
   )
+
+  // Direct 1-1 Message Handler
+  const handleDirectMessage = async (memberId: string, memberName: string) => {
+    if (!authUser) {
+      notify("Please sign in to message team members.")
+      return
+    }
+    if (memberId === authUser.user_id) return
+
+    setMessagingUserId(memberId)
+    try {
+      const conversation = await createDirectConversation(memberId)
+      if (conversation && conversation.conversationId) {
+        navigate(`/messages?conversation=${conversation.conversationId}`)
+      } else {
+        navigate("/messages")
+      }
+    } catch (err) {
+      console.warn("Could not initiate 1-1 conversation directly", err)
+      navigate("/messages")
+    } finally {
+      setMessagingUserId(null)
+    }
+  }
+
+  // Manage Project Resources
+  const handleOpenResourceModal = () => {
+    setEditingResources(
+      resources.length > 0
+        ? [...resources]
+        : repositoryUrl
+        ? [{ type: "github", label: "GitHub Repository", url: repositoryUrl }]
+        : [{ type: "figma", label: "Figma Design", url: "" }],
+    )
+    setShowResourceModal(true)
+  }
+
+  const handleSaveResources = async () => {
+    if (!projectId) return
+    const validResources = editingResources
+      .filter((r) => r.label.trim() && r.url.trim())
+      .map((r) => ({
+        type: r.type,
+        label: r.label.trim(),
+        url: r.url.trim(),
+      }))
+
+    setSavingResources(true)
+    try {
+      const updated = await updateProjectResourcesApi(projectId, validResources)
+      setResources(updated)
+      setShowResourceModal(false)
+      notify("Project resources updated successfully!")
+    } catch (err) {
+      console.error("Failed to update resources", err)
+      notify("Failed to update project resources.")
+    } finally {
+      setSavingResources(false)
+    }
+  }
+
+  // Ship / Complete Project Handler
+  const handleCompleteProject = async () => {
+    if (!projectId) return
+    setCompletingProject(true)
+    try {
+      const updatedDetail = await completeProjectApi(projectId)
+      setIsCompleted(true)
+      setProjectDetail(updatedDetail)
+      setShowCompleteDialog(false)
+      notify("🎉 Project marked completed! All team members' portfolio experiences have been updated.")
+    } catch (err) {
+      console.error("Failed to complete project", err)
+      notify("Failed to complete project. Please try again.")
+    } finally {
+      setCompletingProject(false)
+    }
+  }
 
   // Decide candidate application (Accept / Reject)
   const handleDecideApplication = async (
@@ -370,38 +559,77 @@ export function ProjectWorkspaceView({ projectId: propProjectId }: ProjectWorksp
     notify("Update shared with team.")
   }
 
-  // Toggle goal handler
-  const toggleGoal = (goalId: string) => {
+  // Toggle goal handler (persisted via API)
+  const toggleGoal = async (goalId: string) => {
+    const target = goals.find((g) => g.id === goalId)
+    if (!target) return
+    const nextCompleted = !target.completed
+
+    // Optimistic UI update
     setGoals((prev) =>
-      prev.map((g) => {
-        if (g.id === goalId) {
-          const next = !g.completed
-          notify(next ? "Goal marked complete!" : "Goal marked incomplete.")
-          return { ...g, completed: next }
-        }
-        return g
-      }),
+      prev.map((g) => (g.id === goalId ? { ...g, completed: nextCompleted } : g)),
     )
+    notify(nextCompleted ? "Goal marked complete!" : "Goal marked incomplete.")
+
+    if (projectId && !goalId.startsWith("legacy-")) {
+      try {
+        await toggleProjectGoalApi(projectId, goalId, nextCompleted)
+      } catch (err) {
+        console.error("Failed to toggle goal in database", err)
+        // Revert on error
+        setGoals((prev) =>
+          prev.map((g) => (g.id === goalId ? { ...g, completed: !nextCompleted } : g)),
+        )
+        notify("Failed to update goal on server.")
+      }
+    }
   }
 
-  // Add goal handler
-  const handleAddGoal = (e: React.FormEvent) => {
+  // Add goal handler (persisted via API)
+  const handleAddGoal = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!newGoalTitle.trim()) return
+    if (!newGoalTitle.trim() || !projectId) return
 
-    const newGoal: WorkspaceGoal = {
-      id: `g-${Date.now()}`,
-      tag: newGoalTag,
-      title: newGoalTitle.trim(),
-      assignees: [rosterMembers[0]?.initials || "ME"],
-      dueDate: newGoalDueDate.trim() || "TBD",
-      completed: false,
+    const title = newGoalTitle.trim()
+    const tag = newGoalTag.trim() || "Milestone"
+    const dueDate = newGoalDueDate.trim() || "Sprint 1"
+
+    setIsSavingGoal(true)
+    try {
+      const created = await createProjectGoalApi(projectId, {
+        title,
+        tag,
+        due_date: dueDate,
+        assignee_ids: authUser ? [authUser.user_id] : [],
+      })
+
+      const myInitials =
+        profile.name
+          ?.split(" ")
+          .map((w) => w[0])
+          .slice(0, 2)
+          .join("")
+          .toUpperCase() || "ME"
+
+      const newGoal: WorkspaceGoal = {
+        id: created.id,
+        tag: created.tag || tag,
+        title: created.title,
+        assignees: [myInitials],
+        dueDate: created.due_date || dueDate,
+        completed: created.is_completed,
+      }
+
+      setGoals((prev) => [...prev, newGoal])
+      setNewGoalTitle("")
+      setIsAddingGoal(false)
+      notify("New goal added to workspace database.")
+    } catch (err) {
+      console.error("Failed to add goal", err)
+      notify("Failed to save goal to database.")
+    } finally {
+      setIsSavingGoal(false)
     }
-
-    setGoals([...goals, newGoal])
-    setNewGoalTitle("")
-    setIsAddingGoal(false)
-    notify("New goal added to workspace.")
   }
 
   // Copy link
@@ -466,6 +694,18 @@ export function ProjectWorkspaceView({ projectId: propProjectId }: ProjectWorksp
                   <span>Manage project</span>
                   <ArrowUpRight size={13} />
                 </Link>
+
+                {!isCompleted && (
+                  <button
+                    type="button"
+                    onClick={() => setShowCompleteDialog(true)}
+                    className="btn btn-primary"
+                    style={{ gap: "6px", backgroundColor: "#059669", borderColor: "#059669" }}
+                  >
+                    <Rocket size={14} />
+                    <span>Ship Project</span>
+                  </button>
+                )}
               </>
             )}
 
@@ -481,6 +721,31 @@ export function ProjectWorkspaceView({ projectId: propProjectId }: ProjectWorksp
         }
       />
 
+      {/* Completed Banner if project is finished */}
+      {isCompleted && (
+        <div className="mb-6 p-4 rounded-xl border border-emerald-200 bg-gradient-to-r from-emerald-50/90 via-teal-50/70 to-emerald-50/90 flex items-center justify-between gap-3 shadow-xs">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-10 h-10 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
+              <CheckCircle2 size={22} className="text-emerald-600" />
+            </div>
+            <div className="min-w-0">
+              <h4 className="text-xs font-extrabold text-emerald-900 flex items-center gap-1.5">
+                <span>Project Completed & Shipped</span>
+                <span className="text-[10px] px-1.5 py-0.2 rounded font-semibold bg-emerald-200/80 text-emerald-800">
+                  Portfolio Ready
+                </span>
+              </h4>
+              <p className="text-[11px] text-emerald-700 mt-0.5 truncate">
+                This project has been officially shipped and recorded as a verified experience in all members&apos; portfolios.
+              </p>
+            </div>
+          </div>
+          <span className="hidden sm:inline-flex px-3 py-1 rounded-full text-[11px] font-bold bg-white text-emerald-800 border border-emerald-200 shadow-2xs shrink-0">
+            Verified Project
+          </span>
+        </div>
+      )}
+
       {/* Main 2-Column Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         {/* Left Column (Main Card & Updates) */}
@@ -492,21 +757,29 @@ export function ProjectWorkspaceView({ projectId: propProjectId }: ProjectWorksp
                 {activeProject.name} — Workspace
               </span>
               <div className="flex flex-wrap items-center gap-2">
-                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                  {isCompleted ? "Completed" : "Active"}
-                </span>
+                {isCompleted ? (
+                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-1">
+                    <CheckCircle2 size={12} className="text-emerald-600" />
+                    <span>Completed</span>
+                  </span>
+                ) : (
+                  <>
+                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200">
+                      Active
+                    </span>
 
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsCompleted(!isCompleted)
-                    notify(!isCompleted ? "Project marked complete!" : "Project marked active.")
-                  }}
-                  className="px-2.5 py-1 rounded-md border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 text-xs font-medium flex items-center gap-1 transition-colors cursor-pointer"
-                >
-                  <Check size={13} className={isCompleted ? "text-emerald-600" : "text-slate-400"} />
-                  <span>{isCompleted ? "Completed" : "Mark complete"}</span>
-                </button>
+                    {isLeader && (
+                      <button
+                        type="button"
+                        onClick={() => setShowCompleteDialog(true)}
+                        className="px-2.5 py-1 rounded-md border border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
+                      >
+                        <Rocket size={13} className="text-emerald-600" />
+                        <span>Ship / Complete</span>
+                      </button>
+                    )}
+                  </>
+                )}
 
                 <button
                   type="button"
@@ -980,36 +1253,64 @@ export function ProjectWorkspaceView({ projectId: propProjectId }: ProjectWorksp
               {/* Tab 4: Attachments */}
               {activeTab === "attachments" && (
                 <div className="pt-4 space-y-3">
-                  {attachments.map((att) => (
-                    <div
-                      key={att.id}
-                      className="p-3 rounded-lg border border-slate-200 bg-slate-50/50 flex items-center justify-between text-xs"
-                    >
-                      <div className="flex items-center gap-2.5 min-w-0">
-                        <FileText size={16} className="text-slate-400 shrink-0" />
-                        <div className="min-w-0">
-                          <p className="font-bold text-slate-800 truncate">{att.name}</p>
-                          <span className="text-[10px] text-slate-400">{att.size}</span>
+                  {resources.length === 0 ? (
+                    <div className="py-8 text-center rounded-xl border border-dashed border-slate-200 bg-slate-50/50 space-y-2">
+                      <FileText size={28} className="mx-auto text-slate-400" />
+                      <p className="text-xs font-bold text-slate-800">No project resources yet</p>
+                      <p className="text-[11px] text-slate-500 max-w-xs mx-auto">
+                        Share links to your Figma files, GitHub repositories, Google Docs, or Jira boards with the team.
+                      </p>
+                      {isLeader && (
+                        <div className="pt-2">
+                          <button
+                            type="button"
+                            onClick={handleOpenResourceModal}
+                            className="btn btn-secondary"
+                            style={{ padding: "6px 14px", fontSize: "11.5px" }}
+                          >
+                            <Plus size={13} />
+                            <span>Add first resource link</span>
+                          </button>
                         </div>
-                      </div>
-                      <a
-                        href={att.url}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="px-2.5 py-1 rounded border border-slate-200 bg-white hover:bg-slate-50 text-[11px] font-semibold text-slate-700 transition-colors shrink-0"
-                      >
-                        Open
-                      </a>
+                      )}
                     </div>
-                  ))}
-                  <button
-                    type="button"
-                    onClick={() => notify("Resource links can be saved locally in this session.")}
-                    className="w-full py-2 border border-dashed border-slate-300 rounded-lg text-xs font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-50 transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
-                  >
-                    <Plus size={14} />
-                    <span>Add resource or attachment link</span>
-                  </button>
+                  ) : (
+                    <div className="space-y-2">
+                      {resources.map((res, idx) => (
+                        <div
+                          key={idx}
+                          className="p-3 rounded-lg border border-slate-200 bg-slate-50/50 flex items-center justify-between text-xs"
+                        >
+                          <div className="flex items-center gap-2.5 min-w-0 pr-2">
+                            {getResourceIcon(res.type)}
+                            <div className="min-w-0">
+                              <p className="font-bold text-slate-800 truncate">{res.label}</p>
+                              <span className="text-[10px] text-slate-400 capitalize">{res.type} resource</span>
+                            </div>
+                          </div>
+                          <a
+                            href={res.url.startsWith("http") ? res.url : `https://${res.url}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="px-2.5 py-1 rounded border border-slate-200 bg-white hover:bg-slate-50 text-[11px] font-semibold text-slate-700 transition-colors shrink-0 flex items-center gap-1 cursor-pointer"
+                          >
+                            <span>Open</span>
+                            <ExternalLink size={12} />
+                          </a>
+                        </div>
+                      ))}
+                      {isLeader && (
+                        <button
+                          type="button"
+                          onClick={handleOpenResourceModal}
+                          className="w-full py-2 border border-dashed border-slate-300 rounded-lg text-xs font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-50 transition-colors flex items-center justify-center gap-1.5 cursor-pointer mt-2"
+                        >
+                          <Plus size={14} />
+                          <span>Manage project resources & links</span>
+                        </button>
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -1028,23 +1329,57 @@ export function ProjectWorkspaceView({ projectId: propProjectId }: ProjectWorksp
             </div>
 
             {/* Roster list */}
-            <div className="space-y-3 pt-1">
+            <div className="space-y-2.5 pt-1">
               {rosterMembers.map((m) => (
-                <div key={m.id} className="flex items-center gap-3">
-                  <div
-                    className={`w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${m.color}`}
-                  >
-                    {m.initials}
+                <div
+                  key={m.id}
+                  className="flex items-center justify-between p-2.5 rounded-lg border border-slate-100 hover:border-slate-200 hover:bg-slate-50/60 transition-all text-xs"
+                >
+                  <div className="flex items-center gap-3 min-w-0 flex-1">
+                    {m.avatarUrl ? (
+                      <img
+                        src={m.avatarUrl}
+                        alt={m.name}
+                        className="w-9 h-9 rounded-full object-cover shrink-0 border border-slate-200"
+                      />
+                    ) : (
+                      <div
+                        className={`w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${m.color}`}
+                      >
+                        {m.initials}
+                      </div>
+                    )}
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs font-bold text-slate-800 truncate flex items-center gap-1.5">
+                        <span>{m.name}</span>
+                        {m.isYou && (
+                          <span className="text-[10px] text-blue-600 font-normal">you</span>
+                        )}
+                        {m.isLeader && (
+                          <span className="text-[9px] px-1.5 py-0.2 rounded font-semibold bg-blue-100 text-blue-700">
+                            Leader
+                          </span>
+                        )}
+                      </p>
+                      <p className="text-[11px] text-slate-500 truncate">{m.role}</p>
+                      <div className="flex items-center gap-1 mt-0.5 text-[10px] text-slate-400 font-medium">
+                        <Clock size={10} className="text-slate-400 shrink-0" />
+                        <span>{m.committedHours} hrs/week</span>
+                      </div>
+                    </div>
                   </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-xs font-bold text-slate-800 truncate flex items-center gap-1.5">
-                      <span>{m.name}</span>
-                      {m.isYou && (
-                        <span className="text-[10px] text-blue-600 font-normal">you</span>
-                      )}
-                    </p>
-                    <p className="text-[11px] text-slate-500 truncate">{m.role}</p>
-                  </div>
+
+                  {!m.isYou && (
+                    <button
+                      type="button"
+                      disabled={messagingUserId === m.id}
+                      onClick={() => handleDirectMessage(m.id, m.name)}
+                      className="p-1.5 ml-2 rounded-lg border border-slate-200 hover:border-blue-300 hover:bg-blue-50 text-slate-500 hover:text-blue-600 transition-colors shrink-0 cursor-pointer disabled:opacity-50"
+                      title={`Send 1-1 message to ${m.name}`}
+                    >
+                      <MessageSquare size={14} />
+                    </button>
+                  )}
                 </div>
               ))}
             </div>
@@ -1070,7 +1405,76 @@ export function ProjectWorkspaceView({ projectId: propProjectId }: ProjectWorksp
             </div>
           </div>
 
-          {/* Card 2: Candidates Summary Card (Real API Data) */}
+          {/* Card 2: Project Resources Widget */}
+          <div className="bg-white rounded-xl border border-slate-200 shadow-xs p-5 space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Link2 size={16} className="text-blue-600" />
+                <h3 className="text-sm font-extrabold text-slate-900 tracking-tight">
+                  Project Resources
+                </h3>
+              </div>
+              {isLeader && (
+                <button
+                  type="button"
+                  onClick={handleOpenResourceModal}
+                  className="text-xs text-blue-600 hover:text-blue-700 font-semibold flex items-center gap-1 cursor-pointer"
+                >
+                  <Edit3 size={12} />
+                  <span>Manage</span>
+                </button>
+              )}
+            </div>
+
+            <p className="text-xs text-slate-500">
+              Direct access to Figma, GitHub, Docs, and Demo resources.
+            </p>
+
+            {resources.length === 0 ? (
+              <div className="py-4 px-3 text-center border border-dashed border-slate-200 rounded-lg text-xs text-slate-400 space-y-1 bg-slate-50/40">
+                <p>No project resources linked yet.</p>
+                {isLeader && (
+                  <button
+                    type="button"
+                    onClick={handleOpenResourceModal}
+                    className="text-blue-600 hover:underline font-semibold inline-flex items-center gap-1 mt-1 cursor-pointer"
+                  >
+                    <Plus size={12} /> Add Figma, GitHub, or Drive links
+                  </button>
+                )}
+              </div>
+            ) : (
+              <div className="space-y-2 pt-1">
+                {resources.map((res, idx) => (
+                  <a
+                    key={idx}
+                    href={res.url.startsWith("http") ? res.url : `https://${res.url}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex items-center justify-between p-2.5 rounded-lg border border-slate-200 hover:border-slate-300 hover:bg-slate-50/80 transition-all text-xs group"
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0 pr-2">
+                      {getResourceIcon(res.type)}
+                      <div className="min-w-0">
+                        <p className="font-bold text-slate-800 truncate group-hover:text-blue-600 transition-colors">
+                          {res.label}
+                        </p>
+                        <span className="text-[10px] text-slate-400 capitalize block truncate">
+                          {res.type}
+                        </span>
+                      </div>
+                    </div>
+                    <ExternalLink
+                      size={13}
+                      className="text-slate-400 group-hover:text-blue-600 shrink-0 transition-colors"
+                    />
+                  </a>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Card 3: Candidates Summary Card (Real API Data) */}
           <div className="bg-white rounded-xl border border-slate-200 shadow-xs p-5 space-y-3">
             <div className="flex items-center justify-between">
               <h3 className="text-sm font-extrabold text-slate-900 tracking-tight">
@@ -1129,7 +1533,7 @@ export function ProjectWorkspaceView({ projectId: propProjectId }: ProjectWorksp
             </div>
           </div>
 
-          {/* Card 3: Team goals */}
+          {/* Card 4: Team goals (Database Persisted) */}
           <div className="bg-white rounded-xl border border-slate-200 shadow-xs p-5 space-y-4">
             <div>
               <div className="flex items-center justify-between mb-1">
@@ -1148,7 +1552,7 @@ export function ProjectWorkspaceView({ projectId: propProjectId }: ProjectWorksp
                 </div>
               </div>
               <p className="text-xs text-slate-500">
-                One shared direction. A little progress, every day.
+                Key milestones saved and synchronized with the team database.
               </p>
             </div>
 
@@ -1166,55 +1570,63 @@ export function ProjectWorkspaceView({ projectId: propProjectId }: ProjectWorksp
             </div>
 
             {/* Goals list */}
-            <div className="space-y-3 pt-1">
-              {goals
-                .filter((g) => showCompletedGoals || !g.completed)
-                .map((g) => (
-                  <div key={g.id} className="space-y-1.5 text-xs">
-                    <span
-                      style={{
-                        fontSize: "10px",
-                        fontWeight: 600,
-                        padding: "1px 6px",
-                        borderRadius: "3px",
-                        background: "#f1f5f9",
-                        color: "#475569",
-                        border: "1px solid #e2e8f0",
-                        display: "inline-block",
-                      }}
-                    >
-                      {g.tag}
-                    </span>
-                    <div className="flex items-start gap-2.5">
-                      <button
-                        type="button"
-                        onClick={() => toggleGoal(g.id)}
-                        className="mt-0.5 shrink-0 text-slate-400 hover:text-emerald-600 transition-colors cursor-pointer"
-                        title={g.completed ? "Mark incomplete" : "Mark complete"}
+            {loadingGoals ? (
+              <div className="py-4 text-center text-xs text-slate-400">Loading goals from database...</div>
+            ) : goals.length === 0 ? (
+              <p className="py-3 text-center text-xs text-slate-400">
+                No goals added yet. Add milestones to track team progress.
+              </p>
+            ) : (
+              <div className="space-y-3 pt-1">
+                {goals
+                  .filter((g) => showCompletedGoals || !g.completed)
+                  .map((g) => (
+                    <div key={g.id} className="space-y-1.5 text-xs">
+                      <span
+                        style={{
+                          fontSize: "10px",
+                          fontWeight: 600,
+                          padding: "1px 6px",
+                          borderRadius: "3px",
+                          background: "#f1f5f9",
+                          color: "#475569",
+                          border: "1px solid #e2e8f0",
+                          display: "inline-block",
+                        }}
                       >
-                        {g.completed ? (
-                          <CheckCircle2 size={16} className="text-emerald-600 fill-emerald-100" />
-                        ) : (
-                          <Circle size={16} />
-                        )}
-                      </button>
-                      <div className="flex-1 min-w-0">
-                        <p
-                          className={`font-medium transition-all ${
-                            g.completed ? "line-through text-slate-400" : "text-slate-800"
-                          }`}
+                        {g.tag}
+                      </span>
+                      <div className="flex items-start gap-2.5">
+                        <button
+                          type="button"
+                          onClick={() => toggleGoal(g.id)}
+                          className="mt-0.5 shrink-0 text-slate-400 hover:text-emerald-600 transition-colors cursor-pointer"
+                          title={g.completed ? "Mark incomplete" : "Mark complete"}
                         >
-                          {g.title}
-                        </p>
-                        <div className="flex items-center gap-2 mt-1 text-[11px] text-slate-400">
-                          <span className="font-semibold text-slate-600">{g.assignees.join(" ")}</span>
-                          <span>{g.dueDate}</span>
+                          {g.completed ? (
+                            <CheckCircle2 size={16} className="text-emerald-600 fill-emerald-100" />
+                          ) : (
+                            <Circle size={16} />
+                          )}
+                        </button>
+                        <div className="flex-1 min-w-0">
+                          <p
+                            className={`font-medium transition-all ${
+                              g.completed ? "line-through text-slate-400" : "text-slate-800"
+                            }`}
+                          >
+                            {g.title}
+                          </p>
+                          <div className="flex items-center gap-2 mt-1 text-[11px] text-slate-400">
+                            <span className="font-semibold text-slate-600">{g.assignees.join(" ")}</span>
+                            <span>{g.dueDate}</span>
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </div>
-                ))}
-            </div>
+                  ))}
+              </div>
+            )}
 
             {/* Add Goal Form */}
             {isAddingGoal ? (
@@ -1223,28 +1635,30 @@ export function ProjectWorkspaceView({ projectId: propProjectId }: ProjectWorksp
                   type="text"
                   value={newGoalTitle}
                   onChange={(e) => setNewGoalTitle(e.target.value)}
-                  placeholder="Goal description..."
+                  placeholder="Goal description (e.g. Complete MVP authentication)..."
                   className="w-full p-2 border border-slate-200 rounded bg-white text-xs"
+                  autoFocus
                 />
                 <div className="flex gap-2">
                   <input
                     type="text"
                     value={newGoalTag}
                     onChange={(e) => setNewGoalTag(e.target.value)}
-                    placeholder="Tag"
+                    placeholder="Tag (e.g. Milestone, Sprint 1)"
                     className="w-1/2 p-2 border border-slate-200 rounded bg-white text-xs"
                   />
                   <input
                     type="text"
                     value={newGoalDueDate}
                     onChange={(e) => setNewGoalDueDate(e.target.value)}
-                    placeholder="Due date"
+                    placeholder="Due date (e.g. Sprint 2, Nov 25)"
                     className="w-1/2 p-2 border border-slate-200 rounded bg-white text-xs"
                   />
                 </div>
                 <div className="flex justify-end gap-2 pt-1">
                   <button
                     type="button"
+                    disabled={isSavingGoal}
                     onClick={() => setIsAddingGoal(false)}
                     className="px-2.5 py-1 text-slate-500 hover:text-slate-700"
                   >
@@ -1252,9 +1666,10 @@ export function ProjectWorkspaceView({ projectId: propProjectId }: ProjectWorksp
                   </button>
                   <button
                     type="submit"
-                    className="px-3 py-1 bg-blue-600 text-white rounded font-medium"
+                    disabled={isSavingGoal || !newGoalTitle.trim()}
+                    className="px-3 py-1 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded font-medium cursor-pointer"
                   >
-                    Save
+                    {isSavingGoal ? "Saving..." : "Save Goal"}
                   </button>
                 </div>
               </form>
@@ -1263,7 +1678,7 @@ export function ProjectWorkspaceView({ projectId: propProjectId }: ProjectWorksp
                 <button
                   type="button"
                   onClick={() => setShowCompletedGoals(!showCompletedGoals)}
-                  className="text-slate-500 hover:text-slate-800"
+                  className="text-slate-500 hover:text-slate-800 cursor-pointer"
                 >
                   {showCompletedGoals ? "Hide completed" : "Show all"}
                 </button>
@@ -1329,6 +1744,177 @@ export function ProjectWorkspaceView({ projectId: propProjectId }: ProjectWorksp
                 className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 disabled:opacity-40 text-white text-xs font-semibold"
               >
                 Send invite
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Manage Resources Modal (Leader) */}
+      {showResourceModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-xs">
+          <div className="bg-white rounded-xl max-w-lg w-full p-6 shadow-xl border border-slate-200 space-y-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Link2 size={18} className="text-blue-600" />
+                <h3 className="font-extrabold text-slate-900 text-base">Project Resource Links</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowResourceModal(false)}
+                className="text-slate-400 hover:text-slate-700 cursor-pointer"
+              >
+                <X size={18} />
+              </button>
+            </div>
+            <p className="text-xs text-slate-600">
+              Add direct links to essential project tools (Figma, GitHub, Drive, Jira, Demo) so your team can access them in one click.
+            </p>
+
+            <div className="space-y-3">
+              {editingResources.map((res, index) => (
+                <div key={index} className="p-3 rounded-lg border border-slate-200 bg-slate-50/50 space-y-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <select
+                      value={res.type}
+                      onChange={(e) => {
+                        const next = [...editingResources]
+                        next[index] = { ...next[index], type: e.target.value }
+                        setEditingResources(next)
+                      }}
+                      className="text-xs font-semibold border border-slate-200 rounded px-2 py-1 bg-white text-slate-700 cursor-pointer"
+                    >
+                      <option value="figma">Figma</option>
+                      <option value="github">GitHub</option>
+                      <option value="drive">Google Drive / Docs</option>
+                      <option value="jira">Jira / Linear</option>
+                      <option value="demo">Live Demo</option>
+                      <option value="other">Other Link</option>
+                    </select>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditingResources(editingResources.filter((_, i) => i !== index))
+                      }}
+                      className="text-slate-400 hover:text-rose-600 p-1 transition-colors cursor-pointer"
+                      title="Remove link"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+
+                  <input
+                    type="text"
+                    value={res.label}
+                    onChange={(e) => {
+                      const next = [...editingResources]
+                      next[index] = { ...next[index], label: e.target.value }
+                      setEditingResources(next)
+                    }}
+                    placeholder="Label (e.g. Figma Design, API Documentation)"
+                    className="w-full text-xs p-2 border border-slate-200 rounded bg-white"
+                  />
+
+                  <input
+                    type="url"
+                    value={res.url}
+                    onChange={(e) => {
+                      const next = [...editingResources]
+                      next[index] = { ...next[index], url: e.target.value }
+                      setEditingResources(next)
+                    }}
+                    placeholder="URL (e.g. https://www.figma.com/file/...)"
+                    className="w-full text-xs p-2 border border-slate-200 rounded bg-white"
+                  />
+                </div>
+              ))}
+
+              <button
+                type="button"
+                onClick={() => {
+                  setEditingResources([
+                    ...editingResources,
+                    { type: "figma", label: "", url: "" },
+                  ])
+                }}
+                className="w-full py-2 border border-dashed border-slate-300 rounded-lg text-xs font-semibold text-blue-600 hover:bg-blue-50/50 transition-colors flex items-center justify-center gap-1 cursor-pointer"
+              >
+                <Plus size={14} />
+                <span>Add another link</span>
+              </button>
+            </div>
+
+            <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
+              <button
+                type="button"
+                disabled={savingResources}
+                onClick={() => setShowResourceModal(false)}
+                className="px-3.5 py-2 rounded-lg border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-50 cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={savingResources}
+                onClick={handleSaveResources}
+                className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-xs font-semibold cursor-pointer"
+              >
+                {savingResources ? "Saving..." : "Save Resources"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Complete Project Confirmation Modal (Leader) */}
+      {showCompleteDialog && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-xs">
+          <div className="bg-white rounded-xl max-w-md w-full p-6 shadow-xl border border-slate-200 space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-emerald-600">
+                <Rocket size={20} />
+                <h3 className="font-extrabold text-slate-900 text-base">Ship & Complete Project</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowCompleteDialog(false)}
+                className="text-slate-400 hover:text-slate-700 cursor-pointer"
+              >
+                <X size={18} />
+              </button>
+            </div>
+            <p className="text-xs text-slate-600 leading-relaxed">
+              Are you sure you want to mark <strong>{activeProject.name}</strong> as completed?
+            </p>
+            <div className="p-3 rounded-lg bg-emerald-50/60 border border-emerald-200 text-xs text-emerald-900 space-y-1.5">
+              <p className="font-bold flex items-center gap-1.5">
+                <CheckCircle2 size={14} className="text-emerald-600" />
+                <span>What happens next:</span>
+              </p>
+              <ul className="list-disc pl-5 space-y-1 text-[11px] text-emerald-800">
+                <li>Project moves to <strong>Completed</strong> tab for all team members.</li>
+                <li>Automatically added as a <strong>Verified Experience</strong> in each member&apos;s portfolio profile.</li>
+                <li>Recruitment and active sprint phases will be closed.</li>
+              </ul>
+            </div>
+            <div className="pt-2 flex items-center justify-end gap-2">
+              <button
+                type="button"
+                disabled={completingProject}
+                onClick={() => setShowCompleteDialog(false)}
+                className="px-3.5 py-2 rounded-lg border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-50 cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={completingProject}
+                onClick={handleCompleteProject}
+                className="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-sm"
+              >
+                <Rocket size={14} />
+                <span>{completingProject ? "Shipping..." : "Confirm & Ship Project"}</span>
               </button>
             </div>
           </div>

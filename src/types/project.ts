@@ -95,6 +95,39 @@ export interface PagedProjectsResponse {
   pagination: PaginationMeta
 }
 
+export interface ProjectResourceLink {
+  type: "github" | "figma" | "drive" | "jira" | "demo" | "other" | string
+  label: string
+  url: string
+}
+
+export interface ProjectGoalDto {
+  id: string
+  project_id: string
+  title: string
+  tag: string
+  due_date: string
+  is_completed: boolean
+  assignee_ids: string[]
+  created_at: string
+  updated_at?: string | null
+}
+
+export interface CreateProjectGoalRequest {
+  title: string
+  tag?: string
+  due_date?: string
+  assignee_ids?: string[]
+}
+
+export interface ToggleProjectGoalRequest {
+  is_completed?: boolean
+}
+
+export interface UpdateProjectResourcesRequest {
+  resources: ProjectResourceLink[]
+}
+
 export interface ProjectDetailDto extends RecruitmentDeadlineDto {
   project_id: string
   name: string
@@ -116,6 +149,7 @@ export interface ProjectDetailDto extends RecruitmentDeadlineDto {
   goals: string[]
   team_members: ProjectTeamMemberDto[]
   positions: ProjectPositionDto[]
+  resource_links?: ProjectResourceLink[] | null
 }
 
 export interface CreateProjectPositionSkillInput {
