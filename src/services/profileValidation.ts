@@ -77,6 +77,7 @@ export type ProfileDraft = Record<ProfileTextField, string> & {
   preferred_role_id: string
   available_hours_per_week: string
   skill_ids: string[]
+  custom_skills: string[]
 
   open_to_team_invitations: boolean | undefined
 }
@@ -90,6 +91,7 @@ export function profileDraft(profile: MyProfileResponse): ProfileDraft {
     preferred_role_id: profile.preferred_role?.professional_role_id ?? "",
     available_hours_per_week: String(profile.available_hours_per_week ?? ""),
     skill_ids: profile.skills.map((skill) => skill.skill_id),
+    custom_skills: Array.isArray(profile.custom_skills) ? [...profile.custom_skills] : [],
 
     open_to_team_invitations:
       typeof profile.open_to_team_invitations === "boolean"
@@ -127,6 +129,11 @@ export function buildProfilePatch(
     [...before.skill_ids].sort().join(",")
   )
     patch.skill_ids = draft.skill_ids
+  if (
+    JSON.stringify(draft.custom_skills ?? []) !==
+    JSON.stringify(before.custom_skills ?? [])
+  )
+    patch.custom_skills = draft.custom_skills
   return patch
 }
 

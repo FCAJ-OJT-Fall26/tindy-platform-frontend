@@ -27,6 +27,7 @@ export interface MemberProfileResponse {
   avatar_media_asset_id: string | null
   cover_media_asset_id: string | null
   skills: CatalogSkill[]
+  custom_skills?: string[]
   experiences_count: number
   certificates_count: number
 }
@@ -58,6 +59,7 @@ export interface ProfilePatch {
   resume_url?: string | null
   public_email?: string | null
   skill_ids?: string[]
+  custom_skills?: string[]
 }
 export interface ExperienceUpsert {
   project_name: string

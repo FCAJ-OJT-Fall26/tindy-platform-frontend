@@ -155,6 +155,30 @@ export default function CandidateDetailModal({
                   </span>
                 ))}
               </div>
+
+              {candidate.custom_skills && candidate.custom_skills.length > 0 && (
+                <div className="pt-2">
+                  <div className="flex items-center gap-1.5 mb-1.5">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-blue-600">
+                      Kỹ năng bổ sung (Custom skills)
+                    </span>
+                    <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-700 font-medium">
+                      Self-declared
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {candidate.custom_skills.map((cSkill, idx) => (
+                      <span
+                        key={idx}
+                        className="text-xs px-2.5 py-1 rounded-full border border-dashed border-blue-400 bg-blue-50 text-blue-700 font-medium inline-flex items-center gap-1"
+                      >
+                        <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+                        <span>{cSkill}</span>
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="pt-2 border-t border-slate-200 space-y-1">

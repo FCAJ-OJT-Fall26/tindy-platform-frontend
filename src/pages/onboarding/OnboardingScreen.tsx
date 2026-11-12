@@ -26,6 +26,7 @@ import {
 import type { SelectedSkill } from "../../types/catalog"
 import { getStoredToken } from "../../services/apiClient"
 import SkillSelector from "../../components/onboarding/SkillSelector"
+import CustomSkillsInput from "../../components/common/CustomSkillsInput"
 import ProfessionalRoleSelector from "../../components/onboarding/ProfessionalRoleSelector"
 import { requestErrorMessage } from "../../components/onboarding/catalogFeedback"
 
@@ -315,6 +316,7 @@ export function OnboardingScreen() {
   const [displayName, setDisplayName] = useState("")
   const [university, setUniversity] = useState("")
   const [selectedSkills, setSelectedSkills] = useState<SelectedSkill[]>([])
+  const [customSkills, setCustomSkills] = useState<string[]>([])
   const [skillsValid, setSkillsValid] = useState(false)
   const [selectedRoleId, setSelectedRoleId] = useState<string | null>(null)
   const [selectedRoleName, setSelectedRoleName] = useState<string | null>(null)
@@ -369,6 +371,9 @@ export function OnboardingScreen() {
           const s2 = data.step_data["2"]
           const names = new Map((s2?.skills ?? []).map(skill => [skill.skill_id, skill.name]))
           setSelectedSkills([...new Set(s2?.skill_ids ?? [])].map(skill_id => ({ skill_id, name: names.get(skill_id) ?? null })))
+          if (Array.isArray(s2?.custom_skills)) {
+            setCustomSkills(s2.custom_skills)
+          }
 
           const s3 = data.step_data["3"]
           setSelectedRoleId(s3?.preferred_role_id ?? null)
@@ -452,6 +457,7 @@ export function OnboardingScreen() {
         }
         const res = await saveOnboardingStep2Api({
           skill_ids: selectedSkillIds,
+          custom_skills: customSkills,
         })
         setCompletedSteps(res.completed_steps)
         setProfile((prev) => ({ ...prev, skills: selectedSkills.flatMap(skill => skill.name ? [skill.name] : []) }))
@@ -754,7 +760,14 @@ export function OnboardingScreen() {
               )}
 
               {step === 1 && (
-                <SkillSelector selected={selectedSkills} onChange={setSelectedSkills} onValidityChange={setSkillsValid} />
+                <>
+                  <SkillSelector selected={selectedSkills} onChange={setSelectedSkills} onValidityChange={setSkillsValid} />
+                  <CustomSkillsInput
+                    customSkills={customSkills}
+                    onChange={setCustomSkills}
+                    disabled={loading}
+                  />
+                </>
               )}
 
               {step === 2 && (

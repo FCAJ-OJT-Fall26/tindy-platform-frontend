@@ -163,6 +163,31 @@ export default function LiveCandidateCardContent({
               </span>
             )}
           </div>
+          {/* Candidate Custom Skills if any */}
+          {((candidate.custom_skills && candidate.custom_skills.length > 0) || (detail.data?.custom_skills && detail.data.custom_skills.length > 0)) && (
+            <div style={{ marginTop: "10px" }}>
+              <span className="live-discovery__eyebrow" style={{ color: "#2563eb", display: "flex", alignItems: "center", gap: "6px" }}>
+                <span>CUSTOM SKILLS</span>
+                <span style={{ fontSize: "10px", padding: "1px 6px", borderRadius: "10px", backgroundColor: "#dbeafe", color: "#1e40af", fontWeight: 500, textTransform: "none" }}>Self-declared</span>
+              </span>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", marginTop: "4px" }}>
+                {(candidate.custom_skills || detail.data?.custom_skills || []).map((cs, idx) => (
+                  <span
+                    key={idx}
+                    className="live-project-card__skill"
+                    style={{
+                      border: "1px dashed #3b82f6",
+                      backgroundColor: "#eff6ff",
+                      color: "#1d4ed8",
+                    }}
+                  >
+                    {cs}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
           {card.matching.missing_skills.length > 0 && (
             <p>
               Missing for position:{" "}

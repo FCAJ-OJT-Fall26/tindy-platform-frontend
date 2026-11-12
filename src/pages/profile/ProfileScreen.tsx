@@ -166,11 +166,48 @@ function About({ profile }: { profile: MemberProfileResponse }) {
       <SectionHeading title="About" />
       <p className="profile-prose">{profile.bio || "No introduction yet."}</p>
       <h3>Technical skills</h3>
-      {profile.skills.length ? (
-        <Chips items={profile.skills.map((skill) => skill.name)} />
-      ) : (
-        <p>No skills added.</p>
-      )}
+      <div style={{ display: "flex", flexDirection: "column", gap: "12px", marginBottom: "16px" }}>
+        {profile.skills.length ? (
+          <div>
+            <div style={{ fontSize: "11px", fontWeight: 700, color: "#6b7280", textTransform: "uppercase", marginBottom: "6px", letterSpacing: "0.05em" }}>
+              Kỹ năng chuẩn (Catalog)
+            </div>
+            <Chips items={profile.skills.map((skill) => skill.name)} />
+          </div>
+        ) : (
+          <p>No catalog skills added.</p>
+        )}
+
+        {profile.custom_skills && profile.custom_skills.length > 0 && (
+          <div>
+            <div style={{ fontSize: "11px", fontWeight: 700, color: "#2563eb", textTransform: "uppercase", marginBottom: "6px", letterSpacing: "0.05em", display: "flex", alignItems: "center", gap: "6px" }}>
+              <span>Kỹ năng bổ sung (Custom skills)</span>
+              <span style={{ fontSize: "10px", padding: "1px 6px", borderRadius: "10px", backgroundColor: "#dbeafe", color: "#1e40af", fontWeight: 500, textTransform: "none" }}>Self-declared</span>
+            </div>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
+              {profile.custom_skills.map((tag, i) => (
+                <span
+                  key={i}
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "4px",
+                    padding: "4px 10px",
+                    backgroundColor: "#eff6ff",
+                    color: "#1d4ed8",
+                    border: "1px dashed #3b82f6",
+                    borderRadius: "16px",
+                    fontSize: "13px",
+                    fontWeight: 500,
+                  }}
+                >
+                  {tag}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
       {([
         ["Professional interests", profile.professional_interests],
         ["Experience summary", profile.previous_projects_and_contribution],

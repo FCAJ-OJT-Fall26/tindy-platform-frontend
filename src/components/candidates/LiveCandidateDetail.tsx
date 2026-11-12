@@ -227,16 +227,55 @@ export default function LiveCandidateDetail({
               <Code2 size={16} />
               <h3>Skills & tools</h3>
             </span>
-            <span className="candidate-section-count">{p.skills.length}</span>
+            <span className="candidate-section-count">{p.skills.length + (p.custom_skills?.length ?? 0)}</span>
           </div>
-          {p.skills.length ? (
-            <div className="candidate-overview-skills">
-              {p.skills.map((s) => (
-                <span key={s.skill_id}>
-                  <SkillIcon name={s.name} size={14} />
-                  {s.name}
-                </span>
-              ))}
+          {p.skills.length || (p.custom_skills && p.custom_skills.length > 0) ? (
+            <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+              {p.skills.length > 0 && (
+                <div>
+                  <div style={{ fontSize: "11px", fontWeight: 700, color: "#6b7280", textTransform: "uppercase", marginBottom: "6px", letterSpacing: "0.05em" }}>
+                    Kỹ năng chuẩn (Catalog)
+                  </div>
+                  <div className="candidate-overview-skills">
+                    {p.skills.map((s) => (
+                      <span key={s.skill_id}>
+                        <SkillIcon name={s.name} size={14} />
+                        {s.name}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {p.custom_skills && p.custom_skills.length > 0 && (
+                <div>
+                  <div style={{ fontSize: "11px", fontWeight: 700, color: "#2563eb", textTransform: "uppercase", marginBottom: "6px", letterSpacing: "0.05em", display: "flex", alignItems: "center", gap: "6px" }}>
+                    <span>Kỹ năng bổ sung (Custom skills)</span>
+                    <span style={{ fontSize: "10px", padding: "1px 6px", borderRadius: "10px", backgroundColor: "#dbeafe", color: "#1e40af", fontWeight: 500, textTransform: "none" }}>Self-declared</span>
+                  </div>
+                  <div className="candidate-overview-skills">
+                    {p.custom_skills.map((cs, idx) => (
+                      <span
+                        key={idx}
+                        style={{
+                          border: "1px dashed #3b82f6",
+                          backgroundColor: "#eff6ff",
+                          color: "#1d4ed8",
+                          borderRadius: "16px",
+                          padding: "4px 10px",
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: "5px",
+                          fontSize: "12px",
+                          fontWeight: 500,
+                        }}
+                      >
+                        <span style={{ width: "6px", height: "6px", borderRadius: "50%", backgroundColor: "#3b82f6", display: "inline-block" }} />
+                        {cs}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           ) : (
             <p className="candidate-empty-note">No skills shared yet.</p>

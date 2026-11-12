@@ -11,6 +11,7 @@ export interface TeammateCandidatePreviewDto {
   preferred_role_name: string | null
   available_hours_per_week: number | null
   skills: { skill_id: string; name: string }[]
+  custom_skills?: string[]
   experiences_count: number
   certificates_count: number
   profile_url: string

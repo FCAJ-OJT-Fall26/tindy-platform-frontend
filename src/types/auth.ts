@@ -86,6 +86,7 @@ export interface OnboardingStep1Request {
 
 export interface OnboardingStep2Request {
   skill_ids: string[]
+  custom_skills?: string[]
 }
 
 export interface OnboardingStep3Request {
@@ -141,6 +142,7 @@ export interface OnboardingStepDataMap {
   '2': {
     skill_ids: string[]
     skills: CatalogSkill[]
+    custom_skills?: string[]
   }
   '3': {
     preferred_role_id: string | null

@@ -74,6 +74,7 @@ export interface DiscoveryCandidate {
   graduationYear?: string;
   summary: string;
   skills: string[];
+  custom_skills?: string[];
   relevantProjects: {
     title: string;
     role: string;

@@ -7,6 +7,7 @@ import {
 
 } from "../../services/catalog.service"
 import SkillSelector from "../onboarding/SkillSelector"
+import CustomSkillsInput from "../common/CustomSkillsInput"
 import {
   buildProfilePatch,
   nullable,
@@ -529,6 +530,11 @@ export function ProfileEditor({
           min={1}
           max={30}
           error={submission.errors.skill_ids}
+        />
+        <CustomSkillsInput
+          customSkills={draft.custom_skills}
+          onChange={(skills) => update("custom_skills", skills)}
+          disabled={submission.busy}
         />
       </fieldset>
       {unchanged && <p role="status">No changes to save.</p>}
