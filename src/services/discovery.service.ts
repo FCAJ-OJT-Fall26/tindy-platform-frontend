@@ -30,6 +30,21 @@ export async function getDiscoveryProjects(query: DiscoveryQuery = {}, cursor?: 
 
 export function mapDiscoveryCard(card: DiscoveryCardDto): DiscoveryProject {
   const skills = [...card.matched_skills, ...card.missing_skills]
+  const defaultOpenPositions = card.open_positions ?? [
+    {
+      position_id: card.best_position.position_id,
+      title: card.best_position.title,
+      match_score: card.match_score,
+      required_skills: skills.filter(s => s.is_required).map(s => s.name),
+      is_best_match: true,
+      remaining_slots: card.best_position.remaining_slots,
+      matched_skills: card.matched_skills,
+      missing_skills: card.missing_skills,
+      match_factors: card.match_factors,
+      explanation: card.explanation,
+    },
+  ]
+
   return {
     id: card.project_id, name: card.name, tagline: card.tagline ?? "", desc: card.description, category: card.category,
     role: card.best_position.title, skills: skills.filter(s => s.is_required).map(s => s.name),
@@ -41,6 +56,8 @@ export function mapDiscoveryCard(card: DiscoveryCardDto): DiscoveryProject {
     match: { overall: card.match_score, verdict: "Rule-based match", factors: [],
       strongMatches: card.matched_skills.map(s => s.name), skillGaps: card.missing_skills.map(s => ({ skill: s.name, note: s.is_required ? "Required skill not matched" : "Optional skill not matched" })),
       explanationSummary: card.explanation },
+    open_positions: defaultOpenPositions,
+    selected_position_id: card.best_position.position_id,
   }
 }
 

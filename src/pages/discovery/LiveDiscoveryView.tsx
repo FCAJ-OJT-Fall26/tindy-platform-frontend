@@ -45,6 +45,7 @@ export default function LiveDiscoveryView({
   const [previewProject, setPreviewProject] = useState<DiscoveryProject | null>(null)
   const [reset, setReset] = useState(0)
   const [applying, setApplying] = useState<DiscoveryProject | null>(null)
+  const [selectedPositions, setSelectedPositions] = useState<Record<string, string>>({})
   const [actionError, setActionError] = useState("")
   const [history, setHistory] = useState<{ id: string; direction: "left" | "up"; wasSaved: boolean }[]>([])
   const [reviewedApplications, setReviewedApplications] = useState<Set<string>>(new Set())
@@ -58,7 +59,43 @@ export default function LiveDiscoveryView({
     return rawProjects.filter(p => (p.ruleMatch?.match_score ?? p.match?.overall ?? 0) >= minScore)
   }, [rawProjects, minScore])
   const activeChanged = useCallback((item: DiscoveryProject | DiscoveryCandidate | null) => setActive(item as DiscoveryProject | null), [])
-  useEffect(() => { setActive(null); setExplanation(null); setPreviewProject(null); setApplying(null); setHistory([]); setReviewedApplications(new Set()); setActionError("") }, [feed.key])
+
+  const handlePositionSelect = useCallback((projectId: string, positionId: string) => {
+    setSelectedPositions((prev) => ({ ...prev, [projectId]: positionId }))
+  }, [])
+
+  const getProjectRuleMatch = useCallback((project: DiscoveryProject | null): RuleMatch | null => {
+    if (!project || !project.ruleMatch) return null
+    const selectedPosId = selectedPositions[project.id] || project.selected_position_id
+    if (!selectedPosId || selectedPosId === project.ruleMatch.best_position.position_id) {
+      return project.ruleMatch
+    }
+    const pos = project.open_positions?.find(p => p.position_id === selectedPosId)
+    if (!pos) return project.ruleMatch
+
+    return {
+      match_score: pos.match_score,
+      algorithm_version: "rule-v1",
+      best_position: {
+        position_id: pos.position_id,
+        title: pos.title,
+        role_id: project.ruleMatch.best_position.role_id,
+        role_name: pos.role_name || project.ruleMatch.best_position.role_name,
+        experience_level: (pos.experience_level as import("../../types/project").ProjectDifficultyLevel) || project.ruleMatch.best_position.experience_level,
+        required_count: project.ruleMatch.best_position.required_count,
+        filled_count: project.ruleMatch.best_position.filled_count,
+        remaining_slots: pos.remaining_slots ?? project.ruleMatch.best_position.remaining_slots,
+      },
+      match_factors: pos.match_factors || project.ruleMatch.match_factors,
+      matched_skills: pos.matched_skills || [],
+      missing_skills: pos.missing_skills || [],
+      data_incomplete: project.ruleMatch.data_incomplete,
+      explanation: pos.explanation || project.ruleMatch.explanation,
+    }
+  }, [selectedPositions])
+
+  const activeMatch = useMemo(() => getProjectRuleMatch(active), [active, getProjectRuleMatch])
+  useEffect(() => { setActive(null); setExplanation(null); setPreviewProject(null); setApplying(null); setHistory([]); setReviewedApplications(new Set()); setActionError(""); setSelectedPositions({}) }, [feed.key])
   useEffect(() => {
     if (!active) return
     const index = active ? projects.findIndex(p => p.id === active.id) : projects.length
@@ -174,7 +211,7 @@ export default function LiveDiscoveryView({
         <div className="live-discovery__header-actions"><DiscoverySegmentedControl value="projects" options={[{ value: "projects", label: "Find Projects" }, { value: "teammates", label: "Find Teammates" }]} ariaLabel="Discovery Mode Switcher" onChange={value => { if (value === "teammates") navigate("/discover?mode=teammates") }} /><button className="live-discovery__refresh" onClick={refresh}><RefreshCw size={14} />Refresh</button></div>
       </header>
     )}
-    <div className="live-discovery__mobile-tools"><button aria-expanded={filtersOpen} aria-controls="live-discovery-filters" onClick={() => setFiltersOpen(v => !v)}><SlidersHorizontal size={15} />Filters{([category, role, skill].filter(Boolean).length + (minScore > 0 ? 1 : 0)) > 0 && <span>{[category, role, skill].filter(Boolean).length + (minScore > 0 ? 1 : 0)}</span>}<ChevronDown size={14} /></button><button disabled={!active?.ruleMatch} onClick={() => setExplanation(active?.ruleMatch ?? null)}>Match insights</button></div>
+    <div className="live-discovery__mobile-tools"><button aria-expanded={filtersOpen} aria-controls="live-discovery-filters" onClick={() => setFiltersOpen(v => !v)}><SlidersHorizontal size={15} />Filters{([category, role, skill].filter(Boolean).length + (minScore > 0 ? 1 : 0)) > 0 && <span>{[category, role, skill].filter(Boolean).length + (minScore > 0 ? 1 : 0)}</span>}<ChevronDown size={14} /></button><button disabled={!activeMatch} onClick={() => setExplanation(activeMatch)}>Match insights</button></div>
     <div className="live-discovery__layout">
       <div id="live-discovery-filters" className={`live-discovery__filter-column${filtersOpen ? " is-open" : ""}`}>{filters}</div>
       <section className="live-discovery__feed" aria-label="Project discovery feed">
@@ -183,8 +220,10 @@ export default function LiveDiscoveryView({
         {feed.loading && <p role="status">{projects.length ? "Loading more projects…" : "Loading projects…"}</p>}
         {projects.length > 0 && <SwipeCardStack key={`${feed.key}:${reset}`} items={projects} mode="student" disabled={!!explanation || !!applying} live
           onSwipe={swipe} onUndo={undo} canUndo={history.length > 0} onCardTap={item => setPreviewProject(item as DiscoveryProject)}
-          onWhyMatchesClick={item => setExplanation((item as DiscoveryProject).ruleMatch ?? null)} activeItemChanged={activeChanged}
-          onResetStack={refresh} />}
+          onWhyMatchesClick={item => setExplanation(getProjectRuleMatch(item as DiscoveryProject))} activeItemChanged={activeChanged}
+          onResetStack={refresh}
+          selectedPositions={selectedPositions}
+          onPositionSelect={handlePositionSelect} />}
         {!feed.loading && !feed.error && projects.length === 0 && (
           <section className="panel text-center">
             <h2>No eligible projects right now</h2>
@@ -222,7 +261,7 @@ export default function LiveDiscoveryView({
           </section>
         )}
       </section>
-      <aside className="live-discovery__inspector">{active?.ruleMatch ? <RuleMatchPanel variant="discovery" match={active.ruleMatch} projectName={active.name} onExplain={() => setExplanation(active.ruleMatch ?? null)} onViewDetails={viewActiveProject} /> : <section className="live-discovery__inspector-empty"><h2>A closer look at your fit</h2><p>Select a project to see how its position matches your profile.</p></section>}</aside>
+      <aside className="live-discovery__inspector">{activeMatch ? <RuleMatchPanel variant="discovery" match={activeMatch} projectName={active?.name} onExplain={() => setExplanation(activeMatch)} onViewDetails={viewActiveProject} /> : <section className="live-discovery__inspector-empty"><h2>A closer look at your fit</h2><p>Select a project to see how its position matches your profile.</p></section>}</aside>
     </div>
     
     {previewProject && (
@@ -244,13 +283,13 @@ export default function LiveDiscoveryView({
         }}
         onOpenAiBreakdown={() => {
           if (previewProject.ruleMatch) {
-            setExplanation(previewProject.ruleMatch);
+            setExplanation(getProjectRuleMatch(previewProject));
           }
         }}
       />
     )}
     {explanation && <Modal title="Why this matches" className="rule-match-dialog" onClose={() => setExplanation(null)}><RuleMatchPanel match={explanation} projectName={active?.name} /></Modal>}
-    {applying && <ApplyModal key={applying.id} projectId={applying.id} preferredPositionId={applying.ruleMatch?.best_position.position_id} onClose={() => setApplying(null)} onConfirmed={application => {
+    {applying && <ApplyModal key={`${applying.id}:${selectedPositions[applying.id] || applying.selected_position_id || ''}`} projectId={applying.id} preferredPositionId={selectedPositions[applying.id] || applying.selected_position_id || applying.ruleMatch?.best_position.position_id} onClose={() => setApplying(null)} onConfirmed={application => {
       setApplying(null)
       if (application.status === "pending" || application.status === "accepted") {
         setReviewedApplications(old => new Set([...old, application.project_id]))

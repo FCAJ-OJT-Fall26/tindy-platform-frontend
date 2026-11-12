@@ -24,6 +24,8 @@ interface SwipeCardStackProps<T extends { id: string; name: string }> {
   onResetStack?: () => void;
   activeItemChanged?: (item: T | null) => void;
   onCandidateChatClick?: (candidate: DiscoveryCandidate) => void;
+  onPositionSelect?: (projectId: string, positionId: string) => void;
+  selectedPositions?: Record<string, string>;
 }
 
 export default function SwipeCardStack<T extends {
@@ -45,6 +47,8 @@ export default function SwipeCardStack<T extends {
   renderContent,
 
   rightAction,
+  onPositionSelect,
+  selectedPositions,
 }: SwipeCardStackProps<T>) {
   const rightLabel =
     rightAction ??
@@ -312,6 +316,8 @@ export default function SwipeCardStack<T extends {
                   project={item as unknown as DiscoveryProject}
                   live={live}
                   isActive={isTop}
+                  selectedPositionId={selectedPositions?.[item.id]}
+                  onPositionSelect={(positionId) => onPositionSelect?.(item.id, positionId)}
                   onWhyMatchesClick={(e) => {
                     e.stopPropagation();
                     onWhyMatchesClick(item);

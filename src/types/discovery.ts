@@ -59,6 +59,8 @@ export interface DiscoveryProject {
   leadAvatar: string;
   color: 'violet' | 'emerald' | 'amber' | 'blue' | 'rose';
   match: MatchBreakdown;
+  open_positions?: DiscoveryCardOpenPosition[];
+  selected_position_id?: string;
 }
 
 export interface DiscoveryCandidate {
@@ -124,6 +126,21 @@ export interface RuleMatch {
   data_incomplete: boolean
   explanation: string
 }
+export interface DiscoveryCardOpenPosition {
+  position_id: string
+  title: string
+  match_score: number
+  required_skills: string[]
+  is_best_match: boolean
+  match_factors?: RuleMatchFactor[] | null
+  matched_skills?: import("./project").PositionSkillDto[] | null
+  missing_skills?: import("./project").PositionSkillDto[] | null
+  explanation?: string | null
+  remaining_slots?: number
+  experience_level?: string | null
+  role_name?: string | null
+}
+
 export interface DiscoveryCardDto extends RuleMatch, RecruitmentDeadlineDto {
   project_id: string
   name: string
@@ -141,6 +158,7 @@ export interface DiscoveryCardDto extends RuleMatch, RecruitmentDeadlineDto {
   closing_days_left: number
   feed_bucket: "best_match" | "new_projects" | "explore"
   is_saved: boolean
+  open_positions?: DiscoveryCardOpenPosition[] | null
 }
 export interface DiscoveryQuery { category?: string; role_id?: string; skill_id?: string }
 export interface DiscoveryPage { items: DiscoveryCardDto[]; next_cursor: string | null; has_more: boolean; feed_version: "feed-v1" }
