@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { Link, useNavigate, useSearchParams } from "react-router"
-import { ArrowUpRight, ChevronDown, RefreshCw, SlidersHorizontal, Users } from "lucide-react"
+import { ArrowUpRight, ChevronDown, RefreshCw, RotateCcw, SlidersHorizontal, Users } from "lucide-react"
 import useTeammateProjectContext from "../../hooks/useTeammateProjectContext"
 import useTeammateDiscovery from "../../hooks/useTeammateDiscovery"
 import useCandidateAction from "../../hooks/useCandidateAction"
@@ -18,7 +18,11 @@ import {
   getProfessionalRolesApi,
   getSkillsApi,
 } from "../../services/catalog.service"
-import { teammateErrorMessage } from "../../services/teammates.service"
+import {
+  getCandidateInteractions,
+  resetCandidateInteraction,
+  teammateErrorMessage,
+} from "../../services/teammates.service"
 import { useTindy } from "../../store"
 import type { CandidateAction, LiveTeammateCard } from "../../types/teammate"
 import type { SwipeDirection } from "../../types/discovery"
@@ -163,6 +167,62 @@ export default function LiveTeammatesDiscoveryView({
     setRevision((v) => v + 1)
     notify("Previous stored action restored.")
     return true
+  }
+
+  const [restoringSkipped, setRestoringSkipped] = useState(false)
+
+  const handleRestoreSkipped = async () => {
+    if (!project || !position) {
+      notify("Please select a project and open position first.")
+      return
+    }
+    setRestoringSkipped(true)
+    try {
+      const skippedUserIds: string[] = []
+      try {
+        let page = 1
+        let hasNext = true
+        while (hasNext) {
+          const res = await getCandidateInteractions(project, position, {
+            action: "skipped",
+            page,
+            page_size: 50,
+          })
+          const ids = res.items.map((i) => i.candidate_user_id)
+          skippedUserIds.push(...ids)
+          hasNext = res.pagination.has_next
+          page++
+          if (page > 10) break
+        }
+      } catch (err) {
+        console.warn("Could not query server skipped candidates", err)
+      }
+
+      const sessionSkipped = history
+        .filter((h) => h.previous === null || h.previous === "skipped")
+        .map((h) => h.user)
+      const allToRestore = Array.from(new Set([...skippedUserIds, ...sessionSkipped]))
+
+      if (allToRestore.length === 0) {
+        notify("No skipped candidates to restore for this position.")
+        refresh()
+        return
+      }
+
+      await Promise.allSettled(
+        allToRestore.map((candidateId) =>
+          resetCandidateInteraction(project, position, candidateId)
+        )
+      )
+
+      setHistory((prev) => prev.filter((h) => !allToRestore.includes(h.user)))
+      notify(`Restored ${allToRestore.length} skipped candidate${allToRestore.length > 1 ? "s" : ""}.`)
+      refresh()
+    } catch (error) {
+      notify(teammateErrorMessage(error))
+    } finally {
+      setRestoringSkipped(false)
+    }
   }
 
   const blocked = action.busy || action.uncertain || !!shortlist || !!invite
@@ -341,6 +401,16 @@ export default function LiveTeammatesDiscoveryView({
             >
               <RefreshCw size={14} />Reset filters
             </button>
+            <button
+              className="live-discovery__reset"
+              style={{ marginTop: 8 }}
+              onClick={handleRestoreSkipped}
+              disabled={restoringSkipped || !project || !position}
+              title="Restore candidates you previously skipped for this position"
+            >
+              <RotateCcw size={14} className={restoringSkipped ? "spin-icon" : ""} />
+              {restoringSkipped ? "Restoring…" : "Restore skipped candidates"}
+            </button>
 
             <div className="live-discovery__session">
               <span className="live-discovery__eyebrow">YOUR OVERVIEW</span>
@@ -420,11 +490,38 @@ export default function LiveTeammatesDiscoveryView({
             <section className="panel text-center">
               <h2>No eligible candidates right now</h2>
               <p>
-                Try adjusting the filters or refresh after members update their profiles.
+                Try adjusting the filters or restore candidates you previously skipped.
               </p>
-              <button className="btn btn-primary" onClick={refresh}>
-                Refresh feed
-              </button>
+              <div
+                className="live-discovery__empty-actions"
+                style={{
+                  display: "flex",
+                  gap: "10px",
+                  justifyContent: "center",
+                  marginTop: "16px",
+                  flexWrap: "wrap",
+                }}
+              >
+                <button
+                  className="btn btn-primary"
+                  onClick={refresh}
+                  disabled={restoringSkipped}
+                >
+                  <RefreshCw size={14} /> Refresh feed
+                </button>
+                <button
+                  className="btn btn-secondary"
+                  onClick={handleRestoreSkipped}
+                  disabled={restoringSkipped || !project || !position}
+                  title="Restore candidates you previously skipped for this position"
+                >
+                  <RotateCcw
+                    size={14}
+                    className={restoringSkipped ? "spin-icon" : ""}
+                  />
+                  {restoringSkipped ? "Restoring…" : "Restore skipped candidates"}
+                </button>
+              </div>
             </section>
           )}
 
