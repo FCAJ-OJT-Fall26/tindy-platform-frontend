@@ -1,4 +1,5 @@
 import { useCallback } from "react"
+import { ArrowUpRight, BriefcaseBusiness, Clock, GraduationCap } from "lucide-react"
 import type { LiveTeammateCard } from "../../types/teammate"
 import useRemoteResource from "../../hooks/useRemoteResource"
 import useTeammateSession from "../../hooks/useTeammateSession"
@@ -8,13 +9,14 @@ import ProfileMediaImage from "../profile/ProfileMediaImage"
 import { Avatar } from "../ui"
 import SkillIcon from "../onboarding/SkillIcon"
 import { sameId } from "../../services/teammates.service"
+import "../../pages/discovery/live-discovery.css"
 
 export default function LiveCandidateCardContent({
   candidate: card,
   isActive,
   onWhyMatchesClick,
   onViewDetailsClick,
-  contextLabel,
+  contextLabel: _contextLabel,
 }: {
   candidate: LiveTeammateCard
   isActive: boolean
@@ -27,7 +29,8 @@ export default function LiveCandidateCardContent({
   const load = useCallback(
     async (signal: AbortSignal) => {
       const profile = await getMemberProfile(candidate.user_id, signal)
-      if (!sameId(profile.user_id, candidate.user_id)) throw Error("Candidate profile identity could not be verified.")
+      if (!sameId(profile.user_id, candidate.user_id))
+        throw Error("Candidate profile identity could not be verified.")
       return profile
     },
     [candidate.user_id],
@@ -37,89 +40,168 @@ export default function LiveCandidateCardContent({
     load,
   )
   const matched = new Set(card.matching.matched_skills.map((s) => s.skill_id))
+
   return (
-    <article className="teammate-card" data-candidate-id={candidate.user_id}>
-      <div className="teammate-card__context">
-        <span>{contextLabel ?? card.matching.best_position.title}</span>
-        <span>{card.interaction_action ?? "Recommended"}</span>
+    <article
+      className="live-project-card teammate-card"
+      data-candidate-id={candidate.user_id}
+    >
+      {/* Top Banner / University & Role */}
+      <div className="live-project-card__top">
+        <span className="live-discovery__pill">
+          {candidate.preferred_role_name ?? "Candidate"}
+        </span>
+        <span className="live-project-card__team">
+          <GraduationCap size={14} />
+          <strong>
+            {detail.loading
+              ? "Loading…"
+              : detail.error
+                ? "University unavailable"
+                : detail.data?.university || "University not provided"}
+          </strong>
+        </span>
       </div>
-      <div className="teammate-card__body" data-card-scroll role="region" aria-label="Candidate summary" tabIndex={isActive ? 0 : -1} onPointerDown={event => { if (event.currentTarget.scrollHeight > event.currentTarget.clientHeight) event.stopPropagation() }}>
-        <div className="teammate-card__person">
-          {detail.data ? (
-            <ProfileMediaImage profile={detail.data} compact />
-          ) : (
-            <Avatar name={candidate.display_name} size="lg" />
-          )}
-          <div>
-            <h2>{candidate.display_name}</h2>
-            <p>{candidate.preferred_role_name ?? "Preferred role unknown"}</p>
-            <small>
-              {detail.loading
-                ? "Loading university…"
-                : detail.error
-                  ? "University unavailable"
-                  : detail.data ? detail.data.university ?? "University not provided" : "University unknown"}
-            </small>
+
+      {/* Main Card Body */}
+      <div
+        className="live-project-card__body"
+        data-card-scroll
+        role="region"
+        aria-label="Candidate summary"
+        tabIndex={isActive ? 0 : -1}
+        onPointerDown={(event) => {
+          if (event.currentTarget.scrollHeight > event.currentTarget.clientHeight) {
+            event.stopPropagation()
+          }
+        }}
+      >
+        {/* Candidate Info with Avatar */}
+        <div className="live-project-card__intro">
+          <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
+            <div style={{ flexShrink: 0 }}>
+              {detail.data ? (
+                <ProfileMediaImage profile={detail.data} compact />
+              ) : (
+                <Avatar name={candidate.display_name} size="lg" />
+              )}
+            </div>
+            <div style={{ minWidth: 0, flex: 1 }}>
+              <h3 style={{ margin: 0 }} className="truncate">
+                {candidate.display_name}
+              </h3>
+              <p
+                className="live-project-card__tagline truncate"
+                style={{ margin: "4px 0 0" }}
+              >
+                {candidate.headline ||
+                  candidate.preferred_role_name ||
+                  "Aspiring Engineer"}
+              </p>
+            </div>
           </div>
         </div>
-        <p>{candidate.headline ?? "No headline provided."}</p>
-        <p>
-          {candidate.available_hours_per_week === null
-            ? "Availability unknown"
-            : `${candidate.available_hours_per_week} hours/week`}{" "}
-          · {candidate.experiences_count} experiences ·{" "}
-          {candidate.certificates_count} certificates
-        </p>
-        <div className="teammate-card__score">
-          <MatchScoreRing
-            score={card.matching.match_score}
-            compact
-            staticValue
-          />
-          <div>
-            <strong data-teammate-score>
-              {card.matching.match_score}% Position Match
-            </strong>
-            <p>Rule-based Match · {card.matching.algorithm_version}</p>
+
+        {/* Position Match Score Block */}
+        <div className="live-project-card__match">
+          <div className="live-project-card__match-label">
+            <MatchScoreRing score={card.matching.match_score} serverValue />
+            <div>
+              <strong data-teammate-score>
+                {card.matching.match_score}% Position Match
+              </strong>
+              <span>
+                Rule-based Match · {card.matching.algorithm_version}
+              </span>
+            </div>
           </div>
-          <button onClick={onWhyMatchesClick} className="text-link">
-            Why this match?
+          <button type="button" onClick={onWhyMatchesClick}>
+            Why this match? <ArrowUpRight size={14} />
           </button>
         </div>
-        <div className="chips">
-          {candidate.skills.map((s) => (
-            <span
-              key={s.skill_id}
-              className={
-                matched.has(s.skill_id) ? "teammate-skill--matched" : ""
-              }
-            >
-              <SkillIcon name={s.name} size={13} />
-              {s.name}
-            </span>
-          ))}
+
+        {/* Target Position */}
+        <div className="live-project-card__position">
+          <div>
+            <span className="live-discovery__eyebrow">TARGET POSITION</span>
+            <strong>
+              <BriefcaseBusiness size={16} />
+              {card.matching.best_position.title}
+            </strong>
+          </div>
+          <span className="live-project-card__slots">
+            {card.matching.best_position.remaining_slots}{" "}
+            {card.matching.best_position.remaining_slots === 1
+              ? "slot"
+              : "slots"}{" "}
+            open
+          </span>
         </div>
-        <p className="helper-text">
-          Matching Skills:{" "}
-          {card.matching.matched_skills.map((s) => s.name).join(", ") || "None"}
-        </p>
-        <p className="helper-text">
-          Missing Skills:{" "}
-          {card.matching.missing_skills.map((s) => s.name).join(", ") || "None"}
-        </p>
-        {card.matching.data_incomplete && (
-          <p className="helper-text">
-            Some profile data is unknown. The breakdown shows the server's
-            treatment.
-          </p>
-        )}
+
+        {/* Candidate Skills */}
+        <div className="live-project-card__skills">
+          <span className="live-discovery__eyebrow">SKILLS & TECHNOLOGIES</span>
+          <div>
+            {candidate.skills.length ? (
+              candidate.skills.map((s) => {
+                const isMatched = matched.has(s.skill_id)
+                return (
+                  <span
+                    key={s.skill_id}
+                    className={`live-project-card__skill${
+                      isMatched ? " is-matched" : ""
+                    }`}
+                  >
+                    <SkillIcon name={s.name} size={13} />
+                    {s.name}
+                  </span>
+                )
+              })
+            ) : (
+              <span className="live-discovery__muted">
+                No skills specified
+              </span>
+            )}
+          </div>
+          {card.matching.missing_skills.length > 0 && (
+            <p>
+              Missing for position:{" "}
+              {card.matching.missing_skills.map((s) => s.name).join(" · ")}
+            </p>
+          )}
+        </div>
+
+        {/* Bottom Meta */}
+        <div className="live-project-card__bottom">
+          <div className="live-project-card__meta">
+            <span>
+              <Clock size={15} />
+              {candidate.available_hours_per_week !== null
+                ? `${candidate.available_hours_per_week} hrs/week`
+                : "Flexible availability"}
+            </span>
+            <span>
+              {candidate.experiences_count}{" "}
+              {candidate.experiences_count === 1
+                ? "experience"
+                : "experiences"}{" "}
+              · {candidate.certificates_count}{" "}
+              {candidate.certificates_count === 1 ? "cert" : "certs"}
+            </span>
+          </div>
+        </div>
       </div>
+
+      {/* Card Footer */}
       <button
         type="button"
-        className="teammate-card__footer"
+        className="live-project-card__footer"
         onClick={onViewDetailsClick}
       >
-        View Candidate Profile
+        <span>Inspect candidate background, portfolio & history</span>
+        <strong>
+          View Candidate Profile <ArrowUpRight size={14} />
+        </strong>
       </button>
     </article>
   )
