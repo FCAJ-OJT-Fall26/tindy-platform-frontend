@@ -36,6 +36,13 @@ import type { ApplicationReviewDto, ApplicationReviewPage, ApplicationStatus } f
 import type { MyLeadingProjectDto, ProjectDetailDto } from "../../types/project"
 import "./project-applications.css"
 
+const QUICK_REJECTION_TAGS = [
+  "Đã đủ số lượng",
+  "Cần cam kết nhiều giờ hơn",
+  "Chưa khớp techstack hiện tại",
+  "Khác",
+]
+
 export default function ProjectApplicationsScreen() {
   const { id: routeId } = useParams<{ id?: string }>()
   const navigate = useNavigate()
@@ -79,6 +86,8 @@ export default function ProjectApplicationsScreen() {
     row: ApplicationReviewDto
     action: "accept" | "reject"
   } | null>(null)
+  const [rejectionTag, setRejectionTag] = useState<string>("")
+  const [rejectionNote, setRejectionNote] = useState<string>("")
   const [matchModalData, setMatchModalData] = useState<ApplicationReviewDto | null>(null)
   const [busy, setBusy] = useState(false)
 
@@ -199,12 +208,22 @@ export default function ProjectApplicationsScreen() {
   // Confirm decision
   const confirmDecision = async () => {
     if (!decision || !activeProjectId || busy) return
+    if (decision.action === "reject" && !rejectionTag) {
+      notify("Vui lòng chọn 1 lý do từ chối.")
+      return
+    }
     setBusy(true)
     try {
       await decideApplication(
         activeProjectId,
         decision.row.application.application_id,
         decision.action,
+        decision.action === "reject"
+          ? {
+              reason_tag: rejectionTag,
+              note: rejectionNote.trim() || undefined,
+            }
+          : undefined,
       )
       notify(
         decision.action === "accept"
@@ -212,6 +231,8 @@ export default function ProjectApplicationsScreen() {
           : `Application from ${decision.row.applicant.display_name} rejected.`,
       )
       setDecision(null)
+      setRejectionTag("")
+      setRejectionNote("")
       void loadData()
     } catch (err) {
       notify(applicationErrorMessage(err))
@@ -846,7 +867,11 @@ export default function ProjectApplicationsScreen() {
                       <button
                         type="button"
                         disabled={busy}
-                        onClick={() => setDecision({ row, action: "reject" })}
+                        onClick={() => {
+                          setRejectionTag("")
+                          setRejectionNote("")
+                          setDecision({ row, action: "reject" })
+                        }}
                         className="candidate-btn-reject"
                       >
                         Reject
@@ -954,15 +979,62 @@ export default function ProjectApplicationsScreen() {
             <p className="text-xs text-slate-600 leading-relaxed">
               {decision.action === "accept"
                 ? "Accepting this candidate will officially add them to your active project roster and occupy 1 open position slot. They will be notified and given collaborator access to your workspace."
-                : "Rejecting leaves your team and remaining slot count unchanged. The applicant will be informed that the team has moved forward with other candidates."}
+                : "Rejecting leaves your team and remaining slot count unchanged. The applicant will be informed with the chosen rejection reason."}
             </p>
 
+            {decision.action === "reject" && (
+              <div className="space-y-3 pt-1 border-t border-slate-100">
+                <label className="text-xs font-semibold text-slate-700 block">
+                  Lý do từ chối <span className="text-rose-500">*</span>
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  {QUICK_REJECTION_TAGS.map((tag) => (
+                    <button
+                      key={tag}
+                      type="button"
+                      onClick={() => setRejectionTag(tag)}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${
+                        rejectionTag === tag
+                          ? "bg-rose-50 border-rose-400 text-rose-700 font-semibold shadow-xs"
+                          : "bg-white border-slate-200 text-slate-700 hover:bg-slate-50"
+                      }`}
+                    >
+                      {tag}
+                    </button>
+                  ))}
+                </div>
+                {rejectionTag && (
+                  <div className="space-y-1">
+                    <label className="text-xs text-slate-500 block">
+                      Ghi chú thêm cho ứng viên (tùy chọn):
+                    </label>
+                    <textarea
+                      value={rejectionNote}
+                      onChange={(e) => setRejectionNote(e.target.value)}
+                      placeholder="Nhập ghi chú hoặc lý do chi tiết..."
+                      rows={2}
+                      maxLength={300}
+                      className="w-full text-xs p-2.5 rounded-lg border border-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500 resize-none text-slate-800"
+                    />
+                  </div>
+                )}
+              </div>
+            )}
+
             <div className="flex items-center justify-end gap-2 pt-2">
-              <Button variant="secondary" disabled={busy} onClick={() => setDecision(null)}>
+              <Button
+                variant="secondary"
+                disabled={busy}
+                onClick={() => {
+                  setDecision(null)
+                  setRejectionTag("")
+                  setRejectionNote("")
+                }}
+              >
                 Cancel
               </Button>
               <Button
-                disabled={busy}
+                disabled={busy || (decision.action === "reject" && !rejectionTag)}
                 onClick={() => {
                   void confirmDecision()
                 }}

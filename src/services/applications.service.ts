@@ -40,10 +40,28 @@ export async function getProjectApplications(project: string, query: Application
   }
   return data
 }
-export async function decideApplication(project: string, id: string, decision: "accept" | "reject"): Promise<ProjectApplicationDto> {
+export async function decideApplication(
+  project: string,
+  id: string,
+  decision: "accept" | "reject",
+  rejectData?: { reason_tag?: string; note?: string }
+): Promise<ProjectApplicationDto> {
   requireProjectId(id, "Application")
-  const { data } = await apiRequest<ProjectApplicationDto>(`${base(project)}/${encodeURIComponent(id)}/${decision}`, { method: "POST" })
+  const body = decision === "reject" && rejectData ? JSON.stringify(rejectData) : undefined
+  const { data } = await apiRequest<ProjectApplicationDto>(
+    `${base(project)}/${encodeURIComponent(id)}/${decision}`,
+    {
+      method: "POST",
+      body,
+    }
+  )
   if (data.application_id !== id || data.project_id !== project || data.status !== (decision === "accept" ? "accepted" : "rejected")) throw Error("The review result could not be confirmed. Refresh its server status.")
+  window.dispatchEvent(new Event(APPLICATIONS_CHANGED_EVENT))
+  return data
+}
+export async function nudgeApplication(id: string): Promise<ProjectApplicationDto> {
+  requireProjectId(id, "Application")
+  const { data } = await apiRequest<ProjectApplicationDto>(`/api/me/applications/${encodeURIComponent(id)}/nudge`, { method: "POST" })
   window.dispatchEvent(new Event(APPLICATIONS_CHANGED_EVENT))
   return data
 }
@@ -62,6 +80,9 @@ export function applicationErrorMessage(error: unknown): string {
       PROJECT_NOT_RECRUITING: "This project is no longer recruiting.",
       APPLICATION_RATE_LIMITED: "Too many attempts. Try again after the current rate-limit window.",
       PROJECT_ACCESS_DENIED: "Only this project's leader can manage applications.",
+      NUDGE_TOO_EARLY: "You can only nudge the leader after 3 days since applying.",
+      ALREADY_NUDGED: "You have already nudged the leader for this application.",
+      APPLICATION_EXPIRED: "This application has expired.",
     }
     return messages[error.errorCode ?? ""] ?? error.message
   }

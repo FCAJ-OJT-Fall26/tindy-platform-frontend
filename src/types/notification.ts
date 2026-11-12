@@ -1,11 +1,12 @@
 import type { PaginationMeta } from "./project"
 
-export type NotificationType = "invitation_received" | "invitation_accepted" | "invitation_declined" | "invitation_cancelled"
+export type NotificationType = "invitation_received" | "invitation_accepted" | "invitation_declined" | "invitation_cancelled" | "application_nudged"
 export type NotificationFilter = "all" | "unread"
 export interface NotificationDto {
   notification_id: string
   type: NotificationType
-  invitation_id: string
+  invitation_id: string | null
+  application_id?: string | null
   actor_user_id: string | null
   payload: {
     project_name?: string

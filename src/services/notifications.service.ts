@@ -16,6 +16,7 @@ const types = [
   "invitation_accepted",
   "invitation_declined",
   "invitation_cancelled",
+  "application_nudged",
 ]
 const invalid = () =>
   Error("The notification response could not be confirmed. Please retry.")
@@ -26,7 +27,8 @@ export function assertNotification(row: NotificationDto): void {
   if (
     !row ||
     !uuid(row.notification_id) ||
-    !uuid(row.invitation_id) ||
+    !(row.invitation_id === null || uuid(row.invitation_id)) ||
+    !(row.application_id === null || row.application_id === undefined || uuid(row.application_id)) ||
     !(row.actor_user_id === null || uuid(row.actor_user_id)) ||
     !types.includes(row.type) ||
     !record(row.payload) ||
@@ -124,10 +126,12 @@ export async function markAllNotificationsRead(
 }
 export const notificationFallback = (n: NotificationDto) =>
   n.type === "invitation_received" || n.type === "invitation_cancelled"
-    ? `/projects?tab=Invited&invitation_id=${encodeURIComponent(n.invitation_id)}`
+    ? `/projects?tab=Invited&invitation_id=${encodeURIComponent(n.invitation_id || "")}`
     : n.type === "invitation_declined"
       ? "/candidates?tab=Invited"
-      : "/team"
+      : n.type === "application_nudged"
+        ? "/candidates?tab=Applications"
+        : "/team"
 
 // V1 notifications carry no project_id. Resolve only through the caller's actual
 // leader projects and authorized invitation history; payload never authorizes actions.
@@ -135,6 +139,12 @@ export async function notificationDestination(
   n: NotificationDto,
   signal: AbortSignal,
 ): Promise<string> {
+  if (n.type === "application_nudged") {
+    return "/candidates?tab=Applications"
+  }
+  if (!n.invitation_id) {
+    return notificationFallback(n)
+  }
   if (n.type === "invitation_received" || n.type === "invitation_cancelled")
     return notificationFallback(n)
   const mine = await getMyProjectsApi(signal)
@@ -150,7 +160,7 @@ export async function notificationDestination(
         signal,
       )
       const found = history.items.find((i) =>
-        sameId(i.invitation_id, n.invitation_id),
+        sameId(i.invitation_id, n.invitation_id!),
       )
       if (found)
         return n.type === "invitation_accepted"
@@ -170,15 +180,18 @@ export function notificationText(n: NotificationDto) {
     invitation_accepted: "Invitation accepted",
     invitation_declined: "Invitation declined",
     invitation_cancelled: "Invitation cancelled",
+    application_nudged: "Application Reminder",
   }[n.type]
   const description =
-    n.type === "invitation_received"
-      ? `${actor} invited you to ${project} as ${position}.`
-      : n.type === "invitation_cancelled"
-        ? `${actor} cancelled the invitation to ${project} for ${position}.`
-        : `${actor} ${
-            n.type === "invitation_accepted" ? "accepted" : "declined"
-          } the invitation to ${project} for ${position}.`
+    n.type === "application_nudged"
+      ? `${actor} is waiting for your response for position ${position} in ${project}.`
+      : n.type === "invitation_received"
+        ? `${actor} invited you to ${project} as ${position}.`
+        : n.type === "invitation_cancelled"
+          ? `${actor} cancelled the invitation to ${project} for ${position}.`
+          : `${actor} ${
+              n.type === "invitation_accepted" ? "accepted" : "declined"
+            } the invitation to ${project} for ${position}.`
   return { title, description }
 }
 export const notificationDate = (value: string) =>

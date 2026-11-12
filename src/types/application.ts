@@ -1,11 +1,14 @@
 import type { PaginationMeta, ProjectDetailDto, ProjectDifficultyLevel, PositionSkillDto } from "./project"
 import type { RuleMatch } from "./discovery"
 
-export type ApplicationStatus = "pending" | "accepted" | "rejected" | "withdrawn"
+export type ApplicationStatus = "pending" | "accepted" | "rejected" | "withdrawn" | "expired"
 export interface ProjectApplicationDto {
   application_id: string; project_id: string; position_id: string; applicant_id: string
   status: ApplicationStatus; message: string | null; created_at: string; updated_at: string
   reviewed_at: string | null; reviewed_by: string | null
+  rejection_reason?: string | null
+  expires_at?: string | null
+  nudged_at?: string | null
 }
 export interface MyApplicationsPage { items: ProjectApplicationDto[]; pagination: PaginationMeta }
 export interface ApplicantPreview {
