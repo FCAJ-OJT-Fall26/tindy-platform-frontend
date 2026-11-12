@@ -80,6 +80,7 @@ export function clearStoredToken(): void {
 
 interface RequestOptions extends RequestInit {
   requiresAuth?: boolean
+  timeoutMs?: number
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -169,7 +170,7 @@ async function request<T>(
   )
     throw new Error("Invalid API endpoint")
 
-  const { requiresAuth = true, headers: customHeaders, ...rest } = options
+  const { requiresAuth = true, timeoutMs = 15_000, headers: customHeaders, ...rest } = options
 
   const headers = new Headers(customHeaders || {})
 
@@ -187,7 +188,7 @@ async function request<T>(
 
   const sessionSignal = sessionController.signal
 
-  const timeout = AbortSignal.timeout(15_000)
+  const timeout = AbortSignal.timeout(timeoutMs)
 
   const response = await fetch(apiUrl(endpoint), {
     credentials: "omit",
