@@ -186,21 +186,21 @@ export async function getChatMessages(
   before?: string | null,
   beforeMessageId?: string | null,
   signal?: AbortSignal,
+  aroundMessageId?: string | null,
 ) {
+  let url = `/api/chat/conversations/${conversationId}/messages?limit=50`
+  if (aroundMessageId) {
+    url += `&around_message_id=${encodeURIComponent(aroundMessageId)}`
+  } else if (before) {
+    url += `&before=${encodeURIComponent(before)}&before_message_id=${beforeMessageId ?? ""}`
+  }
   const page = (
     await apiRequest<{
       items: ApiChatMessage[]
       has_more: boolean
       next_before?: string | null
       next_before_message_id?: string | null
-    }>(
-      `/api/chat/conversations/${conversationId}/messages?limit=50${
-        before
-          ? `&before=${encodeURIComponent(before)}&before_message_id=${beforeMessageId ?? ""}`
-          : ""
-      }`,
-      { signal },
-    )
+    }>(url, { signal })
   ).data
   return {
     items: page.items.map(mapChatMessage),
@@ -208,7 +208,6 @@ export async function getChatMessages(
     nextBefore: page.next_before,
     nextBeforeMessageId: page.next_before_message_id,
   }
-
 }
 
 export async function sendChatMessage(

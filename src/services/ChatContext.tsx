@@ -92,6 +92,35 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     setStatus("Connecting…")
     let stopped = false
     let retry: ReturnType<typeof setTimeout>
+    let debounceTimer: ReturnType<typeof setTimeout> | undefined
+
+    const debouncedRefresh = () => {
+      clearTimeout(debounceTimer)
+      debounceTimer = setTimeout(() => {
+        if (!stopped) void refresh()
+      }, 500)
+    }
+
+    const updateLocalConversationOnMessage = (msg: ChatMessage) => {
+      setConversations((current) => {
+        const idx = current.findIndex((c) => c.conversationId === msg.conversationId)
+        if (idx === -1) {
+          debouncedRefresh()
+          return current
+        }
+        const room = current[idx]
+        const isFromMe = msg.senderId === authUser?.user_id
+        const updated: ChatConversation = {
+          ...room,
+          lastMessageAt: msg.createdAt,
+          unreadCount: isFromMe ? room.unreadCount : room.unreadCount + 1,
+        }
+        const next = [...current]
+        next.splice(idx, 1)
+        return [updated, ...next]
+      })
+    }
+
     const hub = new HubConnectionBuilder()
       .withUrl(apiOrigin() + "/hubs/chat", { accessTokenFactory: () => token })
       .withAutomaticReconnect()
@@ -105,15 +134,26 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     }
     hub.on("message.created", (raw) => {
       if (!stopped && token === getStoredToken()) {
+        const mapped = mapChatMessage(raw)
         window.dispatchEvent(
-          new CustomEvent(CHAT_MESSAGE, { detail: mapChatMessage(raw) }),
+          new CustomEvent(CHAT_MESSAGE, { detail: mapped }),
         )
-        void refresh()
+        updateLocalConversationOnMessage(mapped)
       }
     })
     hub.on("chat.requests.changed", resync)
-    hub.on("conversation.read", () => {
-      void refresh()
+    hub.on("conversation.read", (payload?: { conversationId?: string }) => {
+      if (payload?.conversationId) {
+        setConversations((current) =>
+          current.map((c) =>
+            c.conversationId === payload.conversationId
+              ? { ...c, unreadCount: 0 }
+              : c,
+          ),
+        )
+      } else {
+        debouncedRefresh()
+      }
     })
     hub.onreconnecting(() => setStatus("Reconnecting…"))
     hub.onreconnected(() => {
@@ -143,9 +183,17 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       }
     })
     void start()
+
+    // Polling fallback only when SignalR is NOT connected (offline / reconnecting)
     const poll = setInterval(() => {
-      if (document.visibilityState === "visible") resync()
-    }, 15000)
+      if (
+        hubRef.current?.state !== "Connected" &&
+        document.visibilityState === "visible"
+      ) {
+        resync()
+      }
+    }, 30000)
+
     const visible = () => {
       if (document.visibilityState === "visible") resync()
     }
@@ -154,12 +202,13 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       stopped = true
       ++request.current
       clearTimeout(retry)
+      clearTimeout(debounceTimer)
       clearInterval(poll)
       document.removeEventListener("visibilitychange", visible)
       hubRef.current = null
       void hub.stop()
     }
-  }, [token, refresh])
+  }, [token, refresh, authUser?.user_id])
   const send = async (id: string, body: string, key: string) => {
     const requestToken = getStoredToken()
     const message =
@@ -169,7 +218,18 @@ export function ChatProvider({ children }: { children: ReactNode }) {
           )
         : await sendChatMessage(id, body, key)
     if (getStoredToken() !== requestToken) throw new Error("Session changed")
-    void refresh()
+    setConversations((current) => {
+      const idx = current.findIndex((c) => c.conversationId === id)
+      if (idx === -1) return current
+      const room = current[idx]
+      const updated: ChatConversation = {
+        ...room,
+        lastMessageAt: message.createdAt,
+      }
+      const next = [...current]
+      next.splice(idx, 1)
+      return [updated, ...next]
+    })
     return message
   }
   return (

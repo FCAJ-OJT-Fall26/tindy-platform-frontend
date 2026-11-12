@@ -194,29 +194,13 @@ export function Messages() {
     const firstUnreadAt = selectedRef.current?.firstUnreadAt
     const firstUnreadMessageId = selectedRef.current?.firstUnreadMessageId
     void (async () => {
-      let result = await getChatMessages(
+      const result = await getChatMessages(
         conversationId,
         null,
         null,
         controller.signal,
       )
-      let rows = result.items
-      while (
-        result.hasMore &&
-        (firstUnreadMessageId
-          ? !rows.some((m) => m.messageId === firstUnreadMessageId)
-          : firstUnreadAt &&
-            rows[0] &&
-            new Date(rows[0].createdAt) >= new Date(firstUnreadAt))
-      ) {
-        result = await getChatMessages(
-          conversationId,
-          result.nextBefore,
-          result.nextBeforeMessageId,
-          controller.signal,
-        )
-        rows = merge(result.items, rows)
-      }
+      const rows = result.items
 
       if (controller.signal.aborted) return
       const other = selectedRef.current?.otherParticipant?.userId
@@ -272,11 +256,14 @@ export function Messages() {
           controller.signal,
         )
         let rows = result.items
+        let pages = 1
         while (
           result.hasMore &&
           newest &&
-          !rows.some((m) => m.messageId === newest)
+          !rows.some((m) => m.messageId === newest) &&
+          pages < 3
         ) {
+          pages++
           result = await getChatMessages(
             conversationId,
             result.nextBefore,
@@ -341,7 +328,6 @@ export function Messages() {
       try {
         await markChatRead(conversationId, id)
         lastSent = id
-        await refresh()
       } catch {
         /* Retry on next scroll/focus. */
       } finally {
@@ -442,8 +428,18 @@ export function Messages() {
         current[id]?.trim() === body ? { ...current, [id]: "" } : current,
       )
       retryRef.current.delete(attempt)
-    } catch {
-      setError("Could not confirm delivery. Send again to retry safely.")
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err)
+      if (
+        msg.includes("429") ||
+        msg.toLowerCase().includes("too fast") ||
+        msg.toLowerCase().includes("too quickly") ||
+        msg.toLowerCase().includes("rate limit")
+      ) {
+        setError("You are sending messages too quickly. Please slow down.")
+      } else {
+        setError("Could not confirm delivery. Send again to retry safely.")
+      }
     } finally {
       sendingRef.current = false
       setSending(false)
@@ -477,11 +473,39 @@ export function Messages() {
     }
   }
 
-  function jumpToFirstUnread() {
-    firstUnreadRef.current?.scrollIntoView({
-      block: "center",
-      behavior: "smooth",
-    })
+  async function jumpToFirstUnread() {
+    if (firstUnreadRef.current) {
+      firstUnreadRef.current.scrollIntoView({
+        block: "center",
+        behavior: "smooth",
+      })
+      return
+    }
+
+    if (!conversationId || !unreadId) return
+    setOlderLoading(true)
+    try {
+      const result = await getChatMessages(
+        conversationId,
+        null,
+        null,
+        undefined,
+        unreadId,
+      )
+      if (activeRef.current !== conversationId) return
+      setPage(result)
+      setMessages((current) => merge(result.items, current))
+      setTimeout(() => {
+        firstUnreadRef.current?.scrollIntoView({
+          block: "center",
+          behavior: "smooth",
+        })
+      }, 50)
+    } catch {
+      setError("Could not load unread messages.")
+    } finally {
+      setOlderLoading(false)
+    }
   }
 
   function dayLabel(value: string) {
