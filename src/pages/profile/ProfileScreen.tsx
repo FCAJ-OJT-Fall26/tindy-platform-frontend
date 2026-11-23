@@ -145,84 +145,95 @@ function ProfileDetails({
           )}
         </div>
       </section>
-      {owner && (
-        <section className="panel">
-          <h3>Member view</h3>
-          <p className="helper-text">
-            Your public contact email is shared with signed-in members. Phone
-            number and resume are only visible to you.
-          </p>
-          <Link className="text-link" to={`/users/${profile.user_id}`}>
-            Preview member profile <ArrowUpRight size={13} />
-          </Link>
-        </section>
-      )}
     </>
   )
 }
-function About({ profile }: { profile: MemberProfileResponse }) {
+function MemberView({ profile }: { profile: MemberProfileResponse }) {
   return (
-    <section className="panel">
-      <SectionHeading title="About" />
-      <p className="profile-prose">{profile.bio || "No introduction yet."}</p>
-      <h3>Technical skills</h3>
-      <div style={{ display: "flex", flexDirection: "column", gap: "12px", marginBottom: "16px" }}>
-        {profile.skills.length ? (
-          <div>
-            <div style={{ fontSize: "11px", fontWeight: 700, color: "#6b7280", textTransform: "uppercase", marginBottom: "6px", letterSpacing: "0.05em" }}>
-              Kỹ năng chuẩn (Catalog)
-            </div>
-            <Chips items={profile.skills.map((skill) => skill.name)} />
-          </div>
-        ) : (
-          <p>No catalog skills added.</p>
-        )}
-
-        {profile.custom_skills && profile.custom_skills.length > 0 && (
-          <div>
-            <div style={{ fontSize: "11px", fontWeight: 700, color: "#2563eb", textTransform: "uppercase", marginBottom: "6px", letterSpacing: "0.05em", display: "flex", alignItems: "center", gap: "6px" }}>
-              <span>Kỹ năng bổ sung (Custom skills)</span>
-              <span style={{ fontSize: "10px", padding: "1px 6px", borderRadius: "10px", backgroundColor: "#dbeafe", color: "#1e40af", fontWeight: 500, textTransform: "none" }}>Self-declared</span>
-            </div>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
-              {profile.custom_skills.map((tag, i) => (
-                <span
-                  key={i}
-                  style={{
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: "4px",
-                    padding: "4px 10px",
-                    backgroundColor: "#eff6ff",
-                    color: "#1d4ed8",
-                    border: "1px dashed #3b82f6",
-                    borderRadius: "16px",
-                    fontSize: "13px",
-                    fontWeight: 500,
-                  }}
-                >
-                  {tag}
-                </span>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
-      {([
-        ["Professional interests", profile.professional_interests],
-        ["Experience summary", profile.previous_projects_and_contribution],
-        ["Learning goals", profile.learning_goals],
-        ["Technologies to learn", profile.technologies_to_learn],
-      ] as const).map(
-        ([label, value]) =>
-          value && (
-            <div className="profile-about-block" key={label}>
-              <h3>{label}</h3>
-              <p className="profile-prose">{value}</p>
-            </div>
-          ),
-      )}
+    <section className="panel profile-member-view">
+      <h3>Member view</h3>
+      <p className="helper-text">
+        Your public contact email is shared with signed-in members. Phone
+        number and resume are only visible to you.
+      </p>
+      <Link className="text-link" to={`/users/${profile.user_id}`}>
+        Preview member profile <ArrowUpRight size={13} />
+      </Link>
     </section>
+  )
+}
+function About({
+  profile,
+  owner,
+}: {
+  profile: MemberProfileResponse
+  owner: boolean
+}) {
+  return (
+    <>
+      <section className="panel">
+        <SectionHeading title="About" />
+        <p className="profile-prose">{profile.bio || "No introduction yet."}</p>
+        <h3>Technical skills</h3>
+        <div style={{ display: "flex", flexDirection: "column", gap: "12px", marginBottom: "16px" }}>
+          {profile.skills.length ? (
+            <div>
+              <div style={{ fontSize: "11px", fontWeight: 700, color: "#6b7280", textTransform: "uppercase", marginBottom: "6px", letterSpacing: "0.05em" }}>
+                Kỹ năng chuẩn (Catalog)
+              </div>
+              <Chips items={profile.skills.map((skill) => skill.name)} />
+            </div>
+          ) : (
+            <p>No catalog skills added.</p>
+          )}
+
+          {profile.custom_skills && profile.custom_skills.length > 0 && (
+            <div>
+              <div style={{ fontSize: "11px", fontWeight: 700, color: "#2563eb", textTransform: "uppercase", marginBottom: "6px", letterSpacing: "0.05em", display: "flex", alignItems: "center", gap: "6px" }}>
+                <span>Kỹ năng bổ sung (Custom skills)</span>
+                <span style={{ fontSize: "10px", padding: "1px 6px", borderRadius: "10px", backgroundColor: "#dbeafe", color: "#1e40af", fontWeight: 500, textTransform: "none" }}>Self-declared</span>
+              </div>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
+                {profile.custom_skills.map((tag, i) => (
+                  <span
+                    key={i}
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: "4px",
+                      padding: "4px 10px",
+                      backgroundColor: "#eff6ff",
+                      color: "#1d4ed8",
+                      border: "1px dashed #3b82f6",
+                      borderRadius: "16px",
+                      fontSize: "13px",
+                      fontWeight: 500,
+                    }}
+                  >
+                    {tag}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+        {([
+          ["Professional interests", profile.professional_interests],
+          ["Experience summary", profile.previous_projects_and_contribution],
+          ["Learning goals", profile.learning_goals],
+          ["Technologies to learn", profile.technologies_to_learn],
+        ] as const).map(
+          ([label, value]) =>
+            value && (
+              <div className="profile-about-block" key={label}>
+                <h3>{label}</h3>
+                <p className="profile-prose">{value}</p>
+              </div>
+            ),
+        )}
+      </section>
+      {owner && <MemberView profile={profile} />}
+    </>
   )
 }
 type Editor = {
@@ -519,7 +530,7 @@ function ProfileView({ userId }: { userId?: string }) {
         <div className={"profile-layout" + (activeTab !== "about" ? " profile-layout--collection" : "")}>
           <div>
             <div className="profile-tab-panel" role="tabpanel" id="profile-panel-about" aria-labelledby="profile-tab-about" hidden={activeTab !== "about"} tabIndex={0}>
-              <About profile={profile} />
+              <About profile={profile} owner={owner} />
             </div>
             <section className="panel profile-tab-panel" aria-label="Experiences" role="tabpanel" id="profile-panel-experiences" aria-labelledby="profile-tab-experiences" hidden={activeTab !== "experiences"} tabIndex={0}>
               <SectionHeading
