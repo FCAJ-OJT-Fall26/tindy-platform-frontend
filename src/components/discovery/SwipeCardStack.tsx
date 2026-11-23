@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { X, Bookmark, RotateCcw, ChevronLeft, ChevronRight, Heart, Star } from 'lucide-react';
+import { X, Bookmark, RotateCcw, RefreshCw, ChevronLeft, ChevronRight, Heart, Star } from 'lucide-react';
 import { DiscoveryProject, DiscoveryCandidate, DiscoveryMode, SwipeDirection } from '../../types/discovery';
 import ProjectCardContent from '../projects/ProjectCardContent';
 import CandidateCardContent from '../candidates/CandidateCardContent';
@@ -206,63 +206,65 @@ export default function SwipeCardStack<T extends {
 
   if (currentIndex >= items.length) {
     return (
-      <div className="w-full max-w-md mx-auto min-h-[420px] sm:min-h-[480px] bg-white rounded-2xl border border-slate-200 p-6 sm:p-8 flex flex-col items-center justify-center text-center shadow-xs">
-        <div className="w-12 h-12 rounded-xl bg-slate-100 flex items-center justify-center text-slate-800 mb-4 border border-slate-200">
-          <RotateCcw size={20} />
-        </div>
-        <h3 className="font-bold text-lg text-slate-900">
-          {mode === 'student' ? 'All Projects Reviewed' : 'All Candidates Reviewed'}
-        </h3>
-        <p className="text-xs text-slate-500 mt-2 max-w-xs leading-relaxed">
+      <section className="panel text-center">
+        <h2>
           {mode === 'student'
-            ? 'You have reached the end of this feed. Refresh or adjust your filters for more projects.'
-            : 'You have evaluated all matching candidates. Reset to review the stack again.'}
+            ? 'No eligible projects right now'
+            : 'No eligible candidates right now'}
+        </h2>
+        <p>
+          {mode === 'student'
+            ? 'Refresh or adjust the filters to find more projects.'
+            : 'Refresh or adjust the filters to find more candidates.'}
         </p>
 
-        <div className="flex gap-2.5 mt-6 flex-wrap justify-center">
+        <div
+          className="live-discovery__empty-actions"
+          style={{
+            display: "flex",
+            gap: "10px",
+            justifyContent: "center",
+            marginTop: "16px",
+            flexWrap: "wrap",
+          }}
+        >
           <button
             type="button"
+            className="btn btn-primary"
             onClick={() => {
               swipedIdsRef.current.clear();
               swipedOrderRef.current = [];
               setCurrentIndex(0);
               onResetStack?.();
             }}
-            className="btn btn-primary text-xs py-2 px-4 flex items-center gap-1.5"
           >
-            <RotateCcw size={14} />
-            <span>{live ? 'Refresh feed' : 'Reset Stack'}</span>
+            <RefreshCw size={14} /> Refresh feed
           </button>
           {onRestoreSkipped && (
             <button
               type="button"
+              className="btn btn-secondary"
               disabled={disabled || pending || restoringSkipped}
               onClick={onRestoreSkipped}
-              className="btn btn-secondary text-xs py-2 px-4 flex items-center gap-1.5"
-              title={mode === 'student' ? 'Restore skipped projects' : 'Restore skipped candidates'}
+              title={
+                mode === 'student'
+                  ? 'Restore projects you previously skipped (excluding applied projects)'
+                  : 'Restore candidates you previously skipped for this position'
+              }
             >
-              <RotateCcw size={14} className={restoringSkipped ? "spin-icon" : ""} />
-              <span>
-                {restoringSkipped
-                  ? "Restoring…"
-                  : mode === 'student'
-                  ? 'Restore skipped projects'
-                  : 'Restore skipped candidates'}
-              </span>
-            </button>
-          )}
-          {canUndo && (
-            <button
-              type="button"
-              disabled={disabled || pending}
-              onClick={() => { void undo(); }}
-              className="btn btn-secondary text-xs py-2 px-3"
-            >
-              Undo Last Action
+              <RotateCcw
+                size={14}
+                className={restoringSkipped ? "spin-icon" : ""}
+              />
+              {restoringSkipped
+                ? "Restoring…"
+                : mode === 'student'
+                ? 'Restore skipped projects'
+                : 'Restore skipped candidates'}
             </button>
           )}
         </div>
-      </div>
+      </section>
     );
   }
 
