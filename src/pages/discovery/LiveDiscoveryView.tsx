@@ -7,10 +7,12 @@ import { useTindy } from "../../store"
 import { getProfessionalRolesApi, getSkillsApi } from "../../services/catalog.service"
 import { mapDiscoveryCard, setDiscoveryFlag } from "../../services/discovery.service"
 import { projectErrorMessage } from "../../services/projectEditor.service"
+import type { CatalogSkill } from "../../types/catalog"
 import type { DiscoveryCandidate, DiscoveryProject, RuleMatch, SwipeDirection } from "../../types/discovery"
 import SwipeCardStack from "../../components/discovery/SwipeCardStack"
 import DiscoverySegmentedControl from "../../components/discovery/DiscoverySegmentedControl"
 import RuleMatchPanel from "../../components/discovery/RuleMatchPanel"
+import SkillIcon from "../../components/onboarding/SkillIcon"
 import { Modal } from "../../components/ui"
 import { getAllMyApplications } from "../../services/applications.service"
 import ApplyModal from "../../components/projects/ApplyModal"
@@ -22,6 +24,92 @@ const categories = ["AI & Machine Learning", "Cloud & DevOps", "Web Application"
 const loadCatalog = async (signal: AbortSignal) => {
   const [roles, skills] = await Promise.all([getProfessionalRolesApi(undefined, signal), getSkillsApi(undefined, undefined, signal)])
   return { roles, skills }
+}
+
+function SkillFilterSelect({
+  value,
+  options,
+  onChange,
+  disabled,
+}: {
+  value: string
+  options: CatalogSkill[]
+  onChange: (value: string) => void
+  disabled?: boolean
+}) {
+  const [open, setOpen] = useState(false)
+  const rootRef = useRef<HTMLDivElement>(null)
+  const selected = options.find(option => option.skill_id === value)
+
+  useEffect(() => {
+    if (!open) return
+    const closeOnOutsideClick = (event: MouseEvent) => {
+      if (!rootRef.current?.contains(event.target as Node)) setOpen(false)
+    }
+    document.addEventListener("mousedown", closeOnOutsideClick)
+    return () => document.removeEventListener("mousedown", closeOnOutsideClick)
+  }, [open])
+
+  const choose = (nextValue: string) => {
+    onChange(nextValue)
+    setOpen(false)
+  }
+
+  return (
+    <div
+      ref={rootRef}
+      className={`skill-filter-select${open ? " is-open" : ""}${!value ? " is-all-selected" : ""}`}
+    >
+      <button
+        type="button"
+        className="skill-filter-select__trigger"
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        disabled={disabled}
+        onClick={() => setOpen(previous => !previous)}
+        onKeyDown={event => {
+          if (event.key === "ArrowDown" || event.key === "Enter" || event.key === " ") {
+            event.preventDefault()
+            setOpen(true)
+          }
+          if (event.key === "Escape") setOpen(false)
+        }}
+      >
+        <span className="skill-filter-select__selected-value">
+          {selected ? <SkillIcon name={selected.name} size={16} /> : <span className="skill-filter-select__all-icon">✦</span>}
+          <span>{selected?.name ?? "All skills"}</span>
+        </span>
+        <ChevronDown size={15} aria-hidden="true" />
+      </button>
+      {open && (
+        <div className="skill-filter-select__menu" role="listbox" aria-label="Key technology">
+          <button
+            type="button"
+            role="option"
+            aria-selected={!value}
+            className={`skill-filter-select__option${!value ? " is-selected" : ""}`}
+            onClick={() => choose("")}
+          >
+            <span className="skill-filter-select__all-icon">✦</span>
+            <span>All skills</span>
+          </button>
+          {options.map(option => (
+            <button
+              type="button"
+              role="option"
+              aria-selected={option.skill_id === value}
+              className={`skill-filter-select__option${option.skill_id === value ? " is-selected" : ""}`}
+              key={option.skill_id}
+              onClick={() => choose(option.skill_id)}
+            >
+              <SkillIcon name={option.name} size={16} />
+              <span>{option.name}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
 }
 
 export interface LiveDiscoveryViewProps {
@@ -159,7 +247,7 @@ export default function LiveDiscoveryView({
     <div className="live-discovery__filter-heading"><span className="live-discovery__eyebrow">YOUR NEXT OPPORTUNITY</span><h2>Find your fit</h2><p>A few filters. A better place to start.</p></div>
     <label className="field-group">Category<select className="field-select" aria-label="Category" value={category} onChange={e => setCategory(e.target.value)}><option value="">All categories</option>{categories.map(value => <option key={value}>{value}</option>)}</select></label>
     <label className="field-group">Required role<select className="field-select" aria-label="Required role" value={role} onChange={e => setRole(e.target.value)} disabled={catalog.loading || !!catalog.error}><option value="">All roles</option>{catalog.data?.roles.map(value => <option key={value.professional_role_id} value={value.professional_role_id}>{value.name}</option>)}</select></label>
-    <label className="field-group">Key technology<select className="field-select" aria-label="Key technology" value={skill} onChange={e => setSkill(e.target.value)} disabled={catalog.loading || !!catalog.error}><option value="">All skills</option>{catalog.data?.skills.map(value => <option key={value.skill_id} value={value.skill_id}>{value.name}</option>)}</select></label>
+    <label className="field-group">Key technology<SkillFilterSelect value={skill} options={catalog.data?.skills ?? []} onChange={setSkill} disabled={catalog.loading || !!catalog.error} /></label>
     <div className="field-group" style={{ textTransform: "none", marginBottom: 22 }}><MinMatchScoreSlider value={minScore} onChange={setMinScore} /></div>
     {Boolean(catalog.error) && <div role="alert">{projectErrorMessage(catalog.error)} <button className="btn btn-secondary" onClick={catalog.reload}>Retry catalogs</button></div>}
     <button className="live-discovery__reset" onClick={() => { setCategory(""); setRole(""); setSkill(""); setMinScore(0) }}><RefreshCw size={14} />Reset filters</button>
