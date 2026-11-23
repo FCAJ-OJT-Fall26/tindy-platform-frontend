@@ -325,6 +325,8 @@ export default function LiveDiscoveryView({
           onSwipe={swipe} onUndo={undo} canUndo={history.length > 0} onCardTap={item => setPreviewProject(item as DiscoveryProject)}
           onWhyMatchesClick={item => setExplanation(getProjectRuleMatch(item as DiscoveryProject))} activeItemChanged={activeChanged}
           onResetStack={refresh}
+          onRestoreSkipped={handleRestoreSkipped}
+          restoringSkipped={restoringSkipped}
           selectedPositions={selectedPositions}
           onPositionSelect={handlePositionSelect} />}
         {!feed.loading && !feed.error && projects.length === 0 && (

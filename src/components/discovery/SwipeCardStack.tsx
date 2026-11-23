@@ -26,6 +26,8 @@ interface SwipeCardStackProps<T extends { id: string; name: string }> {
   onCandidateChatClick?: (candidate: DiscoveryCandidate) => void;
   onPositionSelect?: (projectId: string, positionId: string) => void;
   selectedPositions?: Record<string, string>;
+  onRestoreSkipped?: () => void;
+  restoringSkipped?: boolean;
 }
 
 export default function SwipeCardStack<T extends {
@@ -49,6 +51,8 @@ export default function SwipeCardStack<T extends {
   rightAction,
   onPositionSelect,
   selectedPositions,
+  onRestoreSkipped,
+  restoringSkipped = false,
 }: SwipeCardStackProps<T>) {
   const rightLabel =
     rightAction ??
@@ -215,7 +219,7 @@ export default function SwipeCardStack<T extends {
             : 'You have evaluated all matching candidates. Reset to review the stack again.'}
         </p>
 
-        <div className="flex gap-2 mt-6">
+        <div className="flex gap-2.5 mt-6 flex-wrap justify-center">
           <button
             type="button"
             onClick={() => {
@@ -224,17 +228,35 @@ export default function SwipeCardStack<T extends {
               setCurrentIndex(0);
               onResetStack?.();
             }}
-            className="button primary text-xs py-2 px-4"
+            className="btn btn-primary text-xs py-2 px-4 flex items-center gap-1.5"
           >
             <RotateCcw size={14} />
             <span>{live ? 'Refresh feed' : 'Reset Stack'}</span>
           </button>
+          {onRestoreSkipped && (
+            <button
+              type="button"
+              disabled={disabled || pending || restoringSkipped}
+              onClick={onRestoreSkipped}
+              className="btn btn-secondary text-xs py-2 px-4 flex items-center gap-1.5"
+              title={mode === 'student' ? 'Restore skipped projects' : 'Restore skipped candidates'}
+            >
+              <RotateCcw size={14} className={restoringSkipped ? "spin-icon" : ""} />
+              <span>
+                {restoringSkipped
+                  ? "Restoring…"
+                  : mode === 'student'
+                  ? 'Restore skipped projects'
+                  : 'Restore skipped candidates'}
+              </span>
+            </button>
+          )}
           {canUndo && (
             <button
               type="button"
               disabled={disabled || pending}
               onClick={() => { void undo(); }}
-              className="button outline text-xs py-2 px-3"
+              className="btn btn-secondary text-xs py-2 px-3"
             >
               Undo Last Action
             </button>

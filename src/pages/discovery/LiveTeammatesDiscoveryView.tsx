@@ -134,6 +134,12 @@ export default function LiveTeammatesDiscoveryView({
     }
   }, [refreshTrigger, refresh])
 
+  useEffect(() => {
+    if (!active) return
+    const index = active ? cards.findIndex((c) => c.id === active.id) : cards.length
+    if (!feed.loading && !feed.error && feed.hasMore && cards.length - index <= 4) feed.loadMore()
+  }, [active, cards, feed.loading, feed.error, feed.hasMore, feed.loadMore])
+
   const update = (name: string, value: string) => {
     const next = new URLSearchParams(params)
     if (value) next.set(name, value)
@@ -495,11 +501,11 @@ export default function LiveTeammatesDiscoveryView({
             </div>
           )}
 
-          {!feed.loading && !feed.error && feed.key && cards.length === 0 && (
+          {!feed.loading && !feed.error && cards.length === 0 && (
             <section className="panel text-center">
               <h2>No eligible candidates right now</h2>
               <p>
-                Try adjusting the filters or restore candidates you previously skipped.
+                Refresh or adjust the filters to find more candidates.
               </p>
               <div
                 className="live-discovery__empty-actions"
@@ -521,7 +527,7 @@ export default function LiveTeammatesDiscoveryView({
                 <button
                   className="btn btn-secondary"
                   onClick={handleRestoreSkipped}
-                  disabled={restoringSkipped || !project || !position}
+                  disabled={restoringSkipped}
                   title="Restore candidates you previously skipped for this position"
                 >
                   <RotateCcw
@@ -546,6 +552,8 @@ export default function LiveTeammatesDiscoveryView({
               onUndo={undo}
               canUndo={history.length > 0}
               onResetStack={refresh}
+              onRestoreSkipped={handleRestoreSkipped}
+              restoringSkipped={restoringSkipped}
               activeItemChanged={activeChanged}
               onCardTap={setDetail}
               onWhyMatchesClick={setExplanation}
@@ -565,27 +573,6 @@ export default function LiveTeammatesDiscoveryView({
                 />
               )}
             />
-          )}
-
-          {active && (
-            <button
-              className="btn btn-primary teammate-invite-btn"
-              disabled={blocked || !!context.blocker}
-              onClick={() => setInvite(active)}
-            >
-              Send Invitation to {active.name}
-            </button>
-          )}
-
-          {feed.hasMore && (
-            <button
-              className="btn btn-secondary"
-              style={{ width: "100%", maxWidth: 580, margin: "0 auto" }}
-              disabled={feed.loading || blocked}
-              onClick={feed.loadMore}
-            >
-              {feed.loading ? "Loading…" : "Load more candidates"}
-            </button>
           )}
         </section>
 
