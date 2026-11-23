@@ -402,7 +402,7 @@ function LiveProjectCard({
           <div className="live-project-card__fit-match">
             <div className="live-project-card__match-label">
               <MatchScoreRing score={currentScore} serverValue compact />
-              <div>
+              <div className="live-project-card__fit-text">
                 <strong>{currentScore}% Position Match</strong>
                 <span>Rule-based compatibility</span>
               </div>

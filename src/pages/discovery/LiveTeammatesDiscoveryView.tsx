@@ -107,6 +107,15 @@ export default function LiveTeammatesDiscoveryView({
     return () => { scope.current = null }
   }, [feed.key])
 
+  // Keep active teammate card synchronized with filtered cards
+  useEffect(() => {
+    if (cards.length === 0) {
+      setActive(null)
+    } else if (active && !cards.some((c) => c.id === active.id)) {
+      setActive(cards[0])
+    }
+  }, [cards, active])
+
   const activeChanged = useCallback(
     (card: LiveTeammateCard | null) => setActive(card),
     [],
@@ -582,7 +591,7 @@ export default function LiveTeammatesDiscoveryView({
 
         {/* Column 3: Match Inspector */}
         <aside className="live-discovery__inspector">
-          {active ? (
+          {cards.length > 0 && active ? (
             <RuleMatchPanel
               match={active.matching}
               perspective="teammate"

@@ -144,8 +144,13 @@ export default function LiveDiscoveryView({
   const rawProjects = useMemo(() => feed.items.map(mapDiscoveryCard), [feed.items])
   const projects = useMemo(() => {
     if (minScore <= 0) return rawProjects
-    return rawProjects.filter(p => (p.ruleMatch?.match_score ?? p.match?.overall ?? 0) >= minScore)
-  }, [rawProjects, minScore])
+    return rawProjects.filter(p => {
+      const selectedPosId = selectedPositions[p.id] || p.selected_position_id
+      const pos = selectedPosId && p.open_positions ? p.open_positions.find(o => o.position_id === selectedPosId) : null
+      const score = pos ? pos.match_score : (p.ruleMatch?.match_score ?? p.match?.overall ?? 0)
+      return score >= minScore
+    })
+  }, [rawProjects, minScore, selectedPositions])
   const activeChanged = useCallback((item: DiscoveryProject | DiscoveryCandidate | null) => setActive(item as DiscoveryProject | null), [])
 
   const handlePositionSelect = useCallback((projectId: string, positionId: string) => {
@@ -183,6 +188,16 @@ export default function LiveDiscoveryView({
   }, [selectedPositions])
 
   const activeMatch = useMemo(() => getProjectRuleMatch(active), [active, getProjectRuleMatch])
+
+  // Keep active card synchronized with filtered projects
+  useEffect(() => {
+    if (projects.length === 0) {
+      setActive(null)
+    } else if (active && !projects.some(p => p.id === active.id)) {
+      setActive(projects[0])
+    }
+  }, [projects, active])
+
   useEffect(() => { setActive(null); setExplanation(null); setPreviewProject(null); setApplying(null); setHistory([]); setReviewedApplications(new Set()); setActionError(""); setSelectedPositions({}) }, [feed.key])
   useEffect(() => {
     if (!active) return
@@ -349,7 +364,7 @@ export default function LiveDiscoveryView({
           </section>
         )}
       </section>
-      <aside className="live-discovery__inspector">{activeMatch ? <RuleMatchPanel variant="discovery" match={activeMatch} projectName={active?.name} onExplain={() => setExplanation(activeMatch)} onViewDetails={viewActiveProject} /> : <section className="live-discovery__inspector-empty"><h2>A closer look at your fit</h2><p>Select a project to see how its position matches your profile.</p></section>}</aside>
+      <aside className="live-discovery__inspector">{projects.length > 0 && activeMatch ? <RuleMatchPanel variant="discovery" match={activeMatch} projectName={active?.name} onExplain={() => setExplanation(activeMatch)} onViewDetails={viewActiveProject} /> : <section className="live-discovery__inspector-empty"><h2>A closer look at your fit</h2><p>Select a project to see how its position matches your profile.</p></section>}</aside>
     </div>
     
     {previewProject && (

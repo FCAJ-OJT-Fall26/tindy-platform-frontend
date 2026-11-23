@@ -68,15 +68,23 @@ export default function SwipeCardStack<T extends {
   const busy = useRef(false);
   const [pending, setPending] = useState(false);
   const mounted = useRef(true);
-  useEffect(() => { mounted.current = true; return () => { mounted.current = false; } }, []);
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+      activeItemChanged?.(null);
+    };
+  }, [activeItemChanged]);
 
   // When filters update `items`, jump to the first unswiped card in the filtered list
   useEffect(() => {
     if (prevItemsRef.current === items) return;
     prevItemsRef.current = items;
     const firstUnswipedIdx = items.findIndex((item) => !swipedIdsRef.current.has(item.id));
-    setCurrentIndex(firstUnswipedIdx !== -1 ? firstUnswipedIdx : items.length);
-  }, [items]);
+    const nextIdx = firstUnswipedIdx !== -1 ? firstUnswipedIdx : items.length;
+    setCurrentIndex(nextIdx);
+    activeItemChanged?.(nextIdx < items.length ? items[nextIdx] : null);
+  }, [items, activeItemChanged]);
 
   const currentItem = currentIndex < items.length ? items[currentIndex] : null;
 
