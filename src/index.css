@@ -1216,10 +1216,26 @@ select:focus-visible {
 }
 
 .sidebar-brand {
+  position: relative;
   padding: 0 10px 24px;
   display: flex;
   align-items: center;
-  justify-content: space-between
+  justify-content: center
+}
+
+.sidebar-brand .mobile-close {
+  position: absolute;
+  right: 0;
+}
+
+.sidebar-brand .brand {
+  gap: 7px;
+  font-size: 37px;
+}
+
+.sidebar-brand .brand-logo {
+  width: 45px;
+  height: 43px;
 }
 
 .workspace-switch {

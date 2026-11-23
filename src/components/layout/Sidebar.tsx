@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react"
 import { NavLink, Link, useLocation } from "react-router"
 import {
-  ChevronDown,
   LayoutDashboard,
   Compass,
   Bookmark,
@@ -129,7 +128,6 @@ export default function Sidebar({ mobile, onClose }: SidebarProps) {
           <strong>FCAJ Community</strong>
           <small>First Cloud AI Journey</small>
         </div>
-        <ChevronDown size={14} />
       </div>
 
       <div className="sidebar-nav-container" ref={sidebarNavRef}>

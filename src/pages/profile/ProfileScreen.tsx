@@ -145,47 +145,58 @@ function ProfileDetails({
           )}
         </div>
       </section>
-      {owner && (
-        <section className="panel">
-          <h3>Member view</h3>
-          <p className="helper-text">
-            Your public contact email is shared with signed-in members. Phone
-            number and resume are only visible to you.
-          </p>
-          <Link className="text-link" to={`/users/${profile.user_id}`}>
-            Preview member profile <ArrowUpRight size={13} />
-          </Link>
-        </section>
-      )}
     </>
   )
 }
-function About({ profile }: { profile: MemberProfileResponse }) {
+function MemberView({ profile }: { profile: MemberProfileResponse }) {
   return (
-    <section className="panel">
-      <SectionHeading title="About" />
-      <p className="profile-prose">{profile.bio || "No introduction yet."}</p>
-      <h3>Technical skills</h3>
-      {profile.skills.length ? (
-        <Chips items={profile.skills.map((skill) => skill.name)} />
-      ) : (
-        <p>No skills added.</p>
-      )}
-      {([
-        ["Professional interests", profile.professional_interests],
-        ["Experience summary", profile.previous_projects_and_contribution],
-        ["Learning goals", profile.learning_goals],
-        ["Technologies to learn", profile.technologies_to_learn],
-      ] as const).map(
-        ([label, value]) =>
-          value && (
-            <div className="profile-about-block" key={label}>
-              <h3>{label}</h3>
-              <p className="profile-prose">{value}</p>
-            </div>
-          ),
-      )}
+    <section className="panel profile-member-view">
+      <h3>Member view</h3>
+      <p className="helper-text">
+        Your public contact email is shared with signed-in members. Phone
+        number and resume are only visible to you.
+      </p>
+      <Link className="text-link" to={`/users/${profile.user_id}`}>
+        Preview member profile <ArrowUpRight size={13} />
+      </Link>
     </section>
+  )
+}
+function About({
+  profile,
+  owner,
+}: {
+  profile: MemberProfileResponse
+  owner: boolean
+}) {
+  return (
+    <>
+      <section className="panel">
+        <SectionHeading title="About" />
+        <p className="profile-prose">{profile.bio || "No introduction yet."}</p>
+        <h3>Technical skills</h3>
+        {profile.skills.length ? (
+          <Chips items={profile.skills.map((skill) => skill.name)} />
+        ) : (
+          <p>No skills added.</p>
+        )}
+        {([
+          ["Professional interests", profile.professional_interests],
+          ["Experience summary", profile.previous_projects_and_contribution],
+          ["Learning goals", profile.learning_goals],
+          ["Technologies to learn", profile.technologies_to_learn],
+        ] as const).map(
+          ([label, value]) =>
+            value && (
+              <div className="profile-about-block" key={label}>
+                <h3>{label}</h3>
+                <p className="profile-prose">{value}</p>
+              </div>
+            ),
+        )}
+      </section>
+      {owner && <MemberView profile={profile} />}
+    </>
   )
 }
 type Editor = {
@@ -482,7 +493,7 @@ function ProfileView({ userId }: { userId?: string }) {
         <div className={"profile-layout" + (activeTab !== "about" ? " profile-layout--collection" : "")}>
           <div>
             <div className="profile-tab-panel" role="tabpanel" id="profile-panel-about" aria-labelledby="profile-tab-about" hidden={activeTab !== "about"} tabIndex={0}>
-              <About profile={profile} />
+              <About profile={profile} owner={owner} />
             </div>
             <section className="panel profile-tab-panel" aria-label="Experiences" role="tabpanel" id="profile-panel-experiences" aria-labelledby="profile-tab-experiences" hidden={activeTab !== "experiences"} tabIndex={0}>
               <SectionHeading
