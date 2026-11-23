@@ -227,7 +227,9 @@ export function TeamScreen() {
                         </Badge>
                       </div>
                       <h2>{project.name}</h2>
-                      <p title={project.description}>{project.description}</p>
+                      <p title={project.tagline || project.description}>
+                        {project.tagline || project.description}
+                      </p>
                     </div>
 
                     <div className="leader-project-top-actions leader-project-menu-container">
@@ -344,6 +346,38 @@ export function TeamScreen() {
                               <span>Review applicants</span>
                             </Link>
                           )}
+
+                          {isLeader && (
+                            <>
+                              <div style={{ height: "1px", background: "#f1f5f9", margin: "4px 0" }} />
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setOpenMenuId(null)
+                                  handleDeleteProject(project.id, project.name)
+                                }}
+                                style={{
+                                  display: "flex",
+                                  alignItems: "center",
+                                  gap: "8px",
+                                  padding: "8px 10px",
+                                  borderRadius: "6px",
+                                  fontSize: "12px",
+                                  fontWeight: 500,
+                                  color: "#e11d48",
+                                  background: "transparent",
+                                  border: "none",
+                                  width: "100%",
+                                  textAlign: "left",
+                                  cursor: "pointer",
+                                }}
+                                className="dropdown-item-danger-hover"
+                              >
+                                <Trash2 size={14} />
+                                <span>Archive project</span>
+                              </button>
+                            </>
+                          )}
                         </div>
                       )}
                     </div>
@@ -377,30 +411,43 @@ export function TeamScreen() {
                         <strong>{pendingFor(project.id)}</strong> pending applications
                       </Link>
                     ) : (
-                      <span>
-                        <Code2 size={16} />
-                        <strong>Team Member</strong>
+                      <span
+                        style={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: "5px",
+                        }}
+                      >
+                        <Clock size={16} />
+                        <strong>{pendingFor(project.id)}</strong> pending applications
                       </span>
                     )}
                   </div>
 
-                  {/* Card Actions: Clean Leader Workspace Button Hierarchy */}
+                  {/* Card Actions: Harmonized with Leader Workspace Button Hierarchy */}
                   <div className="leader-project-actions">
-                    <Link to={`/team/${project.id}`} className="btn btn-primary">
-                      Open workspace <ArrowRight size={15} />
-                    </Link>
                     {isLeader ? (
-                      <Link to={`/project/${project.id}/applications`} className="btn btn-secondary">
-                        Applications
-                      </Link>
+                      <>
+                        <Link to={`/project/${project.id}/applications`} className="btn btn-primary">
+                          Applications <ArrowRight size={15} />
+                        </Link>
+                        <Link to={`/project/${project.id}`} className="btn btn-secondary">
+                          View project
+                        </Link>
+                        <Link to={`/team/${project.id}`} className="text-link">
+                          Open workspace <ArrowUpRight size={14} />
+                        </Link>
+                      </>
                     ) : (
-                      <Link to={`/project/${project.id}`} className="btn btn-secondary">
-                        View project
-                      </Link>
+                      <>
+                        <Link to={`/team/${project.id}`} className="btn btn-primary">
+                          Open workspace <ArrowRight size={15} />
+                        </Link>
+                        <Link to={`/project/${project.id}`} className="btn btn-secondary">
+                          View project
+                        </Link>
+                      </>
                     )}
-                    <Link to={`/project/${project.id}`} className="text-link">
-                      View specs <ArrowUpRight size={14} />
-                    </Link>
                   </div>
                 </section>
               )
