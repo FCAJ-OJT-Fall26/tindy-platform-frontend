@@ -98,7 +98,7 @@ export function mapProjectSummaryToUiProject(dto: ProjectSummaryDto, existing?: 
     created: Date.parse(dto.created_at),
     closing: dto.closing_days_left ?? existing?.closing ?? 14,
     factors: existing?.factors ?? [0, 0, 0, 0, 0],
-    goals: existing?.goals ?? [],
+    goals: [],
     gap: niceSkills,
   }
 }
@@ -161,7 +161,7 @@ export function mapProjectDetailToUiProject(dto: ProjectDetailDto, existing?: Pr
     created: Date.parse(dto.created_at),
     closing: dto.closing_days_left ?? existing?.closing ?? 14,
     factors: existing?.factors ?? [0, 0, 0, 0, 0],
-    goals: dto.goals ?? existing?.goals ?? [],
+    goals: dto.goals ?? [],
     status: dto.status,
     gap: niceSkills,
   }

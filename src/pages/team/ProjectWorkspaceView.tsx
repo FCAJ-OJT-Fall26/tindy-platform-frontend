@@ -32,6 +32,7 @@ import {
   Code2,
   Edit3,
   Trash2,
+  Loader2,
 } from "lucide-react"
 import { useTindy, Project } from "../../store"
 import { Chips, PageHeader, Avatar, Badge, Button } from "../../components/ui"
@@ -143,10 +144,8 @@ export function ProjectWorkspaceView({ projectId: propProjectId }: ProjectWorksp
 
   // Project data loading from API
   const [projectDetail, setProjectDetail] = useState<ProjectDetailDto | null>(null)
-  const [project, setProject] = useState<Project | null>(() => {
-    return projects.find((p) => p.id === projectId) ?? null
-  })
-  const [loading, setLoading] = useState(!project && Boolean(projectId))
+  const [project, setProject] = useState<Project | null>(null)
+  const [loading, setLoading] = useState(Boolean(projectId))
 
   // Real candidates & applications for this project
   const [applications, setApplications] = useState<ApplicationReviewDto[]>([])
@@ -195,7 +194,7 @@ export function ProjectWorkspaceView({ projectId: propProjectId }: ProjectWorksp
   const [showInviteModal, setShowInviteModal] = useState(false)
   const [inviteEmail, setInviteEmail] = useState("")
 
-  const loadGoals = useCallback((projId: string, fallbackGoals?: string[]) => {
+  const loadGoals = useCallback((projId: string) => {
     setLoadingGoals(true)
     getProjectGoalsApi(projId)
       .then((dtos) => {
@@ -210,35 +209,13 @@ export function ProjectWorkspaceView({ projectId: propProjectId }: ProjectWorksp
               completed: g.is_completed,
             }))
           )
-        } else if (fallbackGoals && fallbackGoals.length > 0) {
-          setGoals(
-            fallbackGoals.map((g, idx) => ({
-              id: `legacy-${idx + 1}`,
-              tag: "Milestone",
-              title: g,
-              assignees: ["PL"],
-              dueDate: "Sprint 1",
-              completed: false,
-            }))
-          )
         } else {
           setGoals([])
         }
       })
       .catch((err) => {
         console.warn("Could not load project goals from API", err)
-        if (fallbackGoals && fallbackGoals.length > 0) {
-          setGoals(
-            fallbackGoals.map((g, idx) => ({
-              id: `legacy-${idx + 1}`,
-              tag: "Milestone",
-              title: g,
-              assignees: ["PL"],
-              dueDate: "Sprint 1",
-              completed: false,
-            }))
-          )
-        }
+        setGoals([])
       })
       .finally(() => {
         setLoadingGoals(false)
@@ -267,7 +244,7 @@ export function ProjectWorkspaceView({ projectId: propProjectId }: ProjectWorksp
         setProject(mapProjectDetailToUiProject(detail))
         setIsCompleted(detail.status === "completed")
         setResources(detail.resource_links || [])
-        loadGoals(projId, detail.goals)
+        loadGoals(projId)
       })
       .catch((err) => {
         console.warn("Could not reload project detail", err)
@@ -286,25 +263,10 @@ export function ProjectWorkspaceView({ projectId: propProjectId }: ProjectWorksp
         setProject(mapProjectDetailToUiProject(detail))
         setIsCompleted(detail.status === "completed")
         setResources(detail.resource_links || [])
-        loadGoals(projectId, detail.goals)
-
-        // Set initial welcome update based on real leader
-        setUpdates([
-          {
-            id: "u-1",
-            authorName: detail.leader.display_name,
-            authorRole: "Project lead",
-            initials: detail.leader.initials || detail.leader.display_name.slice(0, 2).toUpperCase(),
-            avatarColor: "bg-blue-50 text-blue-700 border border-blue-200",
-            content: `Welcome to ${detail.name}! Team workspace is ready for collaboration.`,
-            timestamp: "Today",
-            likes: 0,
-          },
-        ])
+        loadGoals(projectId)
       })
-      .catch(() => {
-        const found = projects.find((p) => p.id === projectId)
-        if (found && active) setProject(found)
+      .catch((err) => {
+        console.warn("Could not load project detail from API", err)
       })
       .finally(() => {
         if (active) setLoading(false)
@@ -315,37 +277,37 @@ export function ProjectWorkspaceView({ projectId: propProjectId }: ProjectWorksp
     return () => {
       active = false
     }
-  }, [projectId, projects, loadApplications, loadGoals])
+  }, [projectId, loadApplications, loadGoals])
 
-  // Fallback project if loading
+  // Fallback project while loading
   const activeProject = useMemo<Project>(() => {
     if (project) return project
     return {
       id: projectId || "workspace",
-      name: "Project Workspace",
-      tagline: "Collaborative team workspace",
-      description: "Manage milestones, team members, and open recruitment roles.",
-      type: "Web Application",
-      skills: ["React", "TypeScript", ".NET"],
+      name: projectDetail?.name || "Project Workspace",
+      tagline: projectDetail?.tagline || "",
+      description: projectDetail?.description || "",
+      type: projectDetail?.category || "Web Application",
+      skills: [],
       role: "Lead",
-      hours: 10,
-      duration: "3 months",
-      difficulty: "intermediate",
-      team: 1,
-      capacity: 5,
+      hours: projectDetail?.expected_commitment_hours || 0,
+      duration: projectDetail?.duration || "",
+      difficulty: (projectDetail?.difficulty_level?.toLowerCase() as any) || "intermediate",
+      team: projectDetail?.current_team_size || 1,
+      capacity: projectDetail?.max_team_capacity || 1,
       openings: 0,
-      leader: profile.name || "Leader",
-      leaderId: authUser?.user_id,
-      initials: "PW",
-      color: "indigo",
+      leader: projectDetail?.leader?.display_name || profile.name || "Leader",
+      leaderId: projectDetail?.leader?.user_id || authUser?.user_id,
+      initials: projectDetail?.initials || "PW",
+      color: projectDetail?.color_theme || "indigo",
       created: Date.now(),
-      closing: 14,
-      factors: [90, 85, 95, 80, 88],
+      closing: projectDetail?.closing_days_left ?? 14,
+      factors: [0, 0, 0, 0, 0],
       goals: [],
       gap: [],
       matchAvailable: false,
     }
-  }, [project, projectId, profile.name, authUser])
+  }, [project, projectDetail, projectId, profile.name, authUser])
 
   const isLeader = Boolean(
     authUser &&
@@ -383,7 +345,7 @@ export function ProjectWorkspaceView({ projectId: propProjectId }: ProjectWorksp
     }
 
     // Default to the real leader from API or profile
-    const leaderName = projectDetail?.leader?.display_name || activeProject.leader || profile.name || "Alex Le"
+    const leaderName = projectDetail?.leader?.display_name || activeProject.leader || profile.name || "Project Leader"
     const isCurrentLeader =
       Boolean(authUser && (activeProject.leaderId === authUser.user_id || projectDetail?.leader.user_id === authUser.user_id)) ||
       Boolean(profile.name && leaderName.toLowerCase() === profile.name.toLowerCase())
@@ -571,7 +533,7 @@ export function ProjectWorkspaceView({ projectId: propProjectId }: ProjectWorksp
     )
     notify(nextCompleted ? "Goal marked complete!" : "Goal marked incomplete.")
 
-    if (projectId && !goalId.startsWith("legacy-")) {
+    if (projectId) {
       try {
         await toggleProjectGoalApi(projectId, goalId, nextCompleted)
       } catch (err) {
@@ -644,8 +606,24 @@ export function ProjectWorkspaceView({ projectId: propProjectId }: ProjectWorksp
 
   if (loading) {
     return (
-      <div className="p-8 text-center text-slate-500 font-medium">
-        Loading workspace for {activeProject.name}...
+      <div className="flex flex-col items-center justify-center min-h-[50vh] text-slate-500">
+        <Loader2 className="w-8 h-8 animate-spin text-blue-600 mb-2" />
+        <p className="text-sm font-medium">Loading workspace...</p>
+      </div>
+    )
+  }
+
+  if (!project && !projectDetail) {
+    return (
+      <div className="p-12 text-center text-slate-500 max-w-md mx-auto space-y-4">
+        <p className="font-bold text-slate-800 text-base">Project not found</p>
+        <p className="text-xs text-slate-500">
+          We could not load this project workspace. It may have been removed or you do not have permission to view it.
+        </p>
+        <Link to="/team" className="btn btn-secondary inline-flex items-center gap-1.5 text-xs">
+          <ArrowLeft size={14} />
+          <span>Back to Team workspace</span>
+        </Link>
       </div>
     )
   }
@@ -954,61 +932,68 @@ export function ProjectWorkspaceView({ projectId: propProjectId }: ProjectWorksp
               {activeTab === "comments" && (
                 <div className="pt-4 space-y-4">
                   {/* Feed stream */}
-                  <div className="space-y-4">
-                    {updates.map((u) => (
-                      <div key={u.id} className="flex items-start gap-3 text-xs">
-                        <div
-                          className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${u.avatarColor}`}
-                        >
-                          {u.initials}
-                        </div>
-                        <div className="flex-1 space-y-1">
-                          <div className="flex items-center gap-2">
-                            <strong className="text-slate-900 font-bold">{u.authorName}</strong>
-                            {u.badgeText && (
-                              <span className="text-[10px] text-slate-500 bg-slate-100 px-1.5 py-0.2 rounded font-medium">
-                                {u.badgeText}
-                              </span>
-                            )}
-                            <span className="text-slate-400 text-[11px]">{u.authorRole}</span>
+                  {updates.length === 0 ? (
+                    <div className="py-8 text-center text-slate-400 text-xs">
+                      <p className="font-medium text-slate-600">No updates or comments yet</p>
+                      <p className="text-[11px] text-slate-400 mt-1">Start the conversation below.</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {updates.map((u) => (
+                        <div key={u.id} className="flex items-start gap-3 text-xs">
+                          <div
+                            className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${u.avatarColor}`}
+                          >
+                            {u.initials}
                           </div>
-                          <p className="text-slate-700 text-xs leading-relaxed">{u.content}</p>
-                          <div className="flex items-center gap-3 pt-1 text-[11px] text-slate-400">
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setUpdates((prev) =>
-                                  prev.map((item) =>
-                                    item.id === u.id
-                                      ? {
-                                          ...item,
-                                          likes: item.isLiked ? item.likes - 1 : item.likes + 1,
-                                          isLiked: !item.isLiked,
-                                        }
-                                      : item,
-                                  ),
-                                )
-                              }}
-                              className={`hover:text-blue-600 transition-colors cursor-pointer flex items-center gap-1 ${
-                                u.isLiked ? "text-blue-600 font-semibold" : ""
-                              }`}
-                            >
-                              <Heart size={11} className={u.isLiked ? "fill-blue-600" : ""} />
-                              <span>Helpful ({u.likes})</span>
-                            </button>
-                            <span>•</span>
-                            <button
-                              type="button"
-                              onClick={() => setNewUpdate(`@${u.authorName} `)}
-                              className="hover:text-blue-600 transition-colors cursor-pointer"
-                            >
-                              Reply
-                            </button>
+                          <div className="flex-1 space-y-1">
+                            <div className="flex items-center gap-2">
+                              <strong className="text-slate-900 font-bold">{u.authorName}</strong>
+                              {u.badgeText && (
+                                <span className="text-[10px] text-slate-500 bg-slate-100 px-1.5 py-0.2 rounded font-medium">
+                                  {u.badgeText}
+                                </span>
+                              )}
+                              <span className="text-slate-400 text-[11px]">{u.authorRole}</span>
+                            </div>
+                            <p className="text-slate-700 text-xs leading-relaxed">{u.content}</p>
+                            <div className="flex items-center gap-3 pt-1 text-[11px] text-slate-400">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setUpdates((prev) =>
+                                    prev.map((item) =>
+                                      item.id === u.id
+                                        ? {
+                                            ...item,
+                                            likes: item.isLiked ? item.likes - 1 : item.likes + 1,
+                                            isLiked: !item.isLiked,
+                                          }
+                                        : item,
+                                    ),
+                                  )
+                                }}
+                                className={`hover:text-blue-600 transition-colors cursor-pointer flex items-center gap-1 ${
+                                  u.isLiked ? "text-blue-600 font-semibold" : ""
+                                }`}
+                              >
+                                <Heart size={11} className={u.isLiked ? "fill-blue-600" : ""} />
+                                <span>Helpful ({u.likes})</span>
+                              </button>
+                              <span>•</span>
+                              <button
+                                type="button"
+                                onClick={() => setNewUpdate(`@${u.authorName} `)}
+                                className="hover:text-blue-600 transition-colors cursor-pointer"
+                              >
+                                Reply
+                              </button>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    ))}
-                  </div>
+                      ))}
+                    </div>
+                  )}
 
                   {/* Composer */}
                   <form onSubmit={handlePostUpdate} className="pt-3 border-t border-slate-100">
@@ -1241,11 +1226,15 @@ export function ProjectWorkspaceView({ projectId: propProjectId }: ProjectWorksp
                   </div>
                   <div>
                     <h3 className="font-bold text-slate-900 mb-1">Project Goals</h3>
-                    <ul className="list-disc pl-4 space-y-1 text-slate-600">
-                      {(activeProject.goals || []).map((g, idx) => (
-                        <li key={idx}>{g}</li>
-                      ))}
-                    </ul>
+                    {goals.length > 0 ? (
+                      <ul className="list-disc pl-4 space-y-1 text-slate-600">
+                        {goals.map((g) => (
+                          <li key={g.id}>{g.title}</li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className="text-slate-400">No project goals defined yet.</p>
+                    )}
                   </div>
                 </div>
               )}
