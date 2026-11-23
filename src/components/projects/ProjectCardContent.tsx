@@ -181,14 +181,14 @@ function LiveProjectCard({ project, onWhyMatchesClick, onViewDetailsClick }: Pic
   return <article className="live-project-card">
     <div className="live-project-card__top"><span className="live-discovery__pill">{project.category}</span><span className="live-project-card__team"><Users size={14} /><strong>{project.teamSize}/{project.maxTeamSize}</strong> members</span></div>
     <div className="live-project-card__body">
-      <div className="live-project-card__intro"><h3>{project.name}</h3>{project.tagline && <p className="live-project-card__tagline">{project.tagline}</p>}<p className="live-project-card__description">{project.desc}</p></div>
-      <div className="live-project-card__match">
+      <div className="live-project-card__intro"><span className="live-discovery__eyebrow">RECOMMENDED PROJECT</span><h3>{project.name}</h3>{project.tagline && <p className="live-project-card__tagline">{project.tagline}</p>}<p className="live-project-card__description">{project.desc}</p></div>
+      <div className="live-project-card__match" data-score-tier={match.match_score >= 66 ? "high" : match.match_score >= 36 ? "medium" : "low"}>
         <div className="live-project-card__match-label"><MatchScoreRing score={match.match_score} serverValue /><div><strong>Rule-based match</strong><span>Based on your profile</span></div></div>
         <button type="button" onClick={onWhyMatchesClick}>Why this matches <ArrowUpRight size={14} /></button>
       </div>
       <div className="live-project-card__position"><div><span className="live-discovery__eyebrow">OPEN POSITION</span><strong><BriefcaseBusiness size={16} />{match.best_position.title}</strong></div><span className="live-project-card__slots">{match.best_position.remaining_slots} {match.best_position.remaining_slots === 1 ? 'slot' : 'slots'} open</span></div>
-      <div className="live-project-card__skills"><span className="live-discovery__eyebrow">REQUIRED SKILLS</span><div>{required.length ? required.map(skill => <span className={`live-project-card__skill${matchedIds.has(skill.skill_id) ? ' is-matched' : ''}`} key={skill.skill_id}><SkillIcon name={skill.name} size={13} />{skill.name}</span>) : <span className="live-discovery__muted">No required skills specified</span>}</div>
-        {optional.length > 0 && <p>Nice to have: {optional.map(skill => skill.name).join(' · ')}</p>}
+      <div className="live-project-card__skills"><div className="live-project-card__skills-heading"><span className="live-discovery__eyebrow">REQUIRED SKILLS</span><span className="live-project-card__skills-legend"><span className="is-matched">Matched</span><span>Missing</span></span></div><div>{required.length ? required.map(skill => <span className={`live-project-card__skill${matchedIds.has(skill.skill_id) ? ' is-matched' : ' is-missing'}`} key={skill.skill_id}><SkillIcon name={skill.name} size={13} />{skill.name}</span>) : <span className="live-discovery__muted">No required skills specified</span>}</div>
+        {optional.length > 0 && <div className="live-project-card__optional"><span>Nice to have</span>{optional.map(skill => <span className="live-project-card__skill is-optional" key={skill.skill_id}><SkillIcon name={skill.name} size={12} />{skill.name}</span>)}</div>}
       </div>
       <div className="live-project-card__bottom"><div className="live-project-card__meta"><span><Clock size={15} />{project.hours}</span><span>{project.duration}</span></div><p className="live-project-card__deadline"><CalendarDays size={14} />Closes {formatClosingDate(project.closingDate)} <span>· Vietnam time</span></p></div>
     </div>
