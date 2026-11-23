@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react"
-import { Bot, Check, RotateCcw, Info, ArrowRight } from "lucide-react"
+import { Bot, Info } from "lucide-react"
 import { Modal, Button } from "../ui"
 
 export interface AiWritingDialogProps {
@@ -85,7 +85,16 @@ This is a peer-to-peer workspace where you can safely experiment, review code wi
 
         {/* Draft text display */}
         <div className="ai-draft-preview-card">
-          <pre className="draft-text-content">{activeDraft}</pre>
+          <div className="ai-draft-label">
+            <span className="ai-draft-label__icon"><Bot size={14} /></span>
+            <span>AI-generated suggestion</span>
+            <span className="ai-draft-label__status">Ready to edit</span>
+          </div>
+          <div className="draft-text-content">
+            {activeDraft.split(/\n\s*\n/).map((paragraph, index) => (
+              <p key={index}>{paragraph}</p>
+            ))}
+          </div>
         </div>
 
         {/* Warning / Notice */}
