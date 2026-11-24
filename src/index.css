@@ -16115,6 +16115,77 @@ button.text-link {
   .auth-social-buttons { grid-template-columns: 1fr; gap: 9px; }
 }
 
+/* Dashboard hierarchy: make the first scan feel like a workspace overview. */
+.metrics-grid {
+  gap: 18px;
+  margin-bottom: 28px;
+}
+
+.opportunity-banner {
+  border-color: #d8e2f1;
+  background:
+    radial-gradient(circle at 92% 16%, rgba(91, 116, 214, .12), transparent 23%),
+    linear-gradient(105deg, #f7faff 0%, #fff 64%, #f0faf8 100%);
+}
+
+.opportunity-banner__eyebrow {
+  color: #5874bd;
+}
+
+.recommend-toolbar {
+  padding: 5px;
+  border: 1px solid #e5ebf3;
+  border-radius: 9px;
+  background: #f8fafd;
+}
+
+.recommend-toolbar .tabs {
+  gap: 3px;
+}
+
+.recommend-toolbar .tabs button {
+  border-radius: 6px;
+  transition: background-color .16s ease, color .16s ease, box-shadow .16s ease;
+}
+
+.recommend-toolbar .tabs button.active {
+  box-shadow: 0 2px 7px rgba(49, 83, 189, .1);
+}
+
+.profile-strength.panel,
+.next-steps.panel {
+  border-color: #e0e8f2;
+  box-shadow: 0 5px 18px rgba(40, 67, 104, .045);
+}
+
+.next-step {
+  transition: background-color .16s ease, border-color .16s ease, transform .12s ease;
+}
+
+.next-step:hover {
+  transform: translateX(2px);
+}
+
+@media (max-width: 760px) {
+  .metrics-grid {
+    gap: 12px;
+  }
+
+  .recommend-toolbar {
+    align-items: stretch;
+    gap: 8px;
+    flex-direction: column;
+  }
+
+  .recommend-toolbar .tabs {
+    width: 100%;
+  }
+
+  .recommend-toolbar .tabs button {
+    flex: 1;
+  }
+}
+
 /* Authentication, notifications, and mobile polish */
 .auth-form-area {
   background: #fbfcfe;

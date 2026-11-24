@@ -66,6 +66,17 @@
   border-radius: 14px;
   box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05), 0 1px 2px rgba(15, 23, 42, 0.03);
 }
+.live-discovery__filters,
+.live-discovery__inspector-empty {
+  box-shadow: 0 5px 18px rgba(40, 67, 104, .045);
+}
+.live-discovery__filters {
+  transition: border-color .16s ease, box-shadow .16s ease;
+}
+.live-discovery__filters:focus-within {
+  border-color: #c7d4ee;
+  box-shadow: 0 8px 24px rgba(49, 83, 189, .08);
+}
 .live-discovery__filters { padding: 22px 18px; }
 .live-discovery__filter-heading { margin-bottom: 25px; }
 .live-discovery__filter-heading h2 { margin: 6px 0 4px; font-size: 19px; font-weight: 750; letter-spacing: -.4px; color: #0f172a; }
@@ -159,7 +170,9 @@
 .live-discovery__mobile-tools button:disabled { opacity: .5; cursor: default; }
 .live-discovery__mobile-tools button span { padding: 0 5px; border-radius: 4px; background: #eef2ff; color: #304fc5; }
 
-.live-project-card { display: flex; flex-direction: column; height: 100%; background: #fff; color: var(--discovery-ink); }
+.live-project-card { display: flex; flex-direction: column; height: 100%; background: #fff; color: var(--discovery-ink); border-radius: 14px; overflow: hidden; box-shadow: 0 8px 24px rgba(40, 67, 104, .06); }
+.live-project-card__match { position: relative; overflow: hidden; }
+.live-project-card__match::after { content: ""; position: absolute; right: -24px; bottom: -32px; width: 104px; height: 104px; border: 1px solid rgba(49, 83, 189, .08); border-radius: 50%; pointer-events: none; }
 .live-project-card__top { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 14px 20px; border-bottom: 1px solid #e7edf5; background: linear-gradient(90deg, #fbfcff, #fff); }
 .live-project-card__top .live-discovery__pill { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 68%; }
 .live-project-card__team { display: inline-flex; align-items: center; gap: 4px; font-size: 10px; color: #74839b; white-space: nowrap; }
@@ -195,6 +208,8 @@
 .live-project-card__skills-legend .is-matched::before { background: #22a879; }
 .live-project-card__skills > div:not(.live-project-card__skills-heading) { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 8px; }
 .live-project-card__skill { display: inline-flex; align-items: center; gap: 6px; padding: 6px 9px; border: 1px solid #dfe6f0; border-radius: 7px; background: #f8fafd; color: #52637e; font-size: 11px; font-weight: 550; }
+.live-project-card__skill { transition: background-color .15s ease, border-color .15s ease, transform .12s ease; }
+.live-project-card__skill:hover { transform: translateY(-1px); }
 .live-project-card__skill.is-matched { color: #087b5c; background: #ecfbf5; border-color: #a7dfca; }
 .live-project-card__skill.is-missing { color: #66758d; background: #fff; border-color: #d9e1ec; }
 .live-project-card__skill.is-optional { padding: 5px 8px; background: #fffaf0; border-color: #f1d9a7; color: #8b671f; }
@@ -210,6 +225,11 @@
 .live-project-card__footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; padding: 14px 20px; border: 0; border-top: 1px solid #e4ebf5; background: #f8fafd; color: #8190a5; text-align: left; font-size: 10px; cursor: pointer; }
 .live-project-card__footer strong { display: flex; align-items: center; gap: 5px; color: #263750; white-space: nowrap; font-size: 11px; font-weight: 650; }
 .live-project-card__footer:hover { background: #f0f4fa; }
+.live-project-card__footer:focus-visible,
+.live-discovery__mobile-tools button:focus-visible,
+.live-discovery__refresh:focus-visible,
+.live-discovery__reset:focus-visible,
+.live-discovery__saved-link:focus-visible { outline: 2px solid #8da9e2; outline-offset: 3px; }
 
 .live-discovery .live-discovery__actions { gap: 10px; padding: 0; margin-top: 22px; }
 .live-discovery__actions > button { height: 46px; min-height: 46px; border-radius: 9px; font-size: 13px; }
@@ -222,6 +242,7 @@
 @media (min-width: 960px) {
   .live-discovery__layout { grid-template-columns: 210px minmax(0, 1fr); gap: 24px; }
   .live-discovery__filter-column { display: block; }
+  .live-discovery__filters { position: sticky; top: 18px; }
   .live-discovery__inspector { display: block; grid-column: 2; }
   .live-discovery__mobile-tools { display: none; }
 }
