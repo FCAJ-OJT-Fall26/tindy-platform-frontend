@@ -9383,6 +9383,84 @@ main {
   }
 }
 
+/* Sidebar navigation states: clearer hover, active, badge, and keyboard focus */
+.sidebar-nav-container .nav-item {
+  transition:
+    color 180ms ease,
+    background-color 180ms ease,
+    transform 120ms ease,
+    box-shadow 180ms ease;
+}
+
+.sidebar-nav-container .nav-item svg {
+  transition: color 180ms ease, transform 180ms ease;
+}
+
+.sidebar-nav-container .nav-item:hover {
+  background: rgba(244, 247, 251, 0.82) !important;
+  color: #3159c9;
+}
+
+.sidebar-nav-container .nav-item:hover svg {
+  color: #3159c9;
+  transform: translateX(1px);
+}
+
+.sidebar-nav-container .nav-item.active {
+  background: #edf2fd !important;
+  color: #3153bd !important;
+  box-shadow: inset 0 0 0 1px rgba(57, 90, 202, 0.08);
+}
+
+.sidebar-nav-container .nav-item.active svg {
+  color: #3f5fc5 !important;
+  transform: scale(1.06);
+}
+
+.sidebar-nav-container .nav-item.active:hover {
+  background: #e9effd !important;
+  transform: none;
+}
+
+.sidebar-nav-container .nav-item:focus-visible {
+  outline: 2px solid #8da9e2;
+  outline-offset: 2px;
+  z-index: 3;
+}
+
+.sidebar-nav-container .sidebar-active-indicator {
+  background: #edf2fd;
+  border-left-width: 3px;
+  border-left-color: #3159c9;
+  box-shadow: 0 3px 12px rgba(49, 89, 201, 0.08);
+}
+
+.sidebar-nav-container .beta,
+.sidebar-nav-container .nav-count {
+  transition: background-color 180ms ease, color 180ms ease;
+}
+
+.sidebar-nav-container .nav-item:hover .beta,
+.sidebar-nav-container .nav-item.active .beta {
+  background: #dff2ed;
+  color: #28786c;
+}
+
+.sidebar-nav-container .nav-item:hover .nav-count,
+.sidebar-nav-container .nav-item.active .nav-count {
+  background: #dce6ff;
+  color: #3153bd;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sidebar-nav-container .nav-item,
+  .sidebar-nav-container .nav-item svg,
+  .sidebar-nav-container .beta,
+  .sidebar-nav-container .nav-count {
+    transition: none;
+  }
+}
+
 /* Chat workspace: a calm, product-focused inbox with a brighter conversation stage. */
 .chat-workspace {
   grid-template-columns: 282px minmax(0, 1fr);
