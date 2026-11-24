@@ -59,3 +59,65 @@
 .notification-actions .notification-read-button:focus-visible { outline: 2px solid #5b8d8a; outline-offset: 2px; }
 .notif-popover-item .notification-actions { gap: 7px; }
 .notif-popover-item .notification-actions .notification-view-button { padding-inline: 9px; font-size: 11px; }
+
+/* Notification inbox hierarchy and responsive actions */
+.notifications-panel {
+  overflow: hidden;
+  border-radius: 16px;
+  box-shadow: 0 5px 22px rgba(40, 67, 104, 0.045);
+}
+
+.notifications-panel .notification-row {
+  position: relative;
+  transition: background-color .16s ease, box-shadow .16s ease;
+}
+
+.notifications-panel .notification-row:hover {
+  background: #fbfdff;
+  box-shadow: inset 3px 0 0 #dce6ff;
+}
+
+.notifications-panel .notification-row.unread {
+  background: linear-gradient(90deg, #f7f9ff 0%, #fff 42%);
+}
+
+.notifications-panel .notification-row.unread:hover {
+  background: linear-gradient(90deg, #f1f5ff 0%, #fbfdff 42%);
+}
+
+.notifications-panel .notification-row h3 {
+  color: #2f4562;
+  font-weight: 650;
+}
+
+.notifications-panel .notification-row.unread h3 {
+  color: #1e3a68;
+}
+
+.notification-pagination {
+  color: #7b8ca2;
+}
+
+@media (max-width: 600px) {
+  .notifications-panel {
+    border-radius: 12px;
+  }
+
+  .notification-actions {
+    width: 100%;
+  }
+
+  .notification-actions button {
+    flex: 1 1 auto;
+  }
+
+  .notification-pagination {
+    justify-content: stretch;
+    margin-top: 16px;
+  }
+
+  .notification-pagination > * {
+    width: 100%;
+    text-align: center;
+  }
+}
