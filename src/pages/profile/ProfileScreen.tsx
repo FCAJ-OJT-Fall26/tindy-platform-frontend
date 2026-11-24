@@ -414,6 +414,7 @@ function ProfileView({ userId }: { userId?: string }) {
               {owner && <button type="button" className="profile-avatar-edit" aria-label="Edit avatar" title="Edit avatar" onClick={() => setMediaEditing("avatar")}><Camera size={16} aria-hidden="true" /><span className="profile-media-sr-only">Edit avatar</span></button>}
             </div>
             <div className="profile-identity-info">
+              <span className="profile-identity-kicker">{owner ? "YOUR PROFILE" : "MEMBER PROFILE"}</span>
               <h2>{profile.display_name}</h2>
               {profile.username && <p>@{profile.username}</p>}
               {profile.headline && <p>{profile.headline}</p>}
@@ -427,6 +428,11 @@ function ProfileView({ userId }: { userId?: string }) {
                   {profile.location}
                 </p>
               )}
+            </div>
+            <div className="profile-identity-stats" aria-label="Profile summary">
+              <div><strong>{profile.skills.length}</strong><span>Skills</span></div>
+              <div><strong>{profile.experiences_count}</strong><span>Experiences</span></div>
+              <div><strong>{profile.certificates_count}</strong><span>Certificates</span></div>
             </div>
             {(profile.available_hours_per_week != null || (!owner && userId && userId !== authUser?.user_id)) && (
               <div className="profile-identity-actions">
