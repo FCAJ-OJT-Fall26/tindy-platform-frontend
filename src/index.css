@@ -16004,3 +16004,35 @@ button.text-link {
 .project-github-link > span { min-width: 0; flex: 1; }
 .project-github-link strong { display: block; font-size: 13px; }
 .project-github-link small { display: block; margin-top: 3px; color: #64748b; font-size: 11px; overflow-wrap: anywhere; }
+
+/* Auth page spacing polish: a calmer reading rhythm between identity, fields, and actions. */
+.auth-story { padding: 40px clamp(36px, 6vw, 72px); }
+.auth-story-copy { padding: 32px 0; }
+.auth-form-area { padding: 52px 40px; }
+.auth-form { width: min(420px, 100%); }
+.auth-form > .stagger-1 { margin-bottom: 18px; }
+.auth-form > h1 { margin: 0 0 9px; }
+.auth-form > p { margin: 0; line-height: 1.65; }
+.auth-form form { margin-top: 27px; }
+.auth-form .auth-field { margin: 0 0 18px; }
+.auth-form .forgot-link { margin: -3px 0 20px auto; }
+.auth-btn-primary { min-height: 48px; margin-top: 5px; }
+.auth-divider { margin: 26px 0 16px; }
+.auth-social-buttons { gap: 12px; margin-bottom: 8px; }
+.auth-social-btn { min-height: 46px; }
+.auth-switch { margin: 27px 0 0 !important; }
+.auth-form .info-banner { margin-top: 18px; }
+
+@media (max-width: 900px) {
+  .auth-story { padding: 24px 28px; }
+  .auth-story-copy { padding: 26px 0 14px; }
+  .auth-form-area { padding: 42px 24px 52px; }
+}
+
+@media (max-width: 600px) {
+  .auth-form-area { padding: 34px 20px 44px; }
+  .auth-form > .stagger-1 { margin-bottom: 15px; }
+  .auth-form form { margin-top: 23px; }
+  .auth-form .auth-field { margin-bottom: 16px; }
+  .auth-social-buttons { grid-template-columns: 1fr; gap: 9px; }
+}
