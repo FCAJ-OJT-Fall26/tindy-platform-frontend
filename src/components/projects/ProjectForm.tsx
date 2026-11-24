@@ -961,6 +961,15 @@ export function ProjectForm({ mode, initialProject, initialDetail }: ProjectForm
         </div>
 
         <div className="project-form-header-actions">
+          <div className="project-form-completion" aria-label={`Project brief ${checklist.percentage}% complete`}>
+            <div className="project-form-completion-label">
+              <span>Brief readiness</span>
+              <strong>{checklist.percentage}%</strong>
+            </div>
+            <div className="project-form-completion-track" aria-hidden="true">
+              <span style={{ width: `${checklist.percentage}%` }} />
+            </div>
+          </div>
           <button
             type="button"
             className="action-btn secondary preview-trigger-btn"
@@ -1149,14 +1158,18 @@ export function ProjectForm({ mode, initialProject, initialDetail }: ProjectForm
 
                 {/* What are you building? (Description) */}
                 <div className="field-group">
-                  <label className="field-label" htmlFor="project-desc-input">
-                    What are you building? <span className="required-star">*</span>
-                  </label>
+                  <div className="field-label-row">
+                    <label className="field-label" htmlFor="project-desc-input">
+                      What are you building? <span className="required-star">*</span>
+                    </label>
+                    <span className="field-counter">{jd.length}/4000</span>
+                  </div>
                   <textarea
                     id="project-desc-input"
                     {...validationProps("description")}
                     className="field-textarea"
                     rows={5}
+                    maxLength={4000}
                     placeholder="Describe the problem, your proposed solution, and who benefits. Share why you are excited to build this..."
                     value={jd}
                     onChange={(e) => {
@@ -1207,14 +1220,18 @@ export function ProjectForm({ mode, initialProject, initialDetail }: ProjectForm
 
                 {/* What will your team achieve? (Goals) */}
                 <div className="field-group">
-                  <label className="field-label" htmlFor="project-goals-input">
-                    What will your team achieve? <span className="required-star">*</span>
-                  </label>
+                  <div className="field-label-row">
+                    <label className="field-label" htmlFor="project-goals-input">
+                      What will your team achieve? <span className="required-star">*</span>
+                    </label>
+                    <span className="field-counter">{goals.length}/2000</span>
+                  </div>
                   <textarea
                     id="project-goals-input"
                     {...validationProps("goals")}
                     className="field-textarea"
                     rows={4}
+                    maxLength={2000}
                     placeholder="Ship functional MVP with responsive dashboard&#10;Implement end-to-end user authentication and profile management&#10;Deploy prototype on cloud with CI/CD automation"
                     value={goals}
                     onChange={(e) => {

@@ -16338,3 +16338,144 @@ button.text-link {
     transition: none;
   }
 }
+
+/* Project brief form: progress, guidance, and input feedback */
+.project-form-header-actions {
+  align-items: center;
+  gap: 16px;
+}
+
+.project-form-completion {
+  display: grid;
+  gap: 6px;
+  width: 148px;
+}
+
+.project-form-completion-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  color: #71839d;
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.project-form-completion-label strong {
+  color: #3159c9;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+.project-form-completion-track {
+  height: 5px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #e7edf6;
+}
+
+.project-form-completion-track span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #5274d1, #2f9b89);
+  transition: width .25s ease;
+}
+
+.project-form-section-card .field-label-row {
+  align-items: baseline;
+  margin-bottom: 7px;
+}
+
+.project-form-section-card .field-label-row .field-label {
+  margin-bottom: 0;
+}
+
+.project-form-section-card .field-counter {
+  color: #8a9ab0;
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+}
+
+.project-form-section-card .field-counter:not(:empty) {
+  white-space: nowrap;
+}
+
+.project-form-section-card .field-textarea {
+  min-height: 124px;
+  line-height: 1.65;
+  resize: vertical;
+}
+
+.project-form-section-card textarea:focus {
+  border-color: #6f8cda;
+  box-shadow: 0 0 0 3px rgba(82, 116, 209, .12);
+}
+
+.project-form-section-card .required-star {
+  color: #d45c68;
+}
+
+.ai-assist-callout {
+  border-color: #ddd4ff;
+  background: linear-gradient(105deg, #f6f2ff 0%, #f1edff 62%, #f7f4ff 100%);
+  box-shadow: 0 5px 16px rgba(111, 67, 213, .07);
+}
+
+.ai-assist-icon {
+  box-shadow: 0 0 0 5px rgba(139, 92, 246, .1);
+}
+
+.ai-assist-btn {
+  box-shadow: 0 4px 11px rgba(111, 67, 213, .2);
+  transition: transform .16s ease, box-shadow .16s ease, background-color .16s ease;
+}
+
+.ai-assist-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 7px 16px rgba(111, 67, 213, .26);
+}
+
+.checklist-item-btn {
+  transition: color .16s ease, background-color .16s ease, transform .12s ease;
+}
+
+.checklist-item-btn:hover {
+  transform: translateX(2px);
+}
+
+@media (max-width: 760px) {
+  .project-form-header-actions {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .project-form-completion {
+    flex: 1;
+    max-width: 220px;
+  }
+}
+
+@media (max-width: 480px) {
+  .project-form-completion {
+    width: 100%;
+    max-width: none;
+  }
+
+  .project-form-header-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .project-form-header-actions .preview-trigger-btn {
+    justify-content: center;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .project-form-completion-track span,
+  .ai-assist-btn,
+  .checklist-item-btn {
+    transition: none;
+  }
+}
